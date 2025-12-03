@@ -1,0 +1,118 @@
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+
+export async function GET() {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data, error } = await supabase
+      .from('Shifts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error fetching shifts:', error)
+    return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 })
+  }
+}
+
+export async function POST(request) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+
+    const { data, error } = await supabase
+      .from('Shifts')
+      .insert([
+        {
+          user_id: userId,
+          shift_name: body.shift_name,
+          day_of_week: body.day_of_week,
+          start_time: body.start_time,
+          end_time: body.end_time,
+          staff_required: body.staff_required
+        }
+      ])
+      .select()
+
+    if (error) throw error
+
+    return NextResponse.json(data[0])
+  } catch (error) {
+    console.error('Error creating shift:', error)
+    return NextResponse.json({ error: 'Failed to create shift' }, { status: 500 })
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { id, shift_name, day_of_week, start_time, end_time, staff_required } = body
+
+    const { data, error } = await supabase
+      .from('Shifts')
+      .update({
+        shift_name,
+        day_of_week,
+        start_time,
+        end_time,
+        staff_required
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+
+    if (error) throw error
+
+    return NextResponse.json(data[0])
+  } catch (error) {
+    console.error('Error updating shift:', error)
+    return NextResponse.json({ error: 'Failed to update shift' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    const { error } = await supabase
+      .from('Shifts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting shift:', error)
+    return NextResponse.json({ error: 'Failed to delete shift' }, { status: 500 })
+  }
+}
