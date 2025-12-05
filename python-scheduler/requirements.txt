@@ -1,4 +1,4 @@
-ortools==9.8.3209
+ortools>=9.8,<10.0
 flask==3.0.0
 flask-cors==4.0.0
 gunicorn==21.2.0
