@@ -12,10 +12,10 @@
     "@anthropic-ai/sdk": "^0.68.0",
     "@clerk/nextjs": "^6.34.5",
     "@supabase/supabase-js": "^2.81.1",
-    "next": "16.0.1",
-    "react": "19.2.0",
+    "next": "^16.0.7",
+    "react": "^19.2.1",
     "react-datepicker": "^8.9.0",
-    "react-dom": "19.2.0"
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
