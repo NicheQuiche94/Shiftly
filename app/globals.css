@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --foreground-rgb: 0, 0, 0;
@@ -26,10 +24,8 @@ body {
     rgb(var(--background-start-rgb));
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+@utility text-balance {
+  text-wrap: balance;
 }
 
 /* ============================================
@@ -174,4 +170,20 @@ body {
 
 .react-datepicker__input-container input:focus {
   outline: none;
+}
+
+/* Tailwind v4 theme configuration */
+@theme {
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+  
+  --color-pink-50: #fef1f7;
+  --color-pink-100: #fee5f0;
+  --color-pink-200: #fecce3;
+  --color-pink-300: #ffa3ca;
+  --color-pink-400: #ff6ba8;
+  --color-pink-500: #fb3d88;
+  --color-pink-600: #ec1c68;
+  --color-pink-700: #cd0f52;
+  --color-pink-800: #aa1045;
+  --color-pink-900: #8d123c;
 }
