@@ -3,6 +3,7 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import Navigation from '@/app/components/Navigation'
+import TeamSelector from '@/app/components/TeamSelector'
 import Link from 'next/link'
 
 export default function ShiftsPage() {
@@ -11,6 +12,7 @@ export default function ShiftsPage() {
   const [editingGroup, setEditingGroup] = useState(null)
   const [shifts, setShifts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [selectedShifts, setSelectedShifts] = useState(new Set())
   const [formData, setFormData] = useState({
@@ -24,12 +26,17 @@ export default function ShiftsPage() {
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   useEffect(() => {
-    loadShifts()
-  }, [])
+    if (selectedTeamId) {
+      loadShifts()
+    }
+  }, [selectedTeamId])
 
   const loadShifts = async () => {
+    if (!selectedTeamId) return
+    
+    setLoading(true)
     try {
-      const response = await fetch('/api/shifts')
+      const response = await fetch(`/api/shifts?team_id=${selectedTeamId}`)
       if (!response.ok) throw new Error('Failed to load shifts')
       const data = await response.json()
       setShifts(data)
@@ -208,6 +215,7 @@ export default function ShiftsPage() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+              team_id: selectedTeamId,
               shift_name: formData.shift_name,
               day_of_week: day,
               start_time: formData.start_time,
@@ -228,6 +236,7 @@ export default function ShiftsPage() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+              team_id: selectedTeamId,
               shift_name: formData.shift_name,
               day_of_week: day,
               start_time: formData.start_time,
@@ -358,7 +367,7 @@ export default function ShiftsPage() {
     }))
   }
 
-  if (loading) {
+  if (loading && !selectedTeamId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <Navigation />
@@ -395,6 +404,14 @@ export default function ShiftsPage() {
           </svg>
           Back to Dashboard
         </Link>
+
+        {/* Team Selector */}
+        <div className="mb-6">
+          <TeamSelector 
+            selectedTeamId={selectedTeamId}
+            onTeamChange={setSelectedTeamId}
+          />
+        </div>
 
         {/* Header */}
         <div className="mb-8 flex items-end justify-between">
@@ -434,7 +451,8 @@ export default function ShiftsPage() {
           
           <button 
             onClick={openAddModal}
-            className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all duration-200"
+            disabled={!selectedTeamId}
+            className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             + Add Shift Pattern
           </button>
@@ -450,7 +468,8 @@ export default function ShiftsPage() {
                   type="checkbox"
                   checked={selectedShifts.size === grouped.length && grouped.length > 0}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
+                  disabled={!selectedTeamId || grouped.length === 0}
+                  className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2 disabled:opacity-50"
                 />
               </div>
               <div className="col-span-3">SHIFT NAME</div>
@@ -463,7 +482,21 @@ export default function ShiftsPage() {
 
           {/* Table Body */}
           <div className="divide-y divide-gray-200/60">
-            {grouped.length === 0 ? (
+            {!selectedTeamId ? (
+              <div className="px-6 py-12 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600 font-medium mb-1">Select a team to manage shifts</p>
+                <p className="text-sm text-gray-500">Choose a team from the dropdown above</p>
+              </div>
+            ) : loading ? (
+              <div className="px-6 py-12 text-center">
+                <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
+              </div>
+            ) : grouped.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                   <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -521,7 +554,7 @@ export default function ShiftsPage() {
                       </span>
                     </div>
 
-                    {/* Time - FIXED: Removed font-mono */}
+                    {/* Time */}
                     <div className="col-span-2 flex items-center">
                       <span className="text-sm text-gray-900">
                         {group.start_time} - {group.end_time}
@@ -585,7 +618,7 @@ export default function ShiftsPage() {
         </div>
       </main>
 
-      {/* Add/Edit Modal - UPDATED TO MATCH STAFF MODAL */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -622,7 +655,7 @@ export default function ShiftsPage() {
                   />
                 </div>
 
-                {/* Days of Week - UPDATED TO MATCH STAFF MODAL */}
+                {/* Days of Week */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="block text-sm font-semibold text-gray-900">

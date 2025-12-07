@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(request) {
   try {
     const { userId } = await auth()
     
@@ -10,11 +10,21 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    // Get team_id from query params
+    const { searchParams } = new URL(request.url)
+    const teamId = searchParams.get('team_id')
+
+    let query = supabase
       .from('Shifts')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+
+    // Filter by team if team_id is provided
+    if (teamId) {
+      query = query.eq('team_id', teamId)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
 
     if (error) throw error
 
@@ -35,11 +45,17 @@ export async function POST(request) {
 
     const body = await request.json()
 
+    // team_id is now required
+    if (!body.team_id) {
+      return NextResponse.json({ error: 'team_id is required' }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('Shifts')
       .insert([
         {
           user_id: userId,
+          team_id: body.team_id,
           shift_name: body.shift_name,
           day_of_week: body.day_of_week,
           start_time: body.start_time,
