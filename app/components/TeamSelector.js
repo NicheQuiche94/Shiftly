@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 
 export default function TeamSelector({ selectedTeamId, onTeamChange }) {
+  console.log('🔍 TeamSelector: Component rendered', { selectedTeamId })
+  
   const [teams, setTeams] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -10,23 +12,31 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
   const [newTeamDescription, setNewTeamDescription] = useState('')
 
   useEffect(() => {
+    console.log('🔍 TeamSelector: useEffect triggered')
     loadTeams()
   }, [])
 
   const loadTeams = async () => {
+    console.log('🔍 TeamSelector: Loading teams...')
     try {
       const response = await fetch('/api/teams')
+      console.log('🔍 TeamSelector: Response status:', response.ok)
       if (!response.ok) throw new Error('Failed to load teams')
       const data = await response.json()
+      console.log('🔍 TeamSelector: Teams loaded:', data)
       setTeams(data)
       
       // If no team is selected yet, select the first team (default team)
       if (!selectedTeamId && data.length > 0) {
+        console.log('🔍 TeamSelector: Auto-selecting team:', data[0].id)
         onTeamChange(data[0].id)
+      } else {
+        console.log('🔍 TeamSelector: Not auto-selecting. selectedTeamId:', selectedTeamId, 'teams count:', data.length)
       }
     } catch (error) {
-      console.error('Error loading teams:', error)
+      console.error('❌ TeamSelector: Error loading teams:', error)
     } finally {
+      console.log('🔍 TeamSelector: Setting loading to false')
       setLoading(false)
     }
   }
@@ -66,6 +76,8 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
     }
   }
 
+  console.log('🔍 TeamSelector: Render state -', { loading, teamsCount: teams.length, selectedTeamId })
+
   if (loading) {
     return (
       <div className="flex items-center space-x-2">
@@ -82,7 +94,10 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
         <div className="relative">
           <select
             value={selectedTeamId || ''}
-            onChange={(e) => onTeamChange(parseInt(e.target.value))}
+            onChange={(e) => {
+              console.log('🔍 TeamSelector: Team changed to:', e.target.value)
+              onTeamChange(parseInt(e.target.value))
+            }}
             className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium hover:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all cursor-pointer"
           >
             {teams.map((team) => (
