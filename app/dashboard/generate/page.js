@@ -5,6 +5,7 @@ import React from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import TeamSelector from '@/app/components/TeamSelector'
+import ShiftEditModal from '@/app/components/ShiftEditModal'
 
 function RulesComplianceSection({ rules }) {
   const [expandedRules, setExpandedRules] = useState(() => {
@@ -117,6 +118,14 @@ export default function GenerateRotaPage() {
   // Team selection state
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   
+  // Staff list for editing
+  const [allStaff, setAllStaff] = useState([])
+  
+  // Shift edit modal state
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingShift, setEditingShift] = useState(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  
   // Week selection state
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
@@ -165,10 +174,29 @@ export default function GenerateRotaPage() {
     window.print()
   }
 
-  // Load saved rotas on mount
+  // Load saved rotas and staff on mount
   useEffect(() => {
     loadSavedRotas()
   }, [])
+
+  // Load staff when team changes
+  useEffect(() => {
+    if (selectedTeamId) {
+      loadStaff()
+    }
+  }, [selectedTeamId])
+
+  const loadStaff = async () => {
+    try {
+      const response = await fetch(`/api/staff?team_id=${selectedTeamId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAllStaff(data)
+      }
+    } catch (err) {
+      console.error('Error loading staff:', err)
+    }
+  }
 
   const loadSavedRotas = async () => {
     try {
@@ -192,6 +220,7 @@ export default function GenerateRotaPage() {
     setError(null)
     setRota(null)
     setTimeSaved(null)
+    setHasUnsavedChanges(false)
   
     let data = null
   
@@ -274,6 +303,7 @@ export default function GenerateRotaPage() {
       setShowSaveModal(false)
       setShowApproveModal(false)
       setRotaName('')
+      setHasUnsavedChanges(false)
       await loadSavedRotas()
       
       if (approved) {
@@ -294,6 +324,7 @@ export default function GenerateRotaPage() {
         setRota(data.rota_data)
         setViewingRotaId(rotaId)
         setShowSavedRotas(false)
+        setHasUnsavedChanges(false)
         
         if (data.start_date) {
           setStartDate(new Date(data.start_date))
@@ -328,6 +359,94 @@ export default function GenerateRotaPage() {
     } catch (err) {
       alert('Error deleting rota: ' + err.message)
     }
+  }
+
+  // Handle shift card click - open edit modal
+  const handleShiftClick = (staffName, day, shiftName, time, week) => {
+    setEditingShift({
+      staffName,
+      day,
+      shiftName,
+      time,
+      week
+    })
+    setShowEditModal(true)
+  }
+
+  // Handle reassigning a shift to a different staff member
+  const handleReassign = (shiftData, newStaffName) => {
+    if (!rota || !rota.schedule) return
+
+    const updatedSchedule = rota.schedule.map(shift => {
+      if (shift.day === shiftData.day && 
+          shift.shift_name === shiftData.shiftName && 
+          (shift.week || 1) === shiftData.week) {
+        // Replace the old staff member with the new one
+        const updatedStaff = shift.assigned_staff.map(name => 
+          name === shiftData.staffName ? newStaffName : name
+        )
+        return { ...shift, assigned_staff: updatedStaff }
+      }
+      return shift
+    })
+
+    setRota({ ...rota, schedule: updatedSchedule })
+    setHasUnsavedChanges(true)
+  }
+
+  // Handle removing a staff member from a shift
+  const handleRemove = (shiftData) => {
+    if (!rota || !rota.schedule) return
+
+    const updatedSchedule = rota.schedule.map(shift => {
+      if (shift.day === shiftData.day && 
+          shift.shift_name === shiftData.shiftName && 
+          (shift.week || 1) === shiftData.week) {
+        // Remove the staff member
+        const updatedStaff = shift.assigned_staff.filter(name => 
+          name !== shiftData.staffName
+        )
+        return { ...shift, assigned_staff: updatedStaff }
+      }
+      return shift
+    })
+
+    setRota({ ...rota, schedule: updatedSchedule })
+    setHasUnsavedChanges(true)
+  }
+
+  // Handle swapping two shifts
+  const handleSwap = (shiftData, targetShift) => {
+    if (!rota || !rota.schedule) return
+
+    const updatedSchedule = rota.schedule.map(shift => {
+      const week = shift.week || 1
+      
+      // First shift - replace with target's staff
+      if (shift.day === shiftData.day && 
+          shift.shift_name === shiftData.shiftName && 
+          week === shiftData.week) {
+        const updatedStaff = shift.assigned_staff.map(name => 
+          name === shiftData.staffName ? targetShift.staffName : name
+        )
+        return { ...shift, assigned_staff: updatedStaff }
+      }
+      
+      // Target shift - replace with first shift's staff
+      if (shift.day === targetShift.day && 
+          shift.shift_name === targetShift.shiftName && 
+          week === targetShift.week) {
+        const updatedStaff = shift.assigned_staff.map(name => 
+          name === targetShift.staffName ? shiftData.staffName : name
+        )
+        return { ...shift, assigned_staff: updatedStaff }
+      }
+      
+      return shift
+    })
+
+    setRota({ ...rota, schedule: updatedSchedule })
+    setHasUnsavedChanges(true)
   }
 
   // Get shift details for a specific shift
@@ -480,6 +599,20 @@ export default function GenerateRotaPage() {
           </div>
         )}
 
+        {/* Unsaved Changes Banner */}
+        {hasUnsavedChanges && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 no-print">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-amber-800 font-medium">
+                You have unsaved changes. Save or approve the rota to keep your edits.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Team Selection Card */}
         <div className="bg-white rounded-xl border border-gray-200/60 p-6 mb-6 no-print">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -621,6 +754,20 @@ export default function GenerateRotaPage() {
             </>
           )}
         </div>
+
+        {/* Edit Mode Indicator */}
+        {rota && rota.schedule && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 no-print">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              <span className="text-blue-800">
+                <strong>Click any shift</strong> to reassign, swap, or remove staff members
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -841,7 +988,14 @@ export default function GenerateRotaPage() {
                                             return (
                                               <div
                                                 key={personIdx}
-                                                className={`px-3 py-2 ${colorClass} rounded-lg text-center shadow-sm hover:shadow-md transition-all cursor-pointer print:shadow-none`}
+                                                onClick={() => handleShiftClick(
+                                                  person, 
+                                                  day.day, 
+                                                  shift.name, 
+                                                  shift.time,
+                                                  week.week
+                                                )}
+                                                className={`px-3 py-2 ${colorClass} rounded-lg text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
                                               >
                                                 <span className="text-white font-semibold text-sm block">{person}</span>
                                                 <span className="text-white/90 text-xs block mt-0.5">{shiftDetails?.hours}h</span>
@@ -872,12 +1026,12 @@ export default function GenerateRotaPage() {
                   
                   {(() => {
                     const staffWeeklyHours = {}
-                    const allStaff = new Set()
+                    const allStaffNames = new Set()
                     rota.schedule.forEach(shift => {
-                      shift.assigned_staff?.forEach(name => allStaff.add(name))
+                      shift.assigned_staff?.forEach(name => allStaffNames.add(name))
                     })
                     
-                    allStaff.forEach(staffName => {
+                    allStaffNames.forEach(staffName => {
                       staffWeeklyHours[staffName] = {}
                       for (let w = 1; w <= weekCount; w++) {
                         staffWeeklyHours[staffName][w] = 0
@@ -915,7 +1069,7 @@ export default function GenerateRotaPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200/60">
-                            {Array.from(allStaff).sort().map((staffName, idx) => {
+                            {Array.from(allStaffNames).sort().map((staffName, idx) => {
                               const contracted = contractedHours[staffName] || 0
                               
                               return (
@@ -974,6 +1128,18 @@ export default function GenerateRotaPage() {
           </div>
         )}
       </main>
+
+      {/* Shift Edit Modal */}
+      <ShiftEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        shiftData={editingShift}
+        allStaff={allStaff}
+        onReassign={handleReassign}
+        onRemove={handleRemove}
+        onSwap={handleSwap}
+        rota={rota}
+      />
 
       {/* Save Modal (Draft) */}
       {showSaveModal && (
