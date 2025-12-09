@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import React from 'react'
-import Navigation from '@/app/components/Navigation'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+import TeamSelector from '@/app/components/TeamSelector'
 
 function RulesComplianceSection({ rules }) {
   const [expandedRules, setExpandedRules] = useState(() => {
@@ -114,6 +114,9 @@ export default function GenerateRotaPage() {
   const [hoveredCell, setHoveredCell] = useState(null)
   const [timeSaved, setTimeSaved] = useState(null)
   
+  // Team selection state
+  const [selectedTeamId, setSelectedTeamId] = useState(null)
+  
   // Week selection state
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
@@ -180,6 +183,11 @@ export default function GenerateRotaPage() {
   }
 
   const handleGenerate = async () => {
+    if (!selectedTeamId) {
+      alert('Please select a team first')
+      return
+    }
+    
     setLoading(true)
     setError(null)
     setRota(null)
@@ -193,7 +201,8 @@ export default function GenerateRotaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           startDate: startDate.toISOString(),
-          weekCount
+          weekCount,
+          team_id: selectedTeamId
         })
       })
   
@@ -230,6 +239,7 @@ export default function GenerateRotaPage() {
           start_date: startDate.toISOString(),
           end_date: getEndDate().toISOString(),
           week_count: weekCount,
+          team_id: selectedTeamId,
           approved: approved
         })
       })
@@ -290,6 +300,9 @@ export default function GenerateRotaPage() {
         }
         if (data.week_count) {
           setWeekCount(data.week_count)
+        }
+        if (data.team_id) {
+          setSelectedTeamId(data.team_id)
         }
       }
     } catch (err) {
@@ -406,17 +419,14 @@ export default function GenerateRotaPage() {
 
   if (loading && !rota) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <Navigation />
-        <div className="flex items-center justify-center py-32">
-          <div className="w-16 h-16 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin"></div>
-        </div>
+      <div className="flex items-center justify-center py-32">
+        <div className="w-16 h-16 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <>
       {/* Print-specific styles */}
       <style jsx global>{`
         @media print {
@@ -445,15 +455,11 @@ export default function GenerateRotaPage() {
         }
       `}</style>
 
-      <div className="no-print">
-        <Navigation />
-      </div>
-
       <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-8 no-print">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Generate Rota
+            Rota Builder
           </h1>
           <p className="text-gray-600">
             Create schedules that meet contracted hours and respect availability
@@ -473,6 +479,22 @@ export default function GenerateRotaPage() {
             </div>
           </div>
         )}
+
+        {/* Team Selection Card */}
+        <div className="bg-white rounded-xl border border-gray-200/60 p-6 mb-6 no-print">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Select Team
+          </h2>
+          <TeamSelector 
+            selectedTeamId={selectedTeamId}
+            onTeamChange={setSelectedTeamId}
+            showAddButton={false}
+          />
+          <p className="text-xs text-gray-500 mt-3">Choose which team to generate a rota for</p>
+        </div>
 
         {/* Week Selection Card */}
         <div className="bg-white rounded-xl border border-gray-200/60 p-6 mb-6 no-print">
@@ -533,9 +555,9 @@ export default function GenerateRotaPage() {
         <div className="flex flex-wrap gap-3 mb-6 no-print">
           <button
             onClick={handleGenerate}
-            disabled={loading}
+            disabled={loading || !selectedTeamId}
             className={`flex-1 min-w-[200px] px-6 py-3 rounded-lg font-semibold text-white transition-all ${
-              loading
+              loading || !selectedTeamId
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:shadow-lg hover:shadow-pink-500/25'
             }`}
@@ -625,39 +647,39 @@ export default function GenerateRotaPage() {
               </div>
             </div>
 
-        {rota?.diagnostics && rota.diagnostics.suggestions && rota.diagnostics.suggestions.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-red-200">
-            <p className="text-sm font-semibold text-red-900 mb-2">💡 How to fix:</p>
-            <ul className="space-y-2">
-              {rota.diagnostics.suggestions.map((suggestion, idx) => (
-                <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
-                  <span className="text-red-600 mt-0.5">•</span>
-                  <span>{suggestion}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+            {rota?.diagnostics && rota.diagnostics.suggestions && rota.diagnostics.suggestions.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-red-200">
+                <p className="text-sm font-semibold text-red-900 mb-2">💡 How to fix:</p>
+                <ul className="space-y-2">
+                  {rota.diagnostics.suggestions.map((suggestion, idx) => (
+                    <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
+                      <span className="text-red-600 mt-0.5">•</span>
+                      <span>{suggestion}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-        {rota?.diagnostics && rota.diagnostics.problems && rota.diagnostics.problems.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-red-200">
-            <p className="text-sm font-semibold text-red-900 mb-2">📊 Details:</p>
-            <div className="space-y-2">
-              {rota.diagnostics.problems.map((problem, idx) => (
-                <div key={idx} className="text-sm text-red-800 bg-red-100 rounded p-2">
-                  {problem.type === 'insufficient_hours' && (
-                    <p><strong>{problem.staff}:</strong> Contracted for {problem.contracted}h but can only work {problem.maxPossible.toFixed(1)}h (short by {problem.shortfall.toFixed(1)}h)</p>
-                  )}
-                  {problem.type === 'understaffed' && (
-                    <p><strong>Team-wide:</strong> Need {problem.hoursNeeded.toFixed(1)}h coverage but only {problem.hoursAvailable}h available (short by {problem.shortfall.toFixed(1)}h)</p>
-                  )}
+            {rota?.diagnostics && rota.diagnostics.problems && rota.diagnostics.problems.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-red-200">
+                <p className="text-sm font-semibold text-red-900 mb-2">📊 Details:</p>
+                <div className="space-y-2">
+                  {rota.diagnostics.problems.map((problem, idx) => (
+                    <div key={idx} className="text-sm text-red-800 bg-red-100 rounded p-2">
+                      {problem.type === 'insufficient_hours' && (
+                        <p><strong>{problem.staff}:</strong> Contracted for {problem.contracted}h but can only work {problem.maxPossible.toFixed(1)}h (short by {problem.shortfall.toFixed(1)}h)</p>
+                      )}
+                      {problem.type === 'understaffed' && (
+                        <p><strong>Team-wide:</strong> Need {problem.hoursNeeded.toFixed(1)}h coverage but only {problem.hoursAvailable}h available (short by {problem.shortfall.toFixed(1)}h)</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
-      </div>
-    )}
 
         {/* Saved Rotas List */}
         {showSavedRotas && (
@@ -1023,6 +1045,6 @@ export default function GenerateRotaPage() {
 
       {/* Portal container for DatePicker */}
       <div id="date-picker-portal"></div>
-    </div>
+    </>
   )
 }

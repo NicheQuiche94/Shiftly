@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
-import Navigation from '@/app/components/Navigation'
 
 const AVAILABLE_RULES = [
   {
@@ -151,19 +150,14 @@ export default function RulesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <Navigation />
-        <div className="flex items-center justify-center py-32">
-          <div className="w-16 h-16 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin"></div>
-        </div>
+      <div className="flex items-center justify-center py-32">
+        <div className="w-16 h-16 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Navigation />
-      
+    <>
       <main className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -240,6 +234,6 @@ export default function RulesPage() {
           </div>
         )}
       </main>
-    </div>
+    </>
   )
 }

@@ -2,41 +2,38 @@
 
 import { useState, useEffect } from 'react'
 
-export default function TeamSelector({ selectedTeamId, onTeamChange }) {
-  console.log('🔍 TeamSelector: Component rendered', { selectedTeamId })
-  
+export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButton = true }) {
   const [teams, setTeams] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
   const [newTeamDescription, setNewTeamDescription] = useState('')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    console.log('🔍 TeamSelector: useEffect triggered')
-    loadTeams()
+    setMounted(true)
   }, [])
 
+  useEffect(() => {
+    if (mounted) {
+      loadTeams()
+    }
+  }, [mounted])
+
   const loadTeams = async () => {
-    console.log('🔍 TeamSelector: Loading teams...')
     try {
       const response = await fetch('/api/teams')
-      console.log('🔍 TeamSelector: Response status:', response.ok)
       if (!response.ok) throw new Error('Failed to load teams')
       const data = await response.json()
-      console.log('🔍 TeamSelector: Teams loaded:', data)
       setTeams(data)
       
-      // If no team is selected yet, select the first team (default team)
-      if (!selectedTeamId && data.length > 0) {
-        console.log('🔍 TeamSelector: Auto-selecting team:', data[0].id)
+      // Auto-select first team if none selected
+      if (data.length > 0 && !selectedTeamId) {
         onTeamChange(data[0].id)
-      } else {
-        console.log('🔍 TeamSelector: Not auto-selecting. selectedTeamId:', selectedTeamId, 'teams count:', data.length)
       }
     } catch (error) {
-      console.error('❌ TeamSelector: Error loading teams:', error)
+      console.error('Error loading teams:', error)
     } finally {
-      console.log('🔍 TeamSelector: Setting loading to false')
       setLoading(false)
     }
   }
@@ -44,14 +41,10 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
   const handleAddTeam = async (e) => {
     e.preventDefault()
     
-    if (!newTeamName.trim()) return
-
     try {
       const response = await fetch('/api/teams', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           team_name: newTeamName,
           description: newTeamDescription
@@ -59,30 +52,51 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
       })
 
       if (!response.ok) throw new Error('Failed to create team')
-
+      
       const newTeam = await response.json()
       
-      // Reload teams and select the new team
-      await loadTeams()
-      onTeamChange(newTeam.id)
-      
-      // Close modal and reset form
-      setShowAddModal(false)
       setNewTeamName('')
       setNewTeamDescription('')
+      setShowAddModal(false)
+      
+      await loadTeams()
+      onTeamChange(newTeam.id)
     } catch (error) {
       console.error('Error creating team:', error)
       alert('Failed to create team. Please try again.')
     }
   }
 
-  console.log('🔍 TeamSelector: Render state -', { loading, teamsCount: teams.length, selectedTeamId })
+  const handleDeleteTeam = async () => {
+    const team = teams.find(t => t.id === selectedTeamId)
+    if (!team) return
+    
+    if (!confirm(`Are you sure you want to delete "${team.team_name}"? This will also delete all staff, shifts, and rules for this team.`)) {
+      return
+    }
 
-  if (loading) {
+    try {
+      const response = await fetch(`/api/teams?id=${selectedTeamId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete team')
+      }
+
+      // Reload teams and select the first available team
+      await loadTeams()
+    } catch (error) {
+      console.error('Error deleting team:', error)
+      alert(error.message || 'Failed to delete team. Please try again.')
+    }
+  }
+
+  if (!mounted || loading) {
     return (
-      <div className="flex items-center space-x-2">
-        <div className="w-5 h-5 border-2 border-gray-300 border-t-pink-500 rounded-full animate-spin"></div>
-        <span className="text-sm text-gray-600">Loading teams...</span>
+      <div className="flex items-center space-x-3">
+        <div className="w-48 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
       </div>
     )
   }
@@ -91,38 +105,47 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
     <>
       <div className="flex items-center space-x-3">
         {/* Team Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedTeamId || ''}
-            onChange={(e) => {
-              console.log('🔍 TeamSelector: Team changed to:', e.target.value)
-              onTeamChange(parseInt(e.target.value))
-            }}
-            className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium hover:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all cursor-pointer"
-          >
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.team_name} {team.is_default ? '(Main)' : ''}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Add Team Button */}
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all flex items-center space-x-2"
+        <select
+          value={selectedTeamId || ''}
+          onChange={(e) => onTeamChange(parseInt(e.target.value))}
+          className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all min-w-[200px]"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Add Team</span>
-        </button>
+          {teams.length === 0 ? (
+            <option value="">No teams yet</option>
+          ) : (
+            teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.team_name} ({team.description || 'No description'})
+              </option>
+            ))
+          )}
+        </select>
+
+        {/* Delete Team Button - Only show for non-default teams */}
+        {selectedTeamId && teams.find(t => t.id === selectedTeamId && !t.is_default) && (
+          <button
+            onClick={handleDeleteTeam}
+            className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+            title="Delete team"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        )}
+
+        {/* Add Team Button - Only show if showAddButton is true */}
+        {showAddButton && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Team</span>
+          </button>
+        )}
       </div>
 
       {/* Add Team Modal */}
@@ -130,13 +153,9 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Add New Team</h2>
+              <h2 className="text-xl font-bold text-gray-900">Add New Team</h2>
               <button 
-                onClick={() => {
-                  setShowAddModal(false)
-                  setNewTeamName('')
-                  setNewTeamDescription('')
-                }}
+                onClick={() => setShowAddModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,10 +166,9 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
 
             <form onSubmit={handleAddTeam}>
               <div className="space-y-4">
-                {/* Team Name */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Team Name <span className="text-pink-500">*</span>
+                    Team Name
                   </label>
                   <input
                     type="text"
@@ -158,43 +176,37 @@ export default function TeamSelector({ selectedTeamId, onTeamChange }) {
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
-                    placeholder="e.g., Front of House, Kitchen, Bar"
+                    placeholder="e.g., Kitchen Staff"
                   />
                 </div>
 
-                {/* Description */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Description (optional)
+                    Description (Optional)
                   </label>
-                  <textarea
+                  <input
+                    type="text"
                     value={newTeamDescription}
                     onChange={(e) => setNewTeamDescription(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all resize-none"
-                    placeholder="What does this team do?"
-                    rows={3}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                    placeholder="e.g., Main kitchen team"
                   />
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="mt-6 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAddModal(false)
-                    setNewTeamName('')
-                    setNewTeamDescription('')
-                  }}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
                 >
-                  Add Team
+                  Create Team
                 </button>
               </div>
             </form>
