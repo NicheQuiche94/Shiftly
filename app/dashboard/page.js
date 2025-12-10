@@ -9,6 +9,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const [rotas, setRotas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showPastRotas, setShowPastRotas] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
   const [stats, setStats] = useState({
     timeSaved: 0,
     weeksApproved: 0,
@@ -44,10 +46,40 @@ export default function DashboardPage() {
     }
   }
 
+  const handleDeleteRota = async (rotaId, e) => {
+    e.stopPropagation() // Prevent navigation when clicking delete
+    
+    if (!confirm('Are you sure you want to delete this rota? This cannot be undone.')) return
+    
+    setDeletingId(rotaId)
+    try {
+      const response = await fetch(`/api/rotas/${rotaId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        await loadRotas() // Refresh the list
+      } else {
+        alert('Failed to delete rota')
+      }
+    } catch (error) {
+      console.error('Error deleting rota:', error)
+      alert('Failed to delete rota')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const formatWeekBeginning = (dateString) => {
     if (!dateString) return ''
     const date = new Date(dateString)
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  }
+
+  const formatFullDate = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   const handleRotaClick = (rotaId) => {
@@ -55,12 +87,30 @@ export default function DashboardPage() {
   }
 
   const firstName = user?.firstName || 'there'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-  // Get upcoming rotas (approved, future start dates first)
-  const upcomingRotas = rotas
-    .filter(r => r.approved)
+  // Split rotas into upcoming and past
+  const approvedRotas = rotas.filter(r => r.approved)
+  
+  const upcomingRotas = approvedRotas
+    .filter(r => {
+      if (!r.end_date) return true // No end date, assume upcoming
+      const endDate = new Date(r.end_date)
+      return endDate >= today
+    })
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-    .slice(0, 5)
+  
+  const pastRotas = approvedRotas
+    .filter(r => {
+      if (!r.end_date) return false
+      const endDate = new Date(r.end_date)
+      return endDate < today
+    })
+    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date)) // Most recent first
+
+  // Draft rotas (not approved)
+  const draftRotas = rotas.filter(r => !r.approved)
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
@@ -110,8 +160,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Upcoming Rotas - Full Width */}
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
+      {/* Upcoming Rotas */}
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900">Upcoming Rotas</h2>
@@ -135,8 +185,8 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <p className="text-gray-900 font-medium mb-1 text-sm sm:text-base">No approved rotas yet</p>
-            <p className="text-xs sm:text-sm text-gray-500 mb-4">Create and approve your first rota to see it here</p>
+            <p className="text-gray-900 font-medium mb-1 text-sm sm:text-base">No upcoming rotas</p>
+            <p className="text-xs sm:text-sm text-gray-500 mb-4">Create and approve a rota to see it here</p>
             <button
               onClick={() => router.push('/dashboard/generate')}
               className="px-5 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all text-sm"
@@ -146,13 +196,15 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {upcomingRotas.map((rota) => (
-              <button
+            {upcomingRotas.slice(0, 5).map((rota) => (
+              <div
                 key={rota.id}
-                onClick={() => handleRotaClick(rota.id)}
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
+                className="flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <button
+                  onClick={() => handleRotaClick(rota.id)}
+                  className="flex-1 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 text-left"
+                >
                   <div className="w-9 h-9 sm:w-10 sm:h-10 bg-pink-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
                     <svg className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -166,16 +218,168 @@ export default function DashboardPage() {
                       w/c {formatWeekBeginning(rota.start_date)} · {rota.week_count || 1} week{(rota.week_count || 1) > 1 ? 's' : ''}
                     </p>
                   </div>
-                </div>
+                </button>
                 
-                <svg className="w-5 h-5 text-gray-400 flex-shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+                <div className="flex items-center gap-2 pr-4 sm:pr-6">
+                  <button
+                    onClick={(e) => handleDeleteRota(rota.id, e)}
+                    disabled={deletingId === rota.id}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Delete rota"
+                  >
+                    {deletingId === rota.id ? (
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
+                  <svg className="w-5 h-5 text-gray-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Past Rotas */}
+      {pastRotas.length > 0 && (
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
+          <button
+            onClick={() => setShowPastRotas(!showPastRotas)}
+            className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Past Rotas</h2>
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                {pastRotas.length}
+              </span>
+            </div>
+            <svg 
+              className={`w-5 h-5 text-gray-400 transition-transform ${showPastRotas ? 'rotate-180' : ''}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showPastRotas && (
+            <div className="divide-y divide-gray-100 border-t border-gray-100">
+              {pastRotas.map((rota) => (
+                <div
+                  key={rota.id}
+                  className="flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <button
+                    onClick={() => handleRotaClick(rota.id)}
+                    className="flex-1 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 text-left"
+                  >
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gray-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-700 text-sm sm:text-base truncate">
+                        {rota.rota_name || rota.name || 'Untitled Rota'}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        {formatFullDate(rota.start_date)} - {formatFullDate(rota.end_date)}
+                      </p>
+                    </div>
+                  </button>
+                  
+                  <div className="flex items-center gap-2 pr-4 sm:pr-6">
+                    <button
+                      onClick={(e) => handleDeleteRota(rota.id, e)}
+                      disabled={deletingId === rota.id}
+                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete rota"
+                    >
+                      {deletingId === rota.id ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
+                    </button>
+                    <svg className="w-5 h-5 text-gray-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Draft Rotas */}
+      {draftRotas.length > 0 && (
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Drafts</h2>
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                {draftRotas.length}
+              </span>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {draftRotas.map((rota) => (
+              <div
+                key={rota.id}
+                className="flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <button
+                  onClick={() => handleRotaClick(rota.id)}
+                  className="flex-1 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 text-left"
+                >
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-amber-50 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-700 text-sm sm:text-base truncate">
+                      {rota.rota_name || rota.name || 'Untitled Draft'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      w/c {formatWeekBeginning(rota.start_date)} · {rota.week_count || 1} week{(rota.week_count || 1) > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </button>
+                
+                <div className="flex items-center gap-2 pr-4 sm:pr-6">
+                  <button
+                    onClick={(e) => handleDeleteRota(rota.id, e)}
+                    disabled={deletingId === rota.id}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Delete draft"
+                  >
+                    {deletingId === rota.id ? (
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
+                  <svg className="w-5 h-5 text-gray-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="mt-4 sm:mt-6 flex justify-center">

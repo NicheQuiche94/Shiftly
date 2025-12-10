@@ -7,6 +7,7 @@ export default function ShiftsSection({ selectedTeamId }) {
   const [editingShift, setEditingShift] = useState(null)
   const [editingGroup, setEditingGroup] = useState(null)
   const [shifts, setShifts] = useState([])
+  const [staff, setStaff] = useState([]) // Add staff state
   const [loading, setLoading] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [selectedShifts, setSelectedShifts] = useState(new Set())
@@ -32,6 +33,7 @@ export default function ShiftsSection({ selectedTeamId }) {
   useEffect(() => {
     if (selectedTeamId) {
       loadShifts()
+      loadStaff() // Load staff too
     }
   }, [selectedTeamId])
 
@@ -51,24 +53,33 @@ export default function ShiftsSection({ selectedTeamId }) {
     }
   }
 
-  const calculateTotalHours = () => {
+  const loadStaff = async () => {
+    if (!selectedTeamId) return
+    try {
+      const response = await fetch(`/api/staff?team_id=${selectedTeamId}`)
+      if (!response.ok) throw new Error('Failed to load staff')
+      const data = await response.json()
+      setStaff(data)
+    } catch (error) {
+      console.error('Error loading staff:', error)
+    }
+  }
+
+  const calculateShiftHours = () => {
     let totalHours = 0
-    
     shifts.forEach(shift => {
       const [startHour, startMin] = shift.start_time.split(':').map(Number)
       const [endHour, endMin] = shift.end_time.split(':').map(Number)
-      
       let minutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
-      
-      if (minutes < 0) {
-        minutes += 24 * 60
-      }
-      
+      if (minutes < 0) minutes += 24 * 60
       const hours = minutes / 60
-      totalHours += hours * shift.staff_required
+      totalHours += hours * (shift.staff_required || 1)
     })
-    
-    return totalHours.toFixed(1)
+    return totalHours
+  }
+
+  const calculateStaffHours = () => {
+    return staff.reduce((sum, member) => sum + (member.contracted_hours || 0), 0)
   }
 
   const groupedShifts = () => {
@@ -345,11 +356,14 @@ export default function ShiftsSection({ selectedTeamId }) {
   }
 
   const grouped = groupedShifts()
-  const totalHours = calculateTotalHours()
+  const shiftHours = calculateShiftHours()
+  const staffHours = calculateStaffHours()
+  const hoursMatch = Math.abs(staffHours - shiftHours) < 0.5
+  const hoursDiff = shiftHours - staffHours
 
   return (
     <div>
-      {/* Header with Total Hours */}
+      {/* Header with Hours Comparison */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Shift Patterns</h2>
@@ -357,10 +371,49 @@ export default function ShiftsSection({ selectedTeamId }) {
         </div>
         
         {shifts.length > 0 && (
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200/60 px-4 sm:px-6 py-2 sm:py-3">
-            <div className="text-xs text-gray-600 mb-0.5 sm:mb-1">Total Hours per Week</div>
-            <div className="text-xl sm:text-2xl font-bold text-gray-900">{totalHours}h</div>
-            <div className="text-xs text-gray-500 mt-0.5 hidden sm:block">Must match staff hours</div>
+          <div className={`rounded-lg border px-4 sm:px-5 py-2 sm:py-3 ${
+            hoursMatch 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-amber-50 border-amber-200'
+          }`}>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="text-center">
+                <div className="text-xs text-gray-600 mb-0.5">Shifts</div>
+                <div className={`text-lg sm:text-xl font-bold ${hoursMatch ? 'text-green-700' : 'text-gray-900'}`}>
+                  {shiftHours.toFixed(0)}h
+                </div>
+              </div>
+              
+              <div className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full ${
+                hoursMatch ? 'bg-green-200' : 'bg-amber-200'
+              }`}>
+                {hoursMatch ? (
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                )}
+              </div>
+              
+              <div className="text-center">
+                <div className="text-xs text-gray-600 mb-0.5">Staff</div>
+                <div className={`text-lg sm:text-xl font-bold ${hoursMatch ? 'text-green-700' : 'text-gray-900'}`}>
+                  {staffHours}h
+                </div>
+              </div>
+            </div>
+            
+            {!hoursMatch && (
+              <div className="text-xs text-amber-700 mt-1 text-center">
+                {hoursDiff > 0 
+                  ? `${hoursDiff.toFixed(0)}h more shifts than staff`
+                  : `${Math.abs(hoursDiff).toFixed(0)}h more staff than shifts`
+                }
+              </div>
+            )}
           </div>
         )}
       </div>
