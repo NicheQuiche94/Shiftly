@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import React from 'react'
 import { useSearchParams } from 'next/navigation'
 import DatePicker from 'react-datepicker'
@@ -102,7 +102,8 @@ function RulesComplianceSection({ rules }) {
   )
 }
 
-export default function GenerateRotaPage() {
+// Inner component that uses useSearchParams
+function GenerateRotaContent() {
   const searchParams = useSearchParams()
   const rotaIdFromUrl = searchParams.get('rota')
   
@@ -1267,5 +1268,21 @@ export default function GenerateRotaPage() {
       {/* Portal container for DatePicker */}
       <div id="date-picker-portal"></div>
     </>
+  )
+}
+
+// Main export with Suspense wrapper
+export default function GenerateRotaPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <GenerateRotaContent />
+    </Suspense>
   )
 }
