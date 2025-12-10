@@ -27,11 +27,13 @@ class ShiftlyScheduler:
                 var_name = f'sh{shift_idx}_st{staff_idx}'
                 schedule[shift_idx][staff_idx] = model.NewBoolVar(var_name)
         
+        # Each shift must have exactly the required number of staff
         for shift_idx in range(len(self.shifts)):
             staff_required = self.shifts[shift_idx].get('staff_required', 1)
             model.Add(sum(schedule[shift_idx][staff_idx] 
                          for staff_idx in range(len(self.staff))) == staff_required)
         
+        # Contracted hours constraint (with ±1 hour tolerance)
         for staff_idx, staff in enumerate(self.staff):
             contracted_hours = staff.get('contracted_hours', 0)
             if contracted_hours > 0:
@@ -44,6 +46,7 @@ class ShiftlyScheduler:
                 model.Add(total_minutes >= contracted_minutes - 60)
                 model.Add(total_minutes <= contracted_minutes + 60)
         
+        # Max hours constraint
         for staff_idx, staff in enumerate(self.staff):
             max_hours = staff.get('max_hours', 48)
             total_minutes = sum(
@@ -53,6 +56,7 @@ class ShiftlyScheduler:
             )
             model.Add(total_minutes <= max_hours * 60)
         
+        # Availability constraint
         for shift_idx, shift in enumerate(self.shifts):
             shift_day = shift['day'].lower()
             for staff_idx, staff in enumerate(self.staff):
@@ -61,6 +65,10 @@ class ShiftlyScheduler:
                 if not is_available:
                     model.Add(schedule[shift_idx][staff_idx] == 0)
         
+        # ============================================================
+        # HARD CONSTRAINT: Maximum 1 shift per staff per day
+        # This is fundamental - no one should ever work 2 shifts in a day
+        # ============================================================
         shifts_by_day = {}
         for shift_idx, shift in enumerate(self.shifts):
             day = shift['day']
@@ -70,19 +78,15 @@ class ShiftlyScheduler:
         
         for day, shift_indices_on_day in shifts_by_day.items():
             for staff_idx in range(len(self.staff)):
-                for i, shift_idx_1 in enumerate(shift_indices_on_day):
-                    for shift_idx_2 in shift_indices_on_day[i+1:]:
-                        if self._shifts_overlap(
-                            self.shifts[shift_idx_1], 
-                            self.shifts[shift_idx_2]
-                        ):
-                            model.Add(
-                                schedule[shift_idx_1][staff_idx] +
-                                schedule[shift_idx_2][staff_idx] <= 1
-                            )
+                # Sum of all shifts for this staff on this day must be <= 1
+                model.Add(
+                    sum(schedule[shift_idx][staff_idx] for shift_idx in shift_indices_on_day) <= 1
+                )
         
+        # Add optional rules
         self._add_rules_to_model(model, schedule)
         
+        # Variety constraint for multi-week schedules
         if previous_solutions is not None and len(previous_solutions) > 0:
             for prev_solution in previous_solutions:
                 differences = []
@@ -198,6 +202,14 @@ class ShiftlyScheduler:
             return f"Week {week_num} couldn't be generated. Try reducing the number of weeks or adjusting availability."
     
     def _add_rules_to_model(self, model, schedule):
+        # Group shifts by day for rule checking
+        shifts_by_day = {}
+        for shift_idx, shift in enumerate(self.shifts):
+            day = shift['day']
+            if day not in shifts_by_day:
+                shifts_by_day[day] = []
+            shifts_by_day[day].append(shift_idx)
+        
         if self._rule_enabled('no_clopening'):
             day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
             for staff_idx in range(len(self.staff)):
@@ -306,14 +318,14 @@ class ShiftlyScheduler:
             compliance.append({
                 'rule': 'No Double Shifts',
                 'status': 'followed',
-                'details': 'No staff member is assigned to overlapping shifts on the same day.',
+                'details': 'No staff member works more than one shift per day.',
                 'violations': []
             })
         else:
             compliance.append({
                 'rule': 'No Double Shifts',
                 'status': 'compromised',
-                'details': f'Found {len(double_shift_violations)} overlapping shift assignment(s).',
+                'details': f'Found {len(double_shift_violations)} double shift assignment(s).',
                 'violations': double_shift_violations
             })
         
@@ -439,6 +451,7 @@ class ShiftlyScheduler:
         return compliance
     
     def _check_no_double_shifts(self, schedule):
+        """Check that no staff member works more than one shift per day"""
         violations = []
         
         for week_data in schedule:
@@ -453,21 +466,20 @@ class ShiftlyScheduler:
                     shifts_by_day_staff[key] = []
                 shifts_by_day_staff[key].append(shift)
             
+            # Any staff with more than 1 shift on a day is a violation
             for key, shifts_list in shifts_by_day_staff.items():
                 if len(shifts_list) > 1:
-                    for i in range(len(shifts_list)):
-                        for j in range(i + 1, len(shifts_list)):
-                            if self._shifts_overlap(
-                                {'start_time': shifts_list[i]['start_time'], 'end_time': shifts_list[i]['end_time']},
-                                {'start_time': shifts_list[j]['start_time'], 'end_time': shifts_list[j]['end_time']}
-                            ):
-                                violations.append({
-                                    'staff': shifts_list[i]['staff_name'],
-                                    'day': shifts_list[i]['day'],
-                                    'week': f"Week {week_data['week']}",
-                                    'issue': f"Overlapping shifts: {shifts_list[i]['shift_name']} and {shifts_list[j]['shift_name']}",
-                                    'solution': f"Remove one shift or assign to different staff"
-                                })
+                    staff_name = shifts_list[0]['staff_name']
+                    day = shifts_list[0]['day']
+                    shift_names = [s['shift_name'] for s in shifts_list]
+                    
+                    violations.append({
+                        'staff': staff_name,
+                        'day': day,
+                        'week': f"Week {week_data['week']}",
+                        'issue': f"Assigned to {len(shifts_list)} shifts: {', '.join(shift_names)}",
+                        'solution': f"Remove one shift or assign to different staff"
+                    })
         
         return violations
     

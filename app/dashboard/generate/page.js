@@ -24,8 +24,8 @@ function RulesComplianceSection({ rules }) {
   }
 
   return (
-    <div className="p-6 border-b border-gray-200/60 bg-gray-50/30 no-print">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Rules Compliance</h3>
+    <div className="p-4 sm:p-6 border-b border-gray-200/60 bg-gray-50/30 no-print">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Rules Compliance</h3>
       <div className="space-y-2">
         {rules.map((rule, idx) => {
           const isExpanded = expandedRules[idx]
@@ -42,30 +42,30 @@ function RulesComplianceSection({ rules }) {
             >
               <button
                 onClick={() => toggleRule(idx)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-black/5 transition-colors rounded-lg"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between hover:bg-black/5 transition-colors rounded-lg"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
                     rule.status === 'followed' ? 'bg-green-100' : 'bg-amber-100'
                   }`}>
                     {rule.status === 'followed' ? (
-                      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : (
-                      <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
                     )}
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-gray-900">{rule.rule}</p>
-                    <p className="text-sm text-gray-700">{rule.details}</p>
+                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{rule.rule}</p>
+                    <p className="text-xs sm:text-sm text-gray-700">{rule.details}</p>
                   </div>
                 </div>
                 {hasViolations && (
                   <svg 
-                    className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-400 transition-transform flex-shrink-0 ml-2 ${isExpanded ? 'rotate-180' : ''}`}
                     fill="none" 
                     viewBox="0 0 24 24" 
                     stroke="currentColor"
@@ -76,10 +76,10 @@ function RulesComplianceSection({ rules }) {
               </button>
               
               {hasViolations && isExpanded && (
-                <div className="px-4 pb-4">
+                <div className="px-3 sm:px-4 pb-3 sm:pb-4">
                   <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
                     {rule.violations.map((violation, vIdx) => (
-                      <div key={vIdx} className="bg-white rounded border border-gray-200 p-3 text-sm">
+                      <div key={vIdx} className="bg-white rounded border border-gray-200 p-2 sm:p-3 text-xs sm:text-sm">
                         <div className="font-medium text-gray-900 mb-1">
                           {violation.staff} - {violation.day} - {violation.week}
                         </div>
@@ -172,7 +172,12 @@ function GenerateRotaContent() {
     const dayIndex = dayNames.indexOf(dayName)
     const date = new Date(startDate)
     date.setDate(date.getDate() + (weekIndex * 7) + dayIndex)
-    return formatDate(date)
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  }
+
+  // Get short day name
+  const getShortDay = (dayName) => {
+    return dayName.slice(0, 3)
   }
 
   // Print function
@@ -308,7 +313,7 @@ function GenerateRotaContent() {
           // Show time saved message
           if (settings?.manual_rota_time) {
             setTimeSaved(settings.manual_rota_time)
-            setTimeout(() => setTimeSaved(null), 5000) // Clear after 5 seconds
+            setTimeout(() => setTimeSaved(null), 5000)
           }
         }
       }
@@ -397,7 +402,6 @@ function GenerateRotaContent() {
       if (shift.day === shiftData.day && 
           shift.shift_name === shiftData.shiftName && 
           (shift.week || 1) === shiftData.week) {
-        // Replace the old staff member with the new one
         const updatedStaff = shift.assigned_staff.map(name => 
           name === shiftData.staffName ? newStaffName : name
         )
@@ -418,7 +422,6 @@ function GenerateRotaContent() {
       if (shift.day === shiftData.day && 
           shift.shift_name === shiftData.shiftName && 
           (shift.week || 1) === shiftData.week) {
-        // Remove the staff member
         const updatedStaff = shift.assigned_staff.filter(name => 
           name !== shiftData.staffName
         )
@@ -438,7 +441,6 @@ function GenerateRotaContent() {
     const updatedSchedule = rota.schedule.map(shift => {
       const week = shift.week || 1
       
-      // First shift - replace with target's staff
       if (shift.day === shiftData.day && 
           shift.shift_name === shiftData.shiftName && 
           week === shiftData.week) {
@@ -448,7 +450,6 @@ function GenerateRotaContent() {
         return { ...shift, assigned_staff: updatedStaff }
       }
       
-      // Target shift - replace with first shift's staff
       if (shift.day === targetShift.day && 
           shift.shift_name === targetShift.shiftName && 
           week === targetShift.week) {
@@ -465,79 +466,28 @@ function GenerateRotaContent() {
     setHasUnsavedChanges(true)
   }
 
-  // Get shift details for a specific shift
-  const getShiftDetails = (shiftName) => {
-    if (!rota || !rota.schedule) return null
-    const shift = rota.schedule.find(s => s.shift_name === shiftName)
-    if (!shift) return null
-    
-    const [startTime, endTime] = shift.time.split('-')
-    const hours = calculateShiftHours(startTime, endTime)
-    return { startTime, endTime, hours }
-  }
-
   const calculateShiftHours = (startTime, endTime) => {
     const [startH, startM] = startTime.split(':').map(Number)
     const [endH, endM] = endTime.split(':').map(Number)
     const startMins = startH * 60 + startM
-    const endMins = endH * 60 + endM
+    let endMins = endH * 60 + endM
+    if (endMins < startMins) endMins += 24 * 60 // Handle overnight shifts
     return ((endMins - startMins) / 60).toFixed(1)
   }
 
-  // Transform schedule data for calendar view
-  const getWeeklySchedule = () => {
+  // Get unique staff members for the grid
+  const getUniqueStaff = () => {
     if (!rota || !rota.schedule) return []
-    
-    const weeks = []
-    const weekNumbers = [...new Set(rota.schedule.map(s => s.week || 1))]
-    
-    weekNumbers.forEach(weekNum => {
-      const weekSchedule = rota.schedule.filter(s => (s.week || 1) === weekNum)
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-      
-      const weekData = {
-        week: weekNum,
-        days: days.map(day => {
-          const dayShifts = weekSchedule.filter(s => s.day === day)
-          const shifts = {}
-          dayShifts.forEach(shift => {
-            shifts[shift.shift_name] = {
-              staff: shift.assigned_staff || [],
-              time: shift.time
-            }
-          })
-          return { day, shifts }
-        })
-      }
-      
-      weeks.push(weekData)
-    })
-    
-    return weeks
-  }
-
-  const weeklyData = getWeeklySchedule()
-
-  // Get all unique shift names and sort chronologically
-  const getAllShiftNames = () => {
-    if (!rota || !rota.schedule) return []
-    const shiftMap = {}
-    
+    const staffSet = new Set()
     rota.schedule.forEach(shift => {
-      if (!shiftMap[shift.shift_name]) {
-        const [startTime] = shift.time.split('-')
-        const [hours, mins] = startTime.split(':').map(Number)
-        const timeValue = hours * 60 + mins
-        shiftMap[shift.shift_name] = { name: shift.shift_name, time: shift.time, timeValue }
-      }
+      shift.assigned_staff?.forEach(name => staffSet.add(name))
     })
-    
-    return Object.values(shiftMap).sort((a, b) => a.timeValue - b.timeValue)
+    return Array.from(staffSet).sort()
   }
 
-  const sortedShifts = getAllShiftNames()
+  const uniqueStaff = getUniqueStaff()
 
-  // Color palette for staff - cycling through colors
+  // Color palette for staff
   const staffColors = [
     'bg-gradient-to-br from-pink-500 to-pink-600',
     'bg-gradient-to-br from-purple-500 to-purple-600',
@@ -551,22 +501,23 @@ function GenerateRotaContent() {
     'bg-gradient-to-br from-cyan-500 to-cyan-600',
   ]
 
-  // Get unique staff members for color assignment
-  const getUniqueStaff = () => {
-    if (!rota || !rota.schedule) return []
-    const staffSet = new Set()
-    rota.schedule.forEach(shift => {
-      shift.assigned_staff?.forEach(name => staffSet.add(name))
-    })
-    return Array.from(staffSet).sort()
-  }
-
-  const uniqueStaff = getUniqueStaff()
-
   const getStaffColor = (staffName) => {
     const index = uniqueStaff.indexOf(staffName)
     return staffColors[index % staffColors.length]
   }
+
+  // Get shifts for a specific staff member on a specific day/week
+  const getStaffShiftsForDay = (staffName, dayName, weekNum) => {
+    if (!rota || !rota.schedule) return []
+    
+    return rota.schedule.filter(shift => 
+      shift.day === dayName && 
+      (shift.week || 1) === weekNum &&
+      shift.assigned_staff?.includes(staffName)
+    )
+  }
+
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   if (initialLoading) {
     return (
@@ -617,25 +568,25 @@ function GenerateRotaContent() {
         }
       `}</style>
 
-      <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
         {/* Header */}
-        <div className="mb-8 no-print">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <div className="mb-6 sm:mb-8 no-print">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">
             Rota Builder
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             Create schedules that meet contracted hours and respect availability
           </p>
         </div>
 
         {/* Time Saved Banner */}
         {timeSaved && (
-          <div className="mb-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg animate-fade-in no-print">
-            <div className="flex items-center justify-center gap-3">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="mb-4 sm:mb-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4 sm:p-6 shadow-lg animate-fade-in no-print">
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-2xl font-bold">
+              <span className="text-xl sm:text-2xl font-bold">
                 {timeSaved} minutes saved! 🎉
               </span>
             </div>
@@ -644,12 +595,12 @@ function GenerateRotaContent() {
 
         {/* Unsaved Changes Banner */}
         {hasUnsavedChanges && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 no-print">
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="mb-4 sm:mb-6 bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 no-print">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <svg className="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span className="text-amber-800 font-medium">
+              <span className="text-amber-800 font-medium text-sm sm:text-base">
                 You have unsaved changes. Save or approve the rota to keep your edits.
               </span>
             </div>
@@ -657,8 +608,8 @@ function GenerateRotaContent() {
         )}
 
         {/* Team Selection Card */}
-        <div className="bg-white rounded-xl border border-gray-200/60 p-6 mb-6 no-print">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -669,19 +620,19 @@ function GenerateRotaContent() {
             onTeamChange={setSelectedTeamId}
             showAddButton={false}
           />
-          <p className="text-xs text-gray-500 mt-3">Choose which team to generate a rota for</p>
+          <p className="text-xs text-gray-500 mt-2 sm:mt-3">Choose which team to generate a rota for</p>
         </div>
 
         {/* Week Selection Card */}
-        <div className="bg-white rounded-xl border border-gray-200/60 p-6 mb-6 no-print">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             Select Week
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* Date Picker */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -692,7 +643,7 @@ function GenerateRotaContent() {
                 onChange={(date) => setStartDate(date)}
                 filterDate={filterMondays}
                 dateFormat="MMMM d, yyyy"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
                 minDate={new Date()}
                 withPortal
                 portalId="date-picker-portal"
@@ -708,7 +659,7 @@ function GenerateRotaContent() {
               <select
                 value={weekCount}
                 onChange={(e) => setWeekCount(parseInt(e.target.value))}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
               >
                 {Array.from({ length: 52 }, (_, i) => i + 1).map((weeks) => (
                   <option key={weeks} value={weeks}>
@@ -724,11 +675,11 @@ function GenerateRotaContent() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3 mb-6 no-print">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 no-print">
           <button
             onClick={handleGenerate}
             disabled={loading || !selectedTeamId}
-            className={`flex-1 min-w-[200px] px-6 py-3 rounded-lg font-semibold text-white transition-all ${
+            className={`flex-1 min-w-[140px] sm:min-w-[200px] px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-white transition-all text-sm sm:text-base ${
               loading || !selectedTeamId
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:shadow-lg hover:shadow-pink-500/25'
@@ -737,53 +688,55 @@ function GenerateRotaContent() {
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Generating...
+                <span className="hidden sm:inline">Generating...</span>
+                <span className="sm:hidden">...</span>
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Generate Rota
+                Generate
               </span>
             )}
           </button>
 
           <button
             onClick={() => setShowSavedRotas(!showSavedRotas)}
-            className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2"
+            className="px-3 sm:px-6 py-2.5 sm:py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-all flex items-center gap-2 text-sm sm:text-base"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
             </svg>
-            Saved Rotas
+            <span className="hidden sm:inline">Saved Rotas</span>
+            <span className="sm:hidden">Saved</span>
           </button>
 
           {rota && rota.schedule && (
             <>
               <button
                 onClick={() => setShowSaveModal(true)}
-                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center gap-2"
+                className="px-3 sm:px-6 py-2.5 sm:py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center gap-2 text-sm sm:text-base"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
-                Save
+                <span className="hidden sm:inline">Save</span>
               </button>
 
               <button
                 onClick={() => setShowApproveModal(true)}
-                className="px-6 py-3 border-2 border-pink-500 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 transition-all flex items-center gap-2"
+                className="px-3 sm:px-6 py-2.5 sm:py-3 border-2 border-pink-500 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 transition-all flex items-center gap-2 text-sm sm:text-base"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Save & Approve
+                <span className="hidden sm:inline">Approve</span>
               </button>
               
               <button
                 onClick={handlePrint}
-                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all flex items-center gap-2"
+                className="hidden sm:flex px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -794,32 +747,15 @@ function GenerateRotaContent() {
           )}
         </div>
 
-        {/* Staff Color Legend */}
-        {rota && rota.schedule && uniqueStaff.length > 0 && (
-          <div className="mb-6 bg-white rounded-xl border border-gray-200/60 p-4 no-print">
-            <p className="text-sm font-medium text-gray-700 mb-3">Staff Legend:</p>
-            <div className="flex flex-wrap gap-2">
-              {uniqueStaff.map((staffName) => (
-                <div 
-                  key={staffName}
-                  className={`${getStaffColor(staffName)} px-3 py-1.5 rounded-lg text-white text-sm font-medium`}
-                >
-                  {staffName}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Edit Mode Indicator */}
         {rota && rota.schedule && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 no-print">
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="mb-4 sm:mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 no-print">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-              <span className="text-blue-800">
-                <strong>Click any shift</strong> to reassign, swap, or remove staff members
+              <span className="text-blue-800 text-sm sm:text-base">
+                <strong>Tap any shift</strong> to reassign, swap, or remove staff
               </span>
             </div>
           </div>
@@ -827,11 +763,11 @@ function GenerateRotaContent() {
 
         {/* Loading State */}
         {loading && (
-          <div className="bg-pink-50 border border-pink-200 rounded-xl p-6 mb-6 no-print">
+          <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 no-print">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-600"></div>
-              <p className="text-pink-900 font-medium">
-                Generating rota for {formatDate(startDate)} - {formatDate(getEndDate())}...
+              <p className="text-pink-900 font-medium text-sm sm:text-base">
+                Generating rota...
               </p>
             </div>
           </div>
@@ -839,14 +775,14 @@ function GenerateRotaContent() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6 no-print">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 no-print">
             <div className="flex items-start gap-3 mb-4">
-              <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <p className="text-red-900 font-bold text-lg mb-2">Unable to Generate Rota</p>
-                <p className="text-red-800">{typeof error === 'string' ? error : error.message}</p>
+                <p className="text-red-900 font-bold text-base sm:text-lg mb-2">Unable to Generate Rota</p>
+                <p className="text-red-800 text-sm sm:text-base">{typeof error === 'string' ? error : error.message}</p>
               </div>
             </div>
 
@@ -855,7 +791,7 @@ function GenerateRotaContent() {
                 <p className="text-sm font-semibold text-red-900 mb-2">💡 How to fix:</p>
                 <ul className="space-y-2">
                   {rota.diagnostics.suggestions.map((suggestion, idx) => (
-                    <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
+                    <li key={idx} className="text-xs sm:text-sm text-red-800 flex items-start gap-2">
                       <span className="text-red-600 mt-0.5">•</span>
                       <span>{suggestion}</span>
                     </li>
@@ -863,35 +799,17 @@ function GenerateRotaContent() {
                 </ul>
               </div>
             )}
-
-            {rota?.diagnostics && rota.diagnostics.problems && rota.diagnostics.problems.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-red-200">
-                <p className="text-sm font-semibold text-red-900 mb-2">📊 Details:</p>
-                <div className="space-y-2">
-                  {rota.diagnostics.problems.map((problem, idx) => (
-                    <div key={idx} className="text-sm text-red-800 bg-red-100 rounded p-2">
-                      {problem.type === 'insufficient_hours' && (
-                        <p><strong>{problem.staff}:</strong> Contracted for {problem.contracted}h but can only work {problem.maxPossible.toFixed(1)}h (short by {problem.shortfall.toFixed(1)}h)</p>
-                      )}
-                      {problem.type === 'understaffed' && (
-                        <p><strong>Team-wide:</strong> Need {problem.hoursNeeded.toFixed(1)}h coverage but only {problem.hoursAvailable}h available (short by {problem.shortfall.toFixed(1)}h)</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         {/* Saved Rotas List */}
         {showSavedRotas && (
-          <div className="bg-white rounded-xl border border-gray-200/60 p-6 mb-6 no-print">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Saved Rotas</h3>
+          <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Saved Rotas</h3>
             {savedRotas.length === 0 ? (
               <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-full mb-4">
+                  <svg className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
                   </svg>
                 </div>
@@ -903,11 +821,11 @@ function GenerateRotaContent() {
                 {savedRotas.map((savedRota) => (
                   <div
                     key={savedRota.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200/60"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200/60"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900">{savedRota.rota_name || savedRota.name || 'Untitled Rota'}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{savedRota.rota_name || savedRota.name || 'Untitled Rota'}</p>
                         {savedRota.approved && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                             <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -917,24 +835,20 @@ function GenerateRotaContent() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
                         {savedRota.start_date && savedRota.end_date ? (
                           <>
                             {formatDate(new Date(savedRota.start_date))} - {formatDate(new Date(savedRota.end_date))}
-                            {savedRota.week_count && ` • ${savedRota.week_count} week${savedRota.week_count > 1 ? 's' : ''}`}
                           </>
                         ) : (
                           'No date information'
                         )}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        Created {new Date(savedRota.created_at).toLocaleDateString()}
-                      </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                       <button
                         onClick={() => handleLoadRota(savedRota.id)}
-                        className="px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all font-medium text-sm"
+                        className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all font-medium text-sm"
                       >
                         Load
                       </button>
@@ -952,16 +866,16 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Generated Rota Display */}
+        {/* Generated Rota Display - NEW FLIPPED LAYOUT */}
         {rota && rota.schedule && rota.schedule.length > 0 && (
           <div id="printable-rota" className="bg-white rounded-xl border border-gray-200/60 overflow-hidden">
-            {/* Print Header - Only visible when printing */}
+            {/* Print Header */}
             <div className="hidden print:block p-6 border-b border-gray-200">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Staff Rota</h1>
               <p className="text-gray-600">{formatDate(startDate)} - {formatDate(getEndDate())}</p>
             </div>
 
-            {/* Rules Compliance - Above Rota */}
+            {/* Rules Compliance */}
             {rota && rota.rule_compliance && rota.rule_compliance.length > 0 && (
               <RulesComplianceSection rules={rota.rule_compliance} />
             )}
@@ -971,7 +885,7 @@ function GenerateRotaContent() {
               <div className="flex">
                 <button
                   onClick={() => setActiveTab('schedule')}
-                  className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  className={`px-4 sm:px-6 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'schedule'
                       ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
                       : 'text-gray-600 hover:text-gray-900'
@@ -981,94 +895,113 @@ function GenerateRotaContent() {
                 </button>
                 <button
                   onClick={() => setActiveTab('hours')}
-                  className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  className={`px-4 sm:px-6 py-3 text-sm font-medium transition-colors ${
                     activeTab === 'hours'
                       ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Hours Summary
+                  Hours
                 </button>
               </div>
             </div>
 
-            <div className="p-6">
-              {/* Schedule Tab - Colors by staff member */}
-              {activeTab === 'schedule' && weeklyData.length > 0 && sortedShifts.length > 0 && (
-                <div className="space-y-8">
-                  {weeklyData.map((week, weekIndex) => (
-                    <div key={weekIndex} className="print:break-after-page">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Week {week.week}
+            <div className="p-4 sm:p-6">
+              {/* Schedule Tab - Staff as rows, Days as columns */}
+              {activeTab === 'schedule' && (
+                <div className="space-y-6 sm:space-y-8">
+                  {Array.from({ length: weekCount }, (_, weekIndex) => weekIndex + 1).map((weekNum) => (
+                    <div key={weekNum} className="print:break-after-page">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
+                        Week {weekNum}
+                        <span className="text-sm font-normal text-gray-500 ml-2">
+                          {getDateForDay(weekNum - 1, 'Monday')} - {getDateForDay(weekNum - 1, 'Sunday')}
+                        </span>
                       </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse print:text-sm">
-                          <thead>
-                            <tr className="bg-gray-50/50">
-                              <th className="border border-gray-200/60 px-4 py-3 text-left text-sm font-semibold text-gray-700 w-32">
-                                Day
-                              </th>
-                              {sortedShifts.map((shift, idx) => (
-                                <th key={idx} className="border border-gray-200/60 px-4 py-3 text-center text-sm font-semibold text-gray-700 min-w-[140px]">
-                                  <div>{shift.name}</div>
-                                  <div className="text-xs font-normal text-gray-500 mt-1">
-                                    ({shift.time})
-                                  </div>
+                      
+                      {/* Scrollable container for mobile */}
+                      <div className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="min-w-[640px] px-4 sm:px-0">
+                          <table className="w-full border-collapse print:text-sm">
+                            <thead>
+                              <tr className="bg-gray-50/50">
+                                <th className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 w-28 sm:w-36 sticky left-0 bg-gray-50 z-10">
+                                  Staff
                                 </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {week.days.map((day, dayIndex) => (
-                              <tr key={dayIndex} className="hover:bg-gray-50/50">
-                                <td className="border border-gray-200/60 px-4 py-3 font-medium text-gray-900 bg-gray-50/30">
-                                  <div>{day.day}</div>
-                                  <div className="text-xs text-gray-500 font-normal mt-0.5">
-                                    {getDateForDay(weekIndex, day.day)}
-                                  </div>
-                                </td>
-                                {sortedShifts.map((shift, idx) => {
-                                  const cellData = day.shifts[shift.name]
-                                  const staff = cellData?.staff || []
-                                  
-                                  return (
-                                    <td 
-                                      key={idx} 
-                                      className="border border-gray-200/60 px-3 py-3 bg-gray-50/20"
-                                    >
-                                      <div className="min-h-[60px] flex flex-col gap-2">
-                                        {staff.length > 0 ? (
-                                          staff.map((person, personIdx) => {
-                                            const shiftDetails = getShiftDetails(shift.name)
-                                            const colorClass = getStaffColor(person)
-                                            return (
-                                              <div
-                                                key={personIdx}
-                                                onClick={() => handleShiftClick(
-                                                  person, 
-                                                  day.day, 
-                                                  shift.name, 
-                                                  shift.time,
-                                                  week.week
-                                                )}
-                                                className={`px-3 py-2 ${colorClass} rounded-lg text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
-                                              >
-                                                <span className="text-white font-semibold text-sm block">{person}</span>
-                                                <span className="text-white/90 text-xs block mt-0.5">{shiftDetails?.hours}h</span>
-                                              </div>
-                                            )
-                                          })
-                                        ) : (
-                                          <span className="text-gray-400 text-center block text-sm py-4">-</span>
-                                        )}
+                                {dayNames.map((day) => (
+                                  <th key={day} className="border border-gray-200/60 px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700 min-w-[80px] sm:min-w-[100px]">
+                                    <div className="sm:hidden">{getShortDay(day)}</div>
+                                    <div className="hidden sm:block">{day}</div>
+                                    <div className="text-xs font-normal text-gray-500 mt-0.5">
+                                      {getDateForDay(weekNum - 1, day)}
+                                    </div>
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {uniqueStaff.map((staffName) => {
+                                const colorClass = getStaffColor(staffName)
+                                
+                                return (
+                                  <tr key={staffName} className="hover:bg-gray-50/50">
+                                    {/* Staff name - sticky on mobile */}
+                                    <td className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 bg-gray-50/30 sticky left-0 z-10">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${colorClass}`}></div>
+                                        <span className="text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">{staffName}</span>
                                       </div>
                                     </td>
-                                  )
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                    
+                                    {/* Days */}
+                                    {dayNames.map((day) => {
+                                      const shifts = getStaffShiftsForDay(staffName, day, weekNum)
+                                      
+                                      return (
+                                        <td 
+                                          key={day} 
+                                          className="border border-gray-200/60 px-1 sm:px-2 py-1 sm:py-2 bg-gray-50/20"
+                                        >
+                                          <div className="min-h-[40px] sm:min-h-[50px] flex flex-col gap-1">
+                                            {shifts.length > 0 ? (
+                                              shifts.map((shift, idx) => {
+                                                const [startTime, endTime] = shift.time.split('-')
+                                                const hours = calculateShiftHours(startTime, endTime)
+                                                
+                                                return (
+                                                  <button
+                                                    key={idx}
+                                                    onClick={() => handleShiftClick(
+                                                      staffName, 
+                                                      day, 
+                                                      shift.shift_name, 
+                                                      shift.time,
+                                                      weekNum
+                                                    )}
+                                                    className={`w-full px-1.5 sm:px-2 py-1 sm:py-1.5 ${colorClass} rounded text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
+                                                  >
+                                                    <span className="text-white font-medium text-[10px] sm:text-xs block truncate">
+                                                      {shift.shift_name}
+                                                    </span>
+                                                    <span className="text-white/80 text-[9px] sm:text-[10px] block">
+                                                      {shift.time}
+                                                    </span>
+                                                  </button>
+                                                )
+                                              })
+                                            ) : (
+                                              <span className="text-gray-300 text-center block text-xs py-3">—</span>
+                                            )}
+                                          </div>
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1078,7 +1011,7 @@ function GenerateRotaContent() {
               {/* Hours Summary Tab */}
               {activeTab === 'hours' && rota.hours_report && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Staff Hours Summary</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Staff Hours Summary</h3>
                   
                   {(() => {
                     const staffWeeklyHours = {}
@@ -1112,61 +1045,53 @@ function GenerateRotaContent() {
                     }
                     
                     return (
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-gray-50/50 border-b border-gray-200/60">
-                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Staff Member</th>
-                              {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => (
-                                <th key={weekNum} className="px-6 py-3 text-center text-sm font-semibold text-gray-700">
-                                  Week {weekNum}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200/60">
-                            {Array.from(allStaffNames).sort().map((staffName, idx) => {
-                              const contracted = contractedHours[staffName] || 0
-                              
-                              return (
-                                <tr key={idx} className="hover:bg-gray-50/50">
-                                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{staffName}</td>
-                                  {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => {
-                                    const actual = staffWeeklyHours[staffName][weekNum] || 0
-                                    const meetsMinimum = contracted === 0 || Math.abs(actual - contracted) < 0.5
-                                    
-                                    return (
-                                      <td key={weekNum} className="px-6 py-4 text-center">
-                                        <div className="text-sm">
-                                          {contracted > 0 && (
-                                            <div className="text-gray-500 text-xs mb-1">
-                                              Contracted: {contracted}h
+                      <div className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="min-w-[400px] px-4 sm:px-0">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr className="bg-gray-50/50 border-b border-gray-200/60">
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 sticky left-0 bg-gray-50">Staff</th>
+                                {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => (
+                                  <th key={weekNum} className="px-3 sm:px-6 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">
+                                    Wk {weekNum}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200/60">
+                              {Array.from(allStaffNames).sort().map((staffName, idx) => {
+                                const contracted = contractedHours[staffName] || 0
+                                
+                                return (
+                                  <tr key={idx} className="hover:bg-gray-50/50">
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900 sticky left-0 bg-white">{staffName}</td>
+                                    {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => {
+                                      const actual = staffWeeklyHours[staffName][weekNum] || 0
+                                      const meetsMinimum = contracted === 0 || Math.abs(actual - contracted) < 0.5
+                                      
+                                      return (
+                                        <td key={weekNum} className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                                          <div className="text-xs sm:text-sm">
+                                            {contracted > 0 && (
+                                              <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5">
+                                                {contracted}h
+                                              </div>
+                                            )}
+                                            <div className={`font-semibold ${
+                                              !meetsMinimum ? 'text-red-700' : 'text-green-700'
+                                            }`}>
+                                              {actual.toFixed(1)}h
                                             </div>
-                                          )}
-                                          <div className={`font-semibold ${
-                                            !meetsMinimum ? 'text-red-700' : 'text-green-700'
-                                          }`}>
-                                            Actual: {actual.toFixed(1)}h
                                           </div>
-                                          {contracted > 0 && meetsMinimum && (
-                                            <div className="text-xs text-green-600 mt-1">
-                                              ✓ Within limits
-                                            </div>
-                                          )}
-                                          {contracted > 0 && !meetsMinimum && (
-                                            <div className="text-xs text-red-600 mt-1">
-                                              ⚠️ {actual < contracted ? 'Under' : 'Over'} by {Math.abs(contracted - actual).toFixed(1)}h
-                                            </div>
-                                          )}
-                                        </div>
-                                      </td>
-                                    )
-                                  })}
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )
                   })()}
@@ -1177,8 +1102,8 @@ function GenerateRotaContent() {
         )}
 
         {rota && rota.summary && (
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 no-print">
-            <p className="text-sm text-blue-900">
+          <div className="mt-4 sm:mt-6 bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 no-print">
+            <p className="text-xs sm:text-sm text-blue-900">
               <strong>Summary:</strong> {rota.summary}
             </p>
           </div>
@@ -1199,16 +1124,16 @@ function GenerateRotaContent() {
 
       {/* Save Modal (Draft) */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Save Rota as Draft</h3>
-            <p className="text-sm text-gray-600 mb-4">Save this rota to revisit later. It won't count toward your time saved.</p>
+            <p className="text-sm text-gray-600 mb-4">Save this rota to revisit later.</p>
             <input
               type="text"
               value={rotaName}
               onChange={(e) => setRotaName(e.target.value)}
-              placeholder="Enter rota name (e.g., Week of Nov 18)"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white mb-4"
+              placeholder="Enter rota name"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white mb-4 text-base"
             />
             <div className="flex gap-3">
               <button
@@ -1216,13 +1141,13 @@ function GenerateRotaContent() {
                   setShowSaveModal(false)
                   setRotaName('')
                 }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleSaveRota(false)}
-                className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-semibold transition-all"
+                className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-semibold transition-all"
               >
                 Save Draft
               </button>
@@ -1233,16 +1158,16 @@ function GenerateRotaContent() {
 
       {/* Approve & Save Modal */}
       {showApproveModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Save & Approve Rota</h3>
-            <p className="text-sm text-gray-600 mb-4">Approve this rota to finalize it. This will count toward your time saved!</p>
+            <p className="text-sm text-gray-600 mb-4">Approve this rota to finalize it.</p>
             <input
               type="text"
               value={rotaName}
               onChange={(e) => setRotaName(e.target.value)}
-              placeholder="Enter rota name (e.g., Week of Nov 18)"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white mb-4"
+              placeholder="Enter rota name"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white mb-4 text-base"
             />
             <div className="flex gap-3">
               <button
@@ -1250,15 +1175,15 @@ function GenerateRotaContent() {
                   setShowApproveModal(false)
                   setRotaName('')
                 }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleSaveRota(true)}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
               >
-                Approve & Save
+                Approve
               </button>
             </div>
           </div>

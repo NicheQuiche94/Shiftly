@@ -210,17 +210,17 @@ export default function StaffSection({ selectedTeamId }) {
   return (
     <div>
       {/* Header with Total Hours */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Staff Members</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Staff Members</h2>
           <p className="text-sm text-gray-600 mt-1">Manage your team and their availability</p>
         </div>
         
         {staff.length > 0 && (
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200/60 px-6 py-3">
-            <div className="text-xs text-gray-600 mb-1">Total Contracted Hours</div>
-            <div className="text-2xl font-bold text-gray-900">{totalHours}h</div>
-            <div className="text-xs text-gray-500 mt-0.5">Must match shift hours</div>
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200/60 px-4 sm:px-6 py-2 sm:py-3">
+            <div className="text-xs text-gray-600 mb-0.5 sm:mb-1">Total Contracted Hours</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">{totalHours}h</div>
+            <div className="text-xs text-gray-500 mt-0.5 hidden sm:block">Must match shift hours</div>
           </div>
         )}
       </div>
@@ -229,16 +229,16 @@ export default function StaffSection({ selectedTeamId }) {
       <div className="flex justify-end mb-4">
         <button 
           onClick={openAddModal}
-          className="px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all"
+          className="px-3 sm:px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all text-sm sm:text-base"
         >
-          + Add Staff Member
+          + Add Staff
         </button>
       </div>
 
-      {/* Staff Table */}
+      {/* Staff List */}
       <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
-        {/* Table Header */}
-        <div className="bg-gray-50/50 border-b border-gray-200/60">
+        {/* Desktop Table Header - Hidden on mobile */}
+        <div className="hidden md:block bg-gray-50/50 border-b border-gray-200/60">
           <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">
             <div className="col-span-4">Name</div>
             <div className="col-span-3">Role</div>
@@ -248,7 +248,7 @@ export default function StaffSection({ selectedTeamId }) {
           </div>
         </div>
 
-        {/* Table Body */}
+        {/* Content */}
         <div className="divide-y divide-gray-200/60">
           {loading ? (
             <div className="px-6 py-12 text-center">
@@ -256,8 +256,8 @@ export default function StaffSection({ selectedTeamId }) {
             </div>
           ) : staff.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-full mb-4">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
@@ -266,58 +266,98 @@ export default function StaffSection({ selectedTeamId }) {
             </div>
           ) : (
             staff.map((member) => (
-              <div key={member.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                {/* Name */}
-                <div className="col-span-4 flex items-center">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {member.name.charAt(0).toUpperCase()}
+              <div key={member.id}>
+                {/* Mobile Card View */}
+                <div className="md:hidden p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{member.name}</p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 mt-1">
+                          {member.role}
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-medium text-gray-900">{member.name}</span>
+                    <div className="flex items-center space-x-1">
+                      <button 
+                        onClick={() => openEditModal(member)}
+                        className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(member.id)}
+                        className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 mt-3 ml-13 pl-13">
+                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {getAvailabilityDisplay(member.availability)}
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
+                      {member.contracted_hours}h/week
+                    </span>
                   </div>
                 </div>
 
-                {/* Role */}
-                <div className="col-span-3 flex items-center">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                    {member.role}
-                  </span>
-                </div>
-
-                {/* Availability */}
-                <div className="col-span-2 flex items-center">
-                  <span className="text-sm text-gray-600">
-                    {getAvailabilityDisplay(member.availability)}
-                  </span>
-                </div>
-
-                {/* Hours */}
-                <div className="col-span-2 flex items-center">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
-                    {member.contracted_hours}h/week
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="col-span-1 flex items-center justify-end space-x-2">
-                  <button 
-                    onClick={() => openEditModal(member)}
-                    className="text-gray-600 hover:text-pink-600 transition-colors"
-                    title="Edit"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(member.id)}
-                    className="text-gray-600 hover:text-red-600 transition-colors"
-                    title="Delete"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                {/* Desktop Table Row */}
+                <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                  <div className="col-span-4 flex items-center">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="font-medium text-gray-900">{member.name}</span>
+                    </div>
+                  </div>
+                  <div className="col-span-3 flex items-center">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                      {member.role}
+                    </span>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <span className="text-sm text-gray-600">
+                      {getAvailabilityDisplay(member.availability)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
+                      {member.contracted_hours}h/week
+                    </span>
+                  </div>
+                  <div className="col-span-1 flex items-center justify-end space-x-2">
+                    <button 
+                      onClick={() => openEditModal(member)}
+                      className="text-gray-600 hover:text-pink-600 transition-colors"
+                      title="Edit"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(member.id)}
+                      className="text-gray-600 hover:text-red-600 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -327,10 +367,10 @@ export default function StaffSection({ selectedTeamId }) {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-5 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}
               </h2>
               <button 
@@ -338,7 +378,7 @@ export default function StaffSection({ selectedTeamId }) {
                   setShowModal(false)
                   setEditingStaff(null)
                 }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -347,7 +387,7 @@ export default function StaffSection({ selectedTeamId }) {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Name */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">Full Name</label>
@@ -356,7 +396,7 @@ export default function StaffSection({ selectedTeamId }) {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                    className="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
                     placeholder="John Smith"
                   />
                 </div>
@@ -369,7 +409,7 @@ export default function StaffSection({ selectedTeamId }) {
                     required
                     value={formData.role}
                     onChange={(e) => setFormData({...formData, role: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                    className="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
                     placeholder="e.g., Server, Barista, Manager"
                   />
                 </div>
@@ -384,7 +424,7 @@ export default function StaffSection({ selectedTeamId }) {
                     max="168"
                     value={formData.contracted_hours}
                     onChange={(e) => setFormData({...formData, contracted_hours: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                    className="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
                     placeholder="40"
                   />
                 </div>
@@ -411,7 +451,7 @@ export default function StaffSection({ selectedTeamId }) {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {daysOfWeek.map((day) => {
                       const availability = JSON.parse(formData.availability)
                       return (
@@ -419,13 +459,14 @@ export default function StaffSection({ selectedTeamId }) {
                           key={day}
                           type="button"
                           onClick={() => toggleAvailability(day)}
-                          className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                          className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all ${
                             availability[day]
                               ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
-                          {day}
+                          {day.slice(0, 3)}
+                          <span className="hidden sm:inline">{day.slice(3)}</span>
                         </button>
                       )
                     })}
@@ -437,22 +478,22 @@ export default function StaffSection({ selectedTeamId }) {
               </div>
 
               {/* Actions */}
-              <div className="mt-8 flex gap-3">
+              <div className="mt-6 sm:mt-8 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false)
                     setEditingStaff(null)
                   }}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
+                  className="flex-1 px-4 sm:px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
                 >
-                  {editingStaff ? 'Update Staff Member' : 'Add Staff Member'}
+                  {editingStaff ? 'Update' : 'Add'}
                 </button>
               </div>
             </form>
