@@ -38,11 +38,6 @@ export default function PayrollPage() {
     setPasswordError('')
 
     try {
-      // Use Clerk's password verification
-      // For now, we'll use a simple check - in production, use Clerk's verifyPassword
-      // This requires the user to re-enter their account password
-      
-      // Attempt to verify by checking with Clerk
       const response = await fetch('/api/verify-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,7 +47,6 @@ export default function PayrollPage() {
       if (response.ok) {
         setIsUnlocked(true)
         setPassword('')
-        // Store unlock state in session (expires when tab closes)
         sessionStorage.setItem('payroll_unlocked', 'true')
       } else {
         setPasswordError('Incorrect password. Please try again.')
@@ -103,7 +97,6 @@ export default function PayrollPage() {
       const response = await fetch('/api/rotas')
       if (response.ok) {
         const data = await response.json()
-        // Filter to approved rotas only
         setRotas(data.filter(r => r.approved))
       }
     } catch (error) {
@@ -245,7 +238,7 @@ export default function PayrollPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white"
                 placeholder="Enter your password"
                 required
               />
@@ -384,7 +377,7 @@ export default function PayrollPage() {
                           <select
                             value={editForm.pay_type}
                             onChange={(e) => setEditForm({ ...editForm, pay_type: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 text-gray-900 bg-white"
                           >
                             <option value="hourly">Hourly Rate</option>
                             <option value="salary">Annual Salary</option>
@@ -399,7 +392,7 @@ export default function PayrollPage() {
                               step="0.01"
                               value={editForm.hourly_rate}
                               onChange={(e) => setEditForm({ ...editForm, hourly_rate: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 text-gray-900 bg-white"
                               placeholder="12.50"
                             />
                           </div>
@@ -411,7 +404,7 @@ export default function PayrollPage() {
                               step="100"
                               value={editForm.annual_salary}
                               onChange={(e) => setEditForm({ ...editForm, annual_salary: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 text-gray-900 bg-white"
                               placeholder="28000"
                             />
                           </div>
@@ -493,7 +486,7 @@ export default function PayrollPage() {
               <select
                 value={selectedRotaId || ''}
                 onChange={(e) => handleRotaSelect(e.target.value || null)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 text-gray-900 bg-white"
               >
                 <option value="">Select an approved rota...</option>
                 {rotas.map((rota) => (

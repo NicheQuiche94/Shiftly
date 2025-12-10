@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import React from 'react'
+import { useSearchParams } from 'next/navigation'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import TeamSelector from '@/app/components/TeamSelector'
@@ -102,7 +103,11 @@ function RulesComplianceSection({ rules }) {
 }
 
 export default function GenerateRotaPage() {
+  const searchParams = useSearchParams()
+  const rotaIdFromUrl = searchParams.get('rota')
+  
   const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(!!rotaIdFromUrl)
   const [rota, setRota] = useState(null)
   const [error, setError] = useState(null)
   const [savedRotas, setSavedRotas] = useState([])
@@ -174,10 +179,17 @@ export default function GenerateRotaPage() {
     window.print()
   }
 
-  // Load saved rotas and staff on mount
+  // Load saved rotas on mount and check for URL param
   useEffect(() => {
     loadSavedRotas()
   }, [])
+
+  // Load rota from URL param after saved rotas are loaded
+  useEffect(() => {
+    if (rotaIdFromUrl && !rota) {
+      handleLoadRota(rotaIdFromUrl)
+    }
+  }, [rotaIdFromUrl])
 
   // Load staff when team changes
   useEffect(() => {
@@ -318,6 +330,7 @@ export default function GenerateRotaPage() {
 
   const handleLoadRota = async (rotaId) => {
     try {
+      setInitialLoading(true)
       const response = await fetch(`/api/rotas/${rotaId}`)
       if (response.ok) {
         const data = await response.json()
@@ -338,6 +351,8 @@ export default function GenerateRotaPage() {
       }
     } catch (err) {
       alert('Error loading rota: ' + err.message)
+    } finally {
+      setInitialLoading(false)
     }
   }
 
@@ -521,19 +536,46 @@ export default function GenerateRotaPage() {
 
   const sortedShifts = getAllShiftNames()
 
-  // Color palette for shifts - cycling through colors
-  const shiftColors = [
+  // Color palette for staff - cycling through colors
+  const staffColors = [
     'bg-gradient-to-br from-pink-500 to-pink-600',
     'bg-gradient-to-br from-purple-500 to-purple-600',
     'bg-gradient-to-br from-blue-500 to-blue-600',
     'bg-gradient-to-br from-green-500 to-green-600',
     'bg-gradient-to-br from-orange-500 to-orange-600',
     'bg-gradient-to-br from-teal-500 to-teal-600',
+    'bg-gradient-to-br from-red-500 to-red-600',
+    'bg-gradient-to-br from-indigo-500 to-indigo-600',
+    'bg-gradient-to-br from-yellow-500 to-yellow-600',
+    'bg-gradient-to-br from-cyan-500 to-cyan-600',
   ]
 
-  const getShiftColor = (shiftName) => {
-    const index = sortedShifts.findIndex(s => s.name === shiftName)
-    return shiftColors[index % shiftColors.length]
+  // Get unique staff members for color assignment
+  const getUniqueStaff = () => {
+    if (!rota || !rota.schedule) return []
+    const staffSet = new Set()
+    rota.schedule.forEach(shift => {
+      shift.assigned_staff?.forEach(name => staffSet.add(name))
+    })
+    return Array.from(staffSet).sort()
+  }
+
+  const uniqueStaff = getUniqueStaff()
+
+  const getStaffColor = (staffName) => {
+    const index = uniqueStaff.indexOf(staffName)
+    return staffColors[index % staffColors.length]
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading rota...</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading && !rota) {
@@ -662,21 +704,17 @@ export default function GenerateRotaPage() {
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Number of Weeks
               </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[1, 2, 3, 4].map((weeks) => (
-                  <button
-                    key={weeks}
-                    onClick={() => setWeekCount(weeks)}
-                    className={`px-4 py-2.5 rounded-lg font-medium transition-all ${
-                      weekCount === weeks
-                        ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {weeks}
-                  </button>
+              <select
+                value={weekCount}
+                onChange={(e) => setWeekCount(parseInt(e.target.value))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+              >
+                {Array.from({ length: 52 }, (_, i) => i + 1).map((weeks) => (
+                  <option key={weeks} value={weeks}>
+                    {weeks} week{weeks > 1 ? 's' : ''}
+                  </option>
                 ))}
-              </div>
+              </select>
               <p className="text-xs text-gray-500 mt-1">
                 {weekCount} week{weekCount > 1 ? 's' : ''} • {formatDate(startDate)} - {formatDate(getEndDate())}
               </p>
@@ -754,6 +792,23 @@ export default function GenerateRotaPage() {
             </>
           )}
         </div>
+
+        {/* Staff Color Legend */}
+        {rota && rota.schedule && uniqueStaff.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl border border-gray-200/60 p-4 no-print">
+            <p className="text-sm font-medium text-gray-700 mb-3">Staff Legend:</p>
+            <div className="flex flex-wrap gap-2">
+              {uniqueStaff.map((staffName) => (
+                <div 
+                  key={staffName}
+                  className={`${getStaffColor(staffName)} px-3 py-1.5 rounded-lg text-white text-sm font-medium`}
+                >
+                  {staffName}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Edit Mode Indicator */}
         {rota && rota.schedule && (
@@ -937,7 +992,7 @@ export default function GenerateRotaPage() {
             </div>
 
             <div className="p-6">
-              {/* Schedule Tab - Redesigned with block colors */}
+              {/* Schedule Tab - Colors by staff member */}
               {activeTab === 'schedule' && weeklyData.length > 0 && sortedShifts.length > 0 && (
                 <div className="space-y-8">
                   {weeklyData.map((week, weekIndex) => (
@@ -974,7 +1029,6 @@ export default function GenerateRotaPage() {
                                 {sortedShifts.map((shift, idx) => {
                                   const cellData = day.shifts[shift.name]
                                   const staff = cellData?.staff || []
-                                  const colorClass = getShiftColor(shift.name)
                                   
                                   return (
                                     <td 
@@ -985,6 +1039,7 @@ export default function GenerateRotaPage() {
                                         {staff.length > 0 ? (
                                           staff.map((person, personIdx) => {
                                             const shiftDetails = getShiftDetails(shift.name)
+                                            const colorClass = getStaffColor(person)
                                             return (
                                               <div
                                                 key={personIdx}

@@ -20,6 +20,15 @@ export default function ShiftsSection({ selectedTeamId }) {
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+  // Common shift time presets
+  const timePresets = [
+    { label: 'Morning', start: '06:00', end: '14:00' },
+    { label: 'Day', start: '09:00', end: '17:00' },
+    { label: 'Afternoon', start: '14:00', end: '22:00' },
+    { label: 'Evening', start: '17:00', end: '23:00' },
+    { label: 'Night', start: '22:00', end: '06:00' },
+  ]
+
   useEffect(() => {
     if (selectedTeamId) {
       loadShifts()
@@ -154,11 +163,26 @@ export default function ShiftsSection({ selectedTeamId }) {
     setShowModal(true)
   }
 
+  const applyPreset = (preset) => {
+    setFormData(prev => ({
+      ...prev,
+      start_time: preset.start,
+      end_time: preset.end
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     if (formData.day_of_week.length === 0) {
       alert('Please select at least one day')
+      return
+    }
+
+    // Validate time format
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/
+    if (!timeRegex.test(formData.start_time) || !timeRegex.test(formData.end_time)) {
+      alert('Please enter valid times in HH:MM format')
       return
     }
     
@@ -301,6 +325,25 @@ export default function ShiftsSection({ selectedTeamId }) {
     setFormData(prev => ({
       ...prev,
       day_of_week: []
+    }))
+  }
+
+  // Format time input as user types
+  const handleTimeInput = (field, value) => {
+    // Remove non-digits
+    let cleaned = value.replace(/[^\d]/g, '')
+    
+    // Auto-insert colon after 2 digits
+    if (cleaned.length >= 2) {
+      cleaned = cleaned.slice(0, 2) + ':' + cleaned.slice(2, 4)
+    }
+    
+    // Limit to 5 characters (HH:MM)
+    cleaned = cleaned.slice(0, 5)
+    
+    setFormData(prev => ({
+      ...prev,
+      [field]: cleaned
     }))
   }
 
@@ -577,30 +620,56 @@ export default function ShiftsSection({ selectedTeamId }) {
                   </p>
                 </div>
 
-                {/* Time Range */}
+                {/* Time Presets */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Quick Presets</label>
+                  <div className="flex flex-wrap gap-2">
+                    {timePresets.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => applyPreset(preset)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          formData.start_time === preset.start && formData.end_time === preset.end
+                            ? 'bg-pink-100 text-pink-700 border border-pink-300'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {preset.label} ({preset.start}-{preset.end})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Time Range - Text inputs with formatting */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Start Time</label>
                     <input
-                      type="time"
+                      type="text"
                       required
                       value={formData.start_time}
-                      onChange={(e) => setFormData({...formData, start_time: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                      onChange={(e) => handleTimeInput('start_time', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-center font-mono text-lg"
+                      placeholder="09:00"
+                      maxLength={5}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">End Time</label>
                     <input
-                      type="time"
+                      type="text"
                       required
                       value={formData.end_time}
-                      onChange={(e) => setFormData({...formData, end_time: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
+                      onChange={(e) => handleTimeInput('end_time', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-center font-mono text-lg"
+                      placeholder="17:00"
+                      maxLength={5}
                     />
                   </div>
                 </div>
+                <p className="text-xs text-gray-500 -mt-2">Enter time in 24-hour format (HH:MM)</p>
 
                 {/* Staff Required */}
                 <div>

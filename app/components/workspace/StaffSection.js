@@ -9,7 +9,6 @@ export default function StaffSection({ selectedTeamId }) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
     role: '',
     contracted_hours: '',
     availability: JSON.stringify({
@@ -55,7 +54,6 @@ export default function StaffSection({ selectedTeamId }) {
     setEditingStaff(null)
     setFormData({
       name: '',
-      email: '',
       role: '',
       contracted_hours: '',
       availability: JSON.stringify({
@@ -75,7 +73,6 @@ export default function StaffSection({ selectedTeamId }) {
     setEditingStaff(member)
     setFormData({
       name: member.name,
-      email: member.email,
       role: member.role,
       contracted_hours: member.contracted_hours.toString(),
       availability: member.availability
@@ -96,7 +93,6 @@ export default function StaffSection({ selectedTeamId }) {
           body: JSON.stringify({
             id: editingStaff.id,
             name: formData.name,
-            email: formData.email,
             role: formData.role,
             contracted_hours: parseInt(formData.contracted_hours),
             availability: formData.availability
@@ -113,7 +109,6 @@ export default function StaffSection({ selectedTeamId }) {
           body: JSON.stringify({
             team_id: selectedTeamId,
             name: formData.name,
-            email: formData.email,
             role: formData.role,
             contracted_hours: parseInt(formData.contracted_hours),
             availability: formData.availability
@@ -127,7 +122,6 @@ export default function StaffSection({ selectedTeamId }) {
       
       setFormData({
         name: '',
-        email: '',
         role: '',
         contracted_hours: '',
         availability: JSON.stringify({
@@ -246,9 +240,8 @@ export default function StaffSection({ selectedTeamId }) {
         {/* Table Header */}
         <div className="bg-gray-50/50 border-b border-gray-200/60">
           <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">
-            <div className="col-span-3">Name</div>
-            <div className="col-span-2">Email</div>
-            <div className="col-span-2">Role</div>
+            <div className="col-span-4">Name</div>
+            <div className="col-span-3">Role</div>
             <div className="col-span-2">Availability</div>
             <div className="col-span-2">Hours/Week</div>
             <div className="col-span-1 text-right">Actions</div>
@@ -275,7 +268,7 @@ export default function StaffSection({ selectedTeamId }) {
             staff.map((member) => (
               <div key={member.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors">
                 {/* Name */}
-                <div className="col-span-3 flex items-center">
+                <div className="col-span-4 flex items-center">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {member.name.charAt(0).toUpperCase()}
@@ -284,13 +277,8 @@ export default function StaffSection({ selectedTeamId }) {
                   </div>
                 </div>
 
-                {/* Email */}
-                <div className="col-span-2 flex items-center">
-                  <span className="text-sm text-gray-600 truncate">{member.email}</span>
-                </div>
-
                 {/* Role */}
-                <div className="col-span-2 flex items-center">
+                <div className="col-span-3 flex items-center">
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                     {member.role}
                   </span>
@@ -370,19 +358,6 @@ export default function StaffSection({ selectedTeamId }) {
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
                     placeholder="John Smith"
-                  />
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
-                    placeholder="john@example.com"
                   />
                 </div>
 

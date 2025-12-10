@@ -7,7 +7,6 @@ const AVAILABLE_RULES = [
     type: 'no_double_shifts',
     name: 'No Double Shifts',
     description: 'Staff cannot work overlapping shifts on the same day',
-    icon: '⚡',
     hasValue: false,
     defaultValue: null
   },
@@ -15,7 +14,6 @@ const AVAILABLE_RULES = [
     type: 'rest_between_shifts',
     name: 'Rest Between Shifts',
     description: 'Minimum hours of rest required between shifts on consecutive days',
-    icon: '💤',
     hasValue: true,
     valueLabel: 'Hours',
     defaultValue: 11,
@@ -26,7 +24,6 @@ const AVAILABLE_RULES = [
     type: 'no_clopening',
     name: 'No Clopening',
     description: 'Staff cannot work a closing shift followed by an opening shift the next day',
-    icon: '🌙',
     hasValue: false,
     defaultValue: null
   },
@@ -34,7 +31,6 @@ const AVAILABLE_RULES = [
     type: 'fair_weekend_distribution',
     name: 'Fair Weekend Distribution',
     description: 'Weekend shifts are distributed evenly among all available staff members',
-    icon: '🎯',
     hasValue: false,
     defaultValue: null
   },
@@ -42,7 +38,6 @@ const AVAILABLE_RULES = [
     type: 'max_consecutive_days',
     name: 'Max Consecutive Days',
     description: 'Maximum number of days a staff member can work in a row',
-    icon: '📅',
     hasValue: true,
     valueLabel: 'Days',
     defaultValue: 6,
@@ -53,7 +48,6 @@ const AVAILABLE_RULES = [
     type: 'minimum_days_off',
     name: 'Minimum Days Off',
     description: 'Minimum number of days off required per week',
-    icon: '🏖️',
     hasValue: true,
     valueLabel: 'Days',
     defaultValue: 1,
@@ -61,6 +55,40 @@ const AVAILABLE_RULES = [
     max: 3
   }
 ]
+
+// Icon components for each rule type
+const RuleIcons = {
+  no_double_shifts: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+    </svg>
+  ),
+  rest_between_shifts: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  ),
+  no_clopening: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
+  fair_weekend_distribution: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+    </svg>
+  ),
+  max_consecutive_days: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  ),
+  minimum_days_off: (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  )
+}
 
 export default function RulesSection({ selectedTeamId }) {
   const [rules, setRules] = useState([])
@@ -80,7 +108,6 @@ export default function RulesSection({ selectedTeamId }) {
       if (!response.ok) throw new Error('Failed to load rules')
       const savedRules = await response.json()
       
-      // Merge saved rules with available rules
       const mergedRules = AVAILABLE_RULES.map(availableRule => {
         const savedRule = savedRules.find(r => r.type === availableRule.type)
         return {
@@ -93,7 +120,6 @@ export default function RulesSection({ selectedTeamId }) {
       setRules(mergedRules)
     } catch (error) {
       console.error('Error loading rules:', error)
-      // Initialize with default rules if load fails
       setRules(AVAILABLE_RULES.map(rule => ({
         ...rule,
         enabled: false,
@@ -154,6 +180,8 @@ export default function RulesSection({ selectedTeamId }) {
     })
   }
 
+  const enabledCount = rules.filter(r => r.enabled).length
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -165,67 +193,97 @@ export default function RulesSection({ selectedTeamId }) {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Scheduling Rules</h2>
-        <p className="text-sm text-gray-600 mt-1">Configure constraints for fair and balanced scheduling</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Scheduling Rules</h2>
+          <p className="text-sm text-gray-600 mt-1">Configure constraints for fair and balanced scheduling</p>
+        </div>
+        
+        {enabledCount > 0 && (
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200/60 px-6 py-3">
+            <div className="text-xs text-gray-600 mb-1">Active Rules</div>
+            <div className="text-2xl font-bold text-gray-900">{enabledCount}</div>
+            <div className="text-xs text-gray-500 mt-0.5">of {rules.length} available</div>
+          </div>
+        )}
       </div>
 
-      {/* Rules Grid - 3 columns, 2 rows */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Rules List */}
+      <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden divide-y divide-gray-200/60">
         {rules.map((rule) => (
           <div
             key={rule.type}
-            className={`bg-white rounded-xl border-2 p-6 transition-all cursor-pointer ${
-              rule.enabled 
-                ? 'border-pink-500 shadow-lg shadow-pink-500/25' 
-                : 'border-gray-200 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-500/10'
+            className={`px-6 py-5 transition-colors ${
+              rule.enabled ? 'bg-pink-50/50' : 'hover:bg-gray-50/50'
             }`}
-            onClick={() => toggleRule(rule.type)}
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-4xl">{rule.icon}</div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleRule(rule.type)
-                }}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
-                  rule.enabled ? 'bg-pink-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    rule.enabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-            
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {rule.name}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              {rule.description}
-            </p>
-            
-            {rule.hasValue && rule.enabled && (
-              <div 
-                className="flex items-center gap-3 pt-4 border-t border-gray-200"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <label className="text-sm font-medium text-gray-700 flex-shrink-0">
-                  {rule.valueLabel}:
-                </label>
-                <input
-                  type="number"
-                  min={rule.min || 1}
-                  max={rule.max || 24}
-                  value={rule.value}
-                  onChange={(e) => updateRuleValue(rule.type, e.target.value)}
-                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white"
-                />
+            <div className="flex items-start gap-4">
+              {/* Icon */}
+              <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                rule.enabled 
+                  ? 'bg-pink-100 text-pink-600' 
+                  : 'bg-gray-100 text-gray-500'
+              }`}>
+                {RuleIcons[rule.type]}
               </div>
-            )}
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-base font-semibold text-gray-900">
+                    {rule.name}
+                  </h3>
+                  
+                  {/* Toggle */}
+                  <button
+                    onClick={() => toggleRule(rule.type)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
+                      rule.enabled ? 'bg-pink-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        rule.enabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+                
+                <p className="text-sm text-gray-600">
+                  {rule.description}
+                </p>
+                
+                {/* Value selector */}
+                {rule.hasValue && rule.enabled && (
+                  <div className="flex items-center gap-3 mt-3">
+                    <label className="text-sm font-medium text-gray-700">
+                      {rule.valueLabel}:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateRuleValue(rule.type, Math.max(rule.min, rule.value - 1))}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        </svg>
+                      </button>
+                      <span className="w-12 text-center text-lg font-semibold text-gray-900">
+                        {rule.value}
+                      </span>
+                      <button
+                        onClick={() => updateRuleValue(rule.type, Math.min(rule.max, rule.value + 1))}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>

@@ -34,6 +34,7 @@ export async function GET() {
       start_date: rota.start_date,
       end_date: rota.end_date,
       week_count: rota.week_count,
+      team_id: rota.team_id,
       rota_data: rota.schedule_data,
       approved: rota.approved || false
     }))
@@ -59,7 +60,7 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { name, rota_data, start_date, end_date, week_count, approved } = body
+    const { name, rota_data, start_date, end_date, week_count, team_id, approved } = body
 
     if (!name || !rota_data) {
       return NextResponse.json({ 
@@ -72,6 +73,7 @@ export async function POST(request) {
       .from('Rotas')
       .insert([{
         user_id: userId,
+        team_id: team_id || null,
         rota_name: name,
         schedule_data: rota_data,
         start_date: start_date || null,
@@ -93,6 +95,7 @@ export async function POST(request) {
       name: data.rota_name,
       created_at: data.created_at,
       rota_data: data.schedule_data,
+      team_id: data.team_id,
       approved: data.approved
     })
   } catch (error) {
