@@ -1,26 +1,10 @@
-'use client'
-
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import TypingAnimation from '@/app/components/TypingAnimation'
+
+// Force static generation - this page will be pre-rendered at build time
+export const dynamic = 'force-static'
 
 export default function LandingPage() {
-  const [typedText, setTypedText] = useState('')
-  const fullText = "Tired of being the rota referee?"
-  
-  useEffect(() => {
-    let currentIndex = 0
-    const typingInterval = setInterval(() => {
-      if (currentIndex <= fullText.length) {
-        setTypedText(fullText.slice(0, currentIndex))
-        currentIndex++
-      } else {
-        clearInterval(typingInterval)
-      }
-    }, 80) // Speed of typing in milliseconds
-
-    return () => clearInterval(typingInterval)
-  }, [])
-
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -51,12 +35,9 @@ export default function LandingPage() {
       {/* Hero Section with Gradient */}
       <section className="relative px-6 lg:px-8 py-20 lg:py-32 overflow-hidden bg-gradient-to-br from-pink-100 via-pink-50 to-white">
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          {/* Typing Animation */}
+          {/* Typing Animation - Only client component */}
           <div className="mb-6 h-10 flex items-center justify-center">
-            <p className="text-xl lg:text-2xl text-gray-600 font-medium">
-              {typedText}
-              <span className="inline-block w-0.5 h-6 bg-pink-600 ml-1 animate-pulse"></span>
-            </p>
+            <TypingAnimation text="Tired of being the rota referee?" />
           </div>
           
           <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
