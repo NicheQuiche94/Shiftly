@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export default function StaffSection({ selectedTeamId }) {
+  const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [editingStaff, setEditingStaff] = useState(null)
-  const [staff, setStaff] = useState([])
-  const [shifts, setShifts] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteData, setInviteData] = useState(null)
+  const [copied, setCopied] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     role: '',
@@ -25,57 +27,118 @@ export default function StaffSection({ selectedTeamId }) {
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-  useEffect(() => {
-    if (selectedTeamId) {
-      loadStaff()
-      loadShifts()
-    }
-  }, [selectedTeamId])
-
-  const loadStaff = async () => {
-    if (!selectedTeamId) return
-    
-    setLoading(true)
-    try {
+  // Fetch staff with React Query
+  const { data: staff = [], isLoading } = useQuery({
+    queryKey: ['staff', selectedTeamId],
+    queryFn: async () => {
       const response = await fetch(`/api/staff?team_id=${selectedTeamId}`)
       if (!response.ok) throw new Error('Failed to load staff')
-      const data = await response.json()
-      setStaff(data)
-    } catch (error) {
-      console.error('Error loading staff:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      return response.json()
+    },
+    enabled: !!selectedTeamId
+  })
 
-  const loadShifts = async () => {
-    if (!selectedTeamId) return
-    try {
+  // Fetch shifts for hours comparison
+  const { data: shifts = [] } = useQuery({
+    queryKey: ['shifts', selectedTeamId],
+    queryFn: async () => {
       const response = await fetch(`/api/shifts?team_id=${selectedTeamId}`)
       if (!response.ok) throw new Error('Failed to load shifts')
-      const data = await response.json()
-      setShifts(data)
-    } catch (error) {
-      console.error('Error loading shifts:', error)
+      return response.json()
+    },
+    enabled: !!selectedTeamId
+  })
+
+  // Add staff mutation
+  const addStaffMutation = useMutation({
+    mutationFn: async (staffData) => {
+      const response = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(staffData)
+      })
+      if (!response.ok) throw new Error('Failed to add staff')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', selectedTeamId] })
     }
-  }
+  })
 
-  const calculateStaffHours = () => {
-    return staff.reduce((sum, member) => sum + (member.contracted_hours || 0), 0)
-  }
+  // Update staff mutation
+  const updateStaffMutation = useMutation({
+    mutationFn: async (staffData) => {
+      const response = await fetch('/api/staff', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(staffData)
+      })
+      if (!response.ok) throw new Error('Failed to update staff')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', selectedTeamId] })
+    }
+  })
 
-  const calculateShiftHours = () => {
-    let totalHours = 0
+  // Delete staff mutation
+  const deleteStaffMutation = useMutation({
+    mutationFn: async (staffId) => {
+      const response = await fetch(`/api/staff?id=${staffId}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Failed to delete staff')
+      return staffId
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', selectedTeamId] })
+    }
+  })
+
+  // Generate invite mutation
+  const inviteMutation = useMutation({
+    mutationFn: async (staffId) => {
+      const response = await fetch('/api/staff/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_id: staffId })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to generate invite')
+      return data
+    },
+    onSuccess: (data) => {
+      setInviteData(data)
+      setShowInviteModal(true)
+      setCopied(false)
+    },
+    onError: (error) => {
+      alert(error.message)
+    }
+  })
+
+  // Calculate hours (memoized)
+  const { staffHours, shiftHours, hoursMatch, hoursDiff } = useMemo(() => {
+    const totalStaffHours = staff.reduce((sum, member) => sum + (member.contracted_hours || 0), 0)
+
+    let totalShiftHours = 0
     shifts.forEach(shift => {
       const [startHour, startMin] = shift.start_time.split(':').map(Number)
       const [endHour, endMin] = shift.end_time.split(':').map(Number)
       let minutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
       if (minutes < 0) minutes += 24 * 60
       const hours = minutes / 60
-      totalHours += hours * (shift.staff_required || 1)
+      totalShiftHours += hours * (shift.staff_required || 1)
     })
-    return totalHours
-  }
+
+    const match = Math.abs(totalStaffHours - totalShiftHours) < 0.5
+    const diff = totalStaffHours - totalShiftHours
+
+    return {
+      staffHours: totalStaffHours,
+      shiftHours: totalShiftHours,
+      hoursMatch: match,
+      hoursDiff: diff
+    }
+  }, [staff, shifts])
 
   const openAddModal = () => {
     setEditingStaff(null)
@@ -115,46 +178,40 @@ export default function StaffSection({ selectedTeamId }) {
     setShowModal(true)
   }
 
+  const handleInvite = (member) => {
+    inviteMutation.mutate(member.id)
+  }
+
+  const copyInviteLink = async () => {
+    if (inviteData?.invite_url) {
+      await navigator.clipboard.writeText(inviteData.invite_url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     try {
       if (editingStaff) {
-        const response = await fetch('/api/staff', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id: editingStaff.id,
-            name: formData.name,
-            role: formData.role,
-            contracted_hours: parseInt(formData.contracted_hours),
-            availability: formData.availability
-          })
+        await updateStaffMutation.mutateAsync({
+          id: editingStaff.id,
+          name: formData.name,
+          role: formData.role,
+          contracted_hours: parseInt(formData.contracted_hours),
+          availability: formData.availability
         })
-
-        if (!response.ok) throw new Error('Failed to update staff')
       } else {
-        const response = await fetch('/api/staff', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            team_id: selectedTeamId,
-            name: formData.name,
-            role: formData.role,
-            contracted_hours: parseInt(formData.contracted_hours),
-            availability: formData.availability
-          })
+        await addStaffMutation.mutateAsync({
+          team_id: selectedTeamId,
+          name: formData.name,
+          role: formData.role,
+          contracted_hours: parseInt(formData.contracted_hours),
+          availability: formData.availability
         })
-
-        if (!response.ok) throw new Error('Failed to add staff')
       }
 
-      await loadStaff()
-      
       setFormData({
         name: '',
         role: '',
@@ -181,13 +238,7 @@ export default function StaffSection({ selectedTeamId }) {
     if (!confirm('Are you sure you want to delete this staff member?')) return
     
     try {
-      const response = await fetch(`/api/staff?id=${id}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) throw new Error('Failed to delete staff')
-
-      await loadStaff()
+      await deleteStaffMutation.mutateAsync(id)
     } catch (error) {
       console.error('Error deleting staff:', error)
       alert('Failed to delete staff member. Please try again.')
@@ -240,10 +291,7 @@ export default function StaffSection({ selectedTeamId }) {
     }
   }
 
-  const staffHours = calculateStaffHours()
-  const shiftHours = calculateShiftHours()
-  const hoursMatch = Math.abs(staffHours - shiftHours) < 0.5
-  const hoursDiff = staffHours - shiftHours
+  const isSaving = addStaffMutation.isPending || updateStaffMutation.isPending
 
   return (
     <div>
@@ -317,17 +365,18 @@ export default function StaffSection({ selectedTeamId }) {
         {/* Desktop Table Header - Hidden on mobile */}
         <div className="hidden md:block bg-gray-50/50 border-b border-gray-200/60">
           <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">
-            <div className="col-span-4">Name</div>
-            <div className="col-span-3">Role</div>
+            <div className="col-span-3">Name</div>
+            <div className="col-span-2">Role</div>
             <div className="col-span-2">Availability</div>
             <div className="col-span-2">Hours/Week</div>
-            <div className="col-span-1 text-right">Actions</div>
+            <div className="col-span-1">Status</div>
+            <div className="col-span-2 text-right">Actions</div>
           </div>
         </div>
 
         {/* Content */}
         <div className="divide-y divide-gray-200/60">
-          {loading ? (
+          {isLoading ? (
             <div className="px-6 py-12 text-center">
               <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
             </div>
@@ -359,6 +408,19 @@ export default function StaffSection({ selectedTeamId }) {
                       </div>
                     </div>
                     <div className="flex items-center space-x-1">
+                      {/* Invite button - mobile */}
+                      {!member.clerk_user_id && (
+                        <button 
+                          onClick={() => handleInvite(member)}
+                          disabled={inviteMutation.isPending}
+                          className="p-2 text-pink-600 hover:text-pink-700 transition-colors disabled:opacity-50"
+                          title="Invite"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      )}
                       <button 
                         onClick={() => openEditModal(member)}
                         className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
@@ -369,7 +431,8 @@ export default function StaffSection({ selectedTeamId }) {
                       </button>
                       <button 
                         onClick={() => handleDelete(member.id)}
-                        className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                        disabled={deleteStaffMutation.isPending}
+                        className="p-2 text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -377,7 +440,7 @@ export default function StaffSection({ selectedTeamId }) {
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-3 ml-13 pl-13">
+                  <div className="flex items-center gap-3 mt-3 ml-13 pl-13 flex-wrap">
                     <div className="flex items-center gap-1.5 text-sm text-gray-600">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -387,12 +450,21 @@ export default function StaffSection({ selectedTeamId }) {
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
                       {member.contracted_hours}h/week
                     </span>
+                    {member.clerk_user_id ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                        ✓ Connected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        Not invited
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Desktop Table Row */}
                 <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                  <div className="col-span-4 flex items-center">
+                  <div className="col-span-3 flex items-center">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                         {member.name.charAt(0).toUpperCase()}
@@ -400,7 +472,7 @@ export default function StaffSection({ selectedTeamId }) {
                       <span className="font-medium text-gray-900">{member.name}</span>
                     </div>
                   </div>
-                  <div className="col-span-3 flex items-center">
+                  <div className="col-span-2 flex items-center">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                       {member.role}
                     </span>
@@ -415,7 +487,29 @@ export default function StaffSection({ selectedTeamId }) {
                       {member.contracted_hours}h/week
                     </span>
                   </div>
-                  <div className="col-span-1 flex items-center justify-end space-x-2">
+                  <div className="col-span-1 flex items-center">
+                    {member.clerk_user_id ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                        ✓ Connected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                        —
+                      </span>
+                    )}
+                  </div>
+                  <div className="col-span-2 flex items-center justify-end space-x-2">
+                    {/* Invite button - only show if not already connected */}
+                    {!member.clerk_user_id && (
+                      <button 
+                        onClick={() => handleInvite(member)}
+                        disabled={inviteMutation.isPending}
+                        className="px-2.5 py-1 text-xs font-medium text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-md transition-colors disabled:opacity-50"
+                        title="Send invite link"
+                      >
+                        Invite
+                      </button>
+                    )}
                     <button 
                       onClick={() => openEditModal(member)}
                       className="text-gray-600 hover:text-pink-600 transition-colors"
@@ -427,7 +521,8 @@ export default function StaffSection({ selectedTeamId }) {
                     </button>
                     <button 
                       onClick={() => handleDelete(member.id)}
-                      className="text-gray-600 hover:text-red-600 transition-colors"
+                      disabled={deleteStaffMutation.isPending}
+                      className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
                       title="Delete"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -568,12 +663,84 @@ export default function StaffSection({ selectedTeamId }) {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                  disabled={isSaving}
+                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all disabled:opacity-50"
                 >
-                  {editingStaff ? 'Update' : 'Add'}
+                  {isSaving ? 'Saving...' : (editingStaff ? 'Update' : 'Add')}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && inviteData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-md p-5 sm:p-6 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold text-gray-900">Invite Link Generated</h2>
+              <button 
+                onClick={() => {
+                  setShowInviteModal(false)
+                  setInviteData(null)
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-3">
+                Share this link with <strong>{inviteData.staff_name}</strong> so they can create their account:
+              </p>
+              
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <p className="text-sm text-gray-800 break-all font-mono">{inviteData.invite_url}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-gray-500 mb-5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Expires in 7 days</span>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowInviteModal(false)
+                  setInviteData(null)
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={copyInviteLink}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all flex items-center justify-center gap-2"
+              >
+                {copied ? (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy Link
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

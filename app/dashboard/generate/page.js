@@ -123,6 +123,7 @@ function GenerateRotaContent() {
   
   // Team selection state
   const [selectedTeamId, setSelectedTeamId] = useState(null)
+  const [showAllTeams, setShowAllTeams] = useState(false)
   
   // Staff list for editing
   const [allStaff, setAllStaff] = useState([])
@@ -202,11 +203,15 @@ function GenerateRotaContent() {
     if (selectedTeamId) {
       loadStaff()
     }
-  }, [selectedTeamId])
+  }, [selectedTeamId, showAllTeams])
 
   const loadStaff = async () => {
     try {
-      const response = await fetch(`/api/staff?team_id=${selectedTeamId}`)
+      let url = `/api/staff?team_id=${selectedTeamId}`
+      if (showAllTeams) {
+        url = `/api/staff` // Load all staff when showing all teams
+      }
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setAllStaff(data)
@@ -229,7 +234,7 @@ function GenerateRotaContent() {
   }
 
   const handleGenerate = async () => {
-    if (!selectedTeamId) {
+    if (!selectedTeamId && !showAllTeams) {
       alert('Please select a team first')
       return
     }
@@ -249,7 +254,8 @@ function GenerateRotaContent() {
         body: JSON.stringify({
           startDate: startDate.toISOString(),
           weekCount,
-          team_id: selectedTeamId
+          team_id: selectedTeamId,
+          showAllTeams: showAllTeams
         })
       })
   
@@ -487,6 +493,26 @@ function GenerateRotaContent() {
 
   const uniqueStaff = getUniqueStaff()
 
+  // Get team name for a staff member
+  const getStaffTeam = (staffName) => {
+    if (rota && rota.staff_team_map) {
+      return rota.staff_team_map[staffName] || null
+    }
+    return null
+  }
+
+  // Team color mapping for badges
+  const teamColors = {
+    'Main Team': 'bg-blue-100 text-blue-700',
+    'Kitchen': 'bg-orange-100 text-orange-700',
+    'Front of House': 'bg-green-100 text-green-700',
+    'Bar': 'bg-purple-100 text-purple-700',
+  }
+
+  const getTeamBadgeColor = (teamName) => {
+    return teamColors[teamName] || 'bg-gray-100 text-gray-700'
+  }
+
   // Color palette for staff
   const staffColors = [
     'bg-gradient-to-br from-pink-500 to-pink-600',
@@ -615,12 +641,42 @@ function GenerateRotaContent() {
             </svg>
             Select Team
           </h2>
-          <TeamSelector 
-            selectedTeamId={selectedTeamId}
-            onTeamChange={setSelectedTeamId}
-            showAddButton={false}
-          />
-          <p className="text-xs text-gray-500 mt-2 sm:mt-3">Choose which team to generate a rota for</p>
+          
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-end">
+            <div className="flex-1">
+              <TeamSelector 
+                selectedTeamId={selectedTeamId}
+                onTeamChange={(teamId) => {
+                  setSelectedTeamId(teamId)
+                  if (showAllTeams) setShowAllTeams(false)
+                }}
+                showAddButton={false}
+                disabled={showAllTeams}
+              />
+            </div>
+            
+            {/* Show All Teams Toggle */}
+            <button
+              onClick={() => setShowAllTeams(!showAllTeams)}
+              className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+                showAllTeams
+                  ? 'bg-pink-100 text-pink-700 border-2 border-pink-300'
+                  : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              All Teams
+            </button>
+          </div>
+          
+          <p className="text-xs text-gray-500 mt-2 sm:mt-3">
+            {showAllTeams 
+              ? 'Generating rota for all teams combined' 
+              : 'Choose which team to generate a rota for'
+            }
+          </p>
         </div>
 
         {/* Week Selection Card */}
@@ -678,9 +734,9 @@ function GenerateRotaContent() {
         <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 no-print">
           <button
             onClick={handleGenerate}
-            disabled={loading || !selectedTeamId}
+            disabled={loading || (!selectedTeamId && !showAllTeams)}
             className={`flex-1 min-w-[140px] sm:min-w-[200px] px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-white transition-all text-sm sm:text-base ${
-              loading || !selectedTeamId
+              loading || (!selectedTeamId && !showAllTeams)
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:shadow-lg hover:shadow-pink-500/25'
             }`}
@@ -866,7 +922,7 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Generated Rota Display - NEW FLIPPED LAYOUT */}
+        {/* Generated Rota Display - WITH TEAM BADGES */}
         {rota && rota.schedule && rota.schedule.length > 0 && (
           <div id="printable-rota" className="bg-white rounded-xl border border-gray-200/60 overflow-hidden">
             {/* Print Header */}
@@ -925,7 +981,7 @@ function GenerateRotaContent() {
                           <table className="w-full border-collapse print:text-sm">
                             <thead>
                               <tr className="bg-gray-50/50">
-                                <th className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 w-28 sm:w-36 sticky left-0 bg-gray-50 z-10">
+                                <th className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 w-32 sm:w-44 sticky left-0 bg-gray-50 z-10">
                                   Staff
                                 </th>
                                 {dayNames.map((day) => (
@@ -942,14 +998,22 @@ function GenerateRotaContent() {
                             <tbody>
                               {uniqueStaff.map((staffName) => {
                                 const colorClass = getStaffColor(staffName)
+                                const teamName = getStaffTeam(staffName)
                                 
                                 return (
                                   <tr key={staffName} className="hover:bg-gray-50/50">
-                                    {/* Staff name - sticky on mobile */}
+                                    {/* Staff name with team badge - sticky on mobile */}
                                     <td className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 bg-gray-50/30 sticky left-0 z-10">
-                                      <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${colorClass}`}></div>
-                                        <span className="text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">{staffName}</span>
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                          <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${colorClass} flex-shrink-0`}></div>
+                                          <span className="text-xs sm:text-sm truncate">{staffName}</span>
+                                        </div>
+                                        {teamName && (showAllTeams || rota.staff_team_map) && (
+                                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getTeamBadgeColor(teamName)} w-fit`}>
+                                            {teamName}
+                                          </span>
+                                        )}
                                       </div>
                                     </td>
                                     
@@ -1051,6 +1115,9 @@ function GenerateRotaContent() {
                             <thead>
                               <tr className="bg-gray-50/50 border-b border-gray-200/60">
                                 <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 sticky left-0 bg-gray-50">Staff</th>
+                                {showAllTeams && (
+                                  <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Team</th>
+                                )}
                                 {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => (
                                   <th key={weekNum} className="px-3 sm:px-6 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">
                                     Wk {weekNum}
@@ -1061,10 +1128,20 @@ function GenerateRotaContent() {
                             <tbody className="divide-y divide-gray-200/60">
                               {Array.from(allStaffNames).sort().map((staffName, idx) => {
                                 const contracted = contractedHours[staffName] || 0
+                                const teamName = getStaffTeam(staffName)
                                 
                                 return (
                                   <tr key={idx} className="hover:bg-gray-50/50">
                                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900 sticky left-0 bg-white">{staffName}</td>
+                                    {showAllTeams && (
+                                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                                        {teamName && (
+                                          <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${getTeamBadgeColor(teamName)}`}>
+                                            {teamName}
+                                          </span>
+                                        )}
+                                      </td>
+                                    )}
                                     {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => {
                                       const actual = staffWeeklyHours[staffName][weekNum] || 0
                                       const meetsMinimum = contracted === 0 || Math.abs(actual - contracted) < 0.5

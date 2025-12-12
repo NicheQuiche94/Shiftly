@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const AVAILABLE_RULES = [
   {
@@ -91,48 +92,35 @@ const RuleIcons = {
 }
 
 export default function RulesSection({ selectedTeamId }) {
-  const [rules, setRules] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const queryClient = useQueryClient()
+  const [localRules, setLocalRules] = useState([])
 
-  useEffect(() => {
-    if (selectedTeamId) {
-      loadRules()
-    }
-  }, [selectedTeamId])
-
-  const loadRules = async () => {
-    setLoading(true)
-    try {
+  // Fetch rules with React Query
+  const { data: savedRules = [], isLoading } = useQuery({
+    queryKey: ['rules', selectedTeamId],
+    queryFn: async () => {
       const response = await fetch(`/api/rules?team_id=${selectedTeamId}`)
       if (!response.ok) throw new Error('Failed to load rules')
-      const savedRules = await response.json()
-      
-      const mergedRules = AVAILABLE_RULES.map(availableRule => {
-        const savedRule = savedRules.find(r => r.type === availableRule.type)
-        return {
-          ...availableRule,
-          enabled: savedRule ? savedRule.enabled : false,
-          value: savedRule ? savedRule.value : availableRule.defaultValue
-        }
-      })
-      
-      setRules(mergedRules)
-    } catch (error) {
-      console.error('Error loading rules:', error)
-      setRules(AVAILABLE_RULES.map(rule => ({
-        ...rule,
-        enabled: false,
-        value: rule.defaultValue
-      })))
-    } finally {
-      setLoading(false)
-    }
-  }
+      return response.json()
+    },
+    enabled: !!selectedTeamId
+  })
 
-  const saveRule = async (ruleType, enabled, value) => {
-    setSaving(true)
-    try {
+  // Merge saved rules with available rules (memoized)
+  const rules = useMemo(() => {
+    return AVAILABLE_RULES.map(availableRule => {
+      const savedRule = savedRules.find(r => r.type === availableRule.type)
+      return {
+        ...availableRule,
+        enabled: savedRule ? savedRule.enabled : false,
+        value: savedRule ? savedRule.value : availableRule.defaultValue
+      }
+    })
+  }, [savedRules])
+
+  // Save rule mutation
+  const saveRuleMutation = useMutation({
+    mutationFn: async ({ ruleType, enabled, value }) => {
       const response = await fetch('/api/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,46 +131,33 @@ export default function RulesSection({ selectedTeamId }) {
           value
         })
       })
-      
       if (!response.ok) throw new Error('Failed to save rule')
-    } catch (error) {
-      console.error('Error saving rule:', error)
-    } finally {
-      setSaving(false)
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rules', selectedTeamId] })
     }
-  }
+  })
 
   const toggleRule = (ruleType) => {
-    setRules(prevRules => {
-      const updated = prevRules.map(rule => {
-        if (rule.type === ruleType) {
-          const newEnabled = !rule.enabled
-          saveRule(ruleType, newEnabled, rule.value)
-          return { ...rule, enabled: newEnabled }
-        }
-        return rule
-      })
-      return updated
-    })
+    const rule = rules.find(r => r.type === ruleType)
+    if (rule) {
+      const newEnabled = !rule.enabled
+      saveRuleMutation.mutate({ ruleType, enabled: newEnabled, value: rule.value })
+    }
   }
 
   const updateRuleValue = (ruleType, newValue) => {
     const numValue = parseInt(newValue) || 0
-    setRules(prevRules => {
-      const updated = prevRules.map(rule => {
-        if (rule.type === ruleType) {
-          saveRule(ruleType, rule.enabled, numValue)
-          return { ...rule, value: numValue }
-        }
-        return rule
-      })
-      return updated
-    })
+    const rule = rules.find(r => r.type === ruleType)
+    if (rule) {
+      saveRuleMutation.mutate({ ruleType, enabled: rule.enabled, value: numValue })
+    }
   }
 
   const enabledCount = rules.filter(r => r.enabled).length
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin"></div>
@@ -237,6 +212,7 @@ export default function RulesSection({ selectedTeamId }) {
                   {/* Toggle */}
                   <button
                     onClick={() => toggleRule(rule.type)}
+                    disabled={saveRuleMutation.isPending}
                     className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
                       rule.enabled ? 'bg-pink-600' : 'bg-gray-200'
                     }`}
@@ -262,7 +238,8 @@ export default function RulesSection({ selectedTeamId }) {
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <button
                         onClick={() => updateRuleValue(rule.type, Math.max(rule.min, rule.value - 1))}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors"
+                        disabled={saveRuleMutation.isPending}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-50"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -273,7 +250,8 @@ export default function RulesSection({ selectedTeamId }) {
                       </span>
                       <button
                         onClick={() => updateRuleValue(rule.type, Math.min(rule.max, rule.value + 1))}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors"
+                        disabled={saveRuleMutation.isPending}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-50"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -289,7 +267,7 @@ export default function RulesSection({ selectedTeamId }) {
       </div>
 
       {/* Saving indicator */}
-      {saving && (
+      {saveRuleMutation.isPending && (
         <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 z-50">
           <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
           <span className="text-xs sm:text-sm font-medium text-gray-900">Saving...</span>

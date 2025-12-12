@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export default function ShiftsSection({ selectedTeamId }) {
+  const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [editingShift, setEditingShift] = useState(null)
   const [editingGroup, setEditingGroup] = useState(null)
-  const [shifts, setShifts] = useState([])
-  const [staff, setStaff] = useState([]) // Add staff state
-  const [loading, setLoading] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [selectedShifts, setSelectedShifts] = useState(new Set())
   const [formData, setFormData] = useState({
@@ -30,59 +29,82 @@ export default function ShiftsSection({ selectedTeamId }) {
     { label: 'Night', start: '22:00', end: '06:00' },
   ]
 
-  useEffect(() => {
-    if (selectedTeamId) {
-      loadShifts()
-      loadStaff() // Load staff too
-    }
-  }, [selectedTeamId])
-
-  const loadShifts = async () => {
-    if (!selectedTeamId) return
-    
-    setLoading(true)
-    try {
+  // Fetch shifts with React Query
+  const { data: shifts = [], isLoading: shiftsLoading } = useQuery({
+    queryKey: ['shifts', selectedTeamId],
+    queryFn: async () => {
       const response = await fetch(`/api/shifts?team_id=${selectedTeamId}`)
       if (!response.ok) throw new Error('Failed to load shifts')
-      const data = await response.json()
-      setShifts(data)
-    } catch (error) {
-      console.error('Error loading shifts:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      return response.json()
+    },
+    enabled: !!selectedTeamId
+  })
 
-  const loadStaff = async () => {
-    if (!selectedTeamId) return
-    try {
+  // Fetch staff for hours comparison
+  const { data: staff = [] } = useQuery({
+    queryKey: ['staff', selectedTeamId],
+    queryFn: async () => {
       const response = await fetch(`/api/staff?team_id=${selectedTeamId}`)
       if (!response.ok) throw new Error('Failed to load staff')
-      const data = await response.json()
-      setStaff(data)
-    } catch (error) {
-      console.error('Error loading staff:', error)
-    }
-  }
+      return response.json()
+    },
+    enabled: !!selectedTeamId
+  })
 
-  const calculateShiftHours = () => {
-    let totalHours = 0
+  // Add shift mutation
+  const addShiftMutation = useMutation({
+    mutationFn: async (shiftData) => {
+      const response = await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(shiftData)
+      })
+      if (!response.ok) throw new Error('Failed to add shift')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shifts', selectedTeamId] })
+    }
+  })
+
+  // Delete shift mutation
+  const deleteShiftMutation = useMutation({
+    mutationFn: async (shiftId) => {
+      const response = await fetch(`/api/shifts?id=${shiftId}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Failed to delete shift')
+      return shiftId
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shifts', selectedTeamId] })
+    }
+  })
+
+  // Calculate hours (memoized)
+  const { shiftHours, staffHours, hoursMatch, hoursDiff } = useMemo(() => {
+    let totalShiftHours = 0
     shifts.forEach(shift => {
       const [startHour, startMin] = shift.start_time.split(':').map(Number)
       const [endHour, endMin] = shift.end_time.split(':').map(Number)
       let minutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
       if (minutes < 0) minutes += 24 * 60
       const hours = minutes / 60
-      totalHours += hours * (shift.staff_required || 1)
+      totalShiftHours += hours * (shift.staff_required || 1)
     })
-    return totalHours
-  }
 
-  const calculateStaffHours = () => {
-    return staff.reduce((sum, member) => sum + (member.contracted_hours || 0), 0)
-  }
+    const totalStaffHours = staff.reduce((sum, member) => sum + (member.contracted_hours || 0), 0)
+    const match = Math.abs(totalStaffHours - totalShiftHours) < 0.5
+    const diff = totalShiftHours - totalStaffHours
 
-  const groupedShifts = () => {
+    return {
+      shiftHours: totalShiftHours,
+      staffHours: totalStaffHours,
+      hoursMatch: match,
+      hoursDiff: diff
+    }
+  }, [shifts, staff])
+
+  // Group shifts (memoized)
+  const grouped = useMemo(() => {
     const groups = {}
     
     shifts.forEach(shift => {
@@ -103,7 +125,7 @@ export default function ShiftsSection({ selectedTeamId }) {
     })
     
     return Object.values(groups)
-  }
+  }, [shifts])
 
   const formatDays = (shifts) => {
     const days = shifts.map(s => s.day_of_week)
@@ -140,7 +162,6 @@ export default function ShiftsSection({ selectedTeamId }) {
   }
 
   const toggleSelectAll = () => {
-    const grouped = groupedShifts()
     if (selectedShifts.size === grouped.length) {
       setSelectedShifts(new Set())
     } else {
@@ -199,56 +220,26 @@ export default function ShiftsSection({ selectedTeamId }) {
     
     try {
       if (editingGroup) {
-        const deletePromises = editingGroup.shifts.map(s => 
-          fetch(`/api/shifts?id=${s.id}`, { method: 'DELETE' })
+        // Delete old shifts first
+        await Promise.all(
+          editingGroup.shifts.map(s => deleteShiftMutation.mutateAsync(s.id))
         )
-        await Promise.all(deletePromises)
-
-        const shiftPromises = formData.day_of_week.map(day => 
-          fetch('/api/shifts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              team_id: selectedTeamId,
-              shift_name: formData.shift_name,
-              day_of_week: day,
-              start_time: formData.start_time,
-              end_time: formData.end_time,
-              staff_required: parseInt(formData.staff_required)
-            })
-          })
-        )
-
-        const responses = await Promise.all(shiftPromises)
-        const allSucceeded = responses.every(r => r.ok)
-        if (!allSucceeded) throw new Error('Failed to update some shifts')
-      } else {
-        const shiftPromises = formData.day_of_week.map(day => 
-          fetch('/api/shifts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              team_id: selectedTeamId,
-              shift_name: formData.shift_name,
-              day_of_week: day,
-              start_time: formData.start_time,
-              end_time: formData.end_time,
-              staff_required: parseInt(formData.staff_required)
-            })
-          })
-        )
-
-        const responses = await Promise.all(shiftPromises)
-        const allSucceeded = responses.every(r => r.ok)
-        if (!allSucceeded) throw new Error('Failed to add some shifts')
       }
 
-      await loadShifts()
-      
+      // Add new shifts for each selected day
+      await Promise.all(
+        formData.day_of_week.map(day => 
+          addShiftMutation.mutateAsync({
+            team_id: selectedTeamId,
+            shift_name: formData.shift_name,
+            day_of_week: day,
+            start_time: formData.start_time,
+            end_time: formData.end_time,
+            staff_required: parseInt(formData.staff_required)
+          })
+        )
+      )
+
       setFormData({
         shift_name: '',
         day_of_week: [],
@@ -266,20 +257,10 @@ export default function ShiftsSection({ selectedTeamId }) {
   }
 
   const handleDeleteGroup = async (shifts) => {
-    const ids = shifts.map(s => s.id)
-    if (!confirm(`Delete this shift pattern (${ids.length} days)?`)) return
+    if (!confirm(`Delete this shift pattern (${shifts.length} days)?`)) return
     
     try {
-      const deletePromises = ids.map(id => 
-        fetch(`/api/shifts?id=${id}`, { method: 'DELETE' })
-      )
-      
-      const responses = await Promise.all(deletePromises)
-      const allSucceeded = responses.every(r => r.ok)
-      
-      if (!allSucceeded) throw new Error('Failed to delete some shifts')
-
-      await loadShifts()
+      await Promise.all(shifts.map(s => deleteShiftMutation.mutateAsync(s.id)))
     } catch (error) {
       console.error('Error deleting shifts:', error)
       alert('Failed to delete shift pattern. Please try again.')
@@ -287,24 +268,14 @@ export default function ShiftsSection({ selectedTeamId }) {
   }
 
   const handleDeleteSelected = async () => {
-    const grouped = groupedShifts()
     const selectedGroups = grouped.filter(g => selectedShifts.has(g.key))
     const allShifts = selectedGroups.flatMap(g => g.shifts)
     
     if (!confirm(`Delete ${selectedGroups.length} shift pattern(s)?`)) return
     
     try {
-      const deletePromises = allShifts.map(s => 
-        fetch(`/api/shifts?id=${s.id}`, { method: 'DELETE' })
-      )
-      
-      const responses = await Promise.all(deletePromises)
-      const allSucceeded = responses.every(r => r.ok)
-      
-      if (!allSucceeded) throw new Error('Failed to delete some shifts')
-
+      await Promise.all(allShifts.map(s => deleteShiftMutation.mutateAsync(s.id)))
       setSelectedShifts(new Set())
-      await loadShifts()
     } catch (error) {
       console.error('Error deleting shifts:', error)
       alert('Failed to delete shifts. Please try again.')
@@ -355,11 +326,7 @@ export default function ShiftsSection({ selectedTeamId }) {
     }))
   }
 
-  const grouped = groupedShifts()
-  const shiftHours = calculateShiftHours()
-  const staffHours = calculateStaffHours()
-  const hoursMatch = Math.abs(staffHours - shiftHours) < 0.5
-  const hoursDiff = shiftHours - staffHours
+  const loading = shiftsLoading
 
   return (
     <div>
@@ -824,9 +791,10 @@ export default function ShiftsSection({ selectedTeamId }) {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                  disabled={addShiftMutation.isPending}
+                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all disabled:opacity-50"
                 >
-                  {editingGroup ? 'Update' : 'Add'}
+                  {addShiftMutation.isPending ? 'Saving...' : (editingGroup ? 'Update' : 'Add')}
                 </button>
               </div>
             </form>

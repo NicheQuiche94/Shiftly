@@ -5,14 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request) {
-  // Debug: Log environment variable status (values are masked for security)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-
-  console.log('[DEBUG] Environment variables check:')
-  console.log('  NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? `Set (${supabaseUrl.substring(0, 20)}...)` : 'MISSING')
-  console.log('  SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? `Set (${supabaseKey.substring(0, 20)}...)` : 'MISSING')
-  console.log('  All SUPABASE env vars:', Object.keys(process.env).filter(k => k.includes('SUPABASE')).join(', '))
 
   const supabase = supabaseUrl && supabaseKey 
     ? createClient(supabaseUrl, supabaseKey)
@@ -23,13 +17,10 @@ export async function POST(request) {
     if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
     if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY')
     
-    console.error('[ERROR] Missing environment variables:', missingVars)
-    console.error('[ERROR] Available SUPABASE vars:', Object.keys(process.env).filter(k => k.includes('SUPABASE')))
-    
     return NextResponse.json(
       { 
         error: 'Server configuration error',
-        details: `Missing environment variables: ${missingVars.join(', ')}. Please add them to your .env.local file (note: must be .env.local with a dot, not env.local) for local development, or set them in Vercel for production.`
+        details: `Missing environment variables: ${missingVars.join(', ')}.`
       },
       { status: 500 }
     )
@@ -43,47 +34,61 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { startDate, weekCount } = body
+    const { startDate, weekCount, team_id, showAllTeams } = body
 
     console.log('Fetching data for user:', userId)
+    console.log('Team ID filter:', team_id)
+    console.log('Show all teams:', showAllTeams)
 
-    const [staffResult, shiftsResult, rulesResult] = await Promise.all([
-      supabase.from('Staff').select('*').eq('user_id', userId),
-      supabase.from('Shifts').select('*').eq('user_id', userId),
-      supabase.from('Rules').select('*').eq('user_id', userId)
+    // Build queries - filter by team_id unless showAllTeams is true
+    let staffQuery = supabase.from('Staff').select('*').eq('user_id', userId)
+    let shiftsQuery = supabase.from('Shifts').select('*').eq('user_id', userId)
+    let rulesQuery = supabase.from('Rules').select('*').eq('user_id', userId)
+
+    // Only filter by team if team_id is provided and showAllTeams is not true
+    if (team_id && !showAllTeams) {
+      staffQuery = staffQuery.eq('team_id', team_id)
+      shiftsQuery = shiftsQuery.eq('team_id', team_id)
+      rulesQuery = rulesQuery.eq('team_id', team_id)
+    }
+
+    // Also fetch all teams for the user (for team name lookup)
+    const teamsQuery = supabase.from('Teams').select('*').eq('user_id', userId)
+
+    const [staffResult, shiftsResult, rulesResult, teamsResult] = await Promise.all([
+      staffQuery,
+      shiftsQuery,
+      rulesQuery,
+      teamsQuery
     ])
 
     if (staffResult.error) throw staffResult.error
     if (shiftsResult.error) throw shiftsResult.error
     if (rulesResult.error) throw rulesResult.error
+    if (teamsResult.error) throw teamsResult.error
 
     const staffData = staffResult.data || []
     const shiftsData = shiftsResult.data || []
     const rulesData = rulesResult.data || []
+    const teamsData = teamsResult.data || []
+
+    // Create a team ID to name lookup map
+    const teamNameMap = {}
+    teamsData.forEach(team => {
+      teamNameMap[team.id] = team.name
+    })
 
     console.log('Staff count:', staffData.length)
     console.log('Shifts count:', shiftsData.length)
-    console.log('Sample shift:', shiftsData[0] ? {
-      id: shiftsData[0].id,
-      shift_name: shiftsData[0].shift_name,
-      day_of_week: shiftsData[0].day_of_week,
-      day_of_week_type: typeof shiftsData[0].day_of_week,
-      is_array: Array.isArray(shiftsData[0].day_of_week)
-    } : 'No shifts')
-    console.log('Sample staff:', staffData[0] ? {
-      name: staffData[0].name,
-      availability: staffData[0].availability,
-      availability_type: typeof staffData[0].availability,
-      is_array: Array.isArray(staffData[0].availability)
-    } : 'No staff')
+    console.log('Teams count:', teamsData.length)
 
     if (staffData.length === 0 || shiftsData.length === 0) {
       return NextResponse.json(
         { 
           error: 'Missing data', 
           details: staffData.length === 0 
-            ? 'No staff members found. Please add staff first.' 
-            : 'No shifts found. Please add shifts first.'
+            ? 'No staff members found for this team. Please add staff first.' 
+            : 'No shifts found for this team. Please add shifts first.'
         },
         { status: 400 }
       )
@@ -92,15 +97,12 @@ export async function POST(request) {
     const startDateObj = new Date(startDate)
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-    // Generate shift patterns for a single week (the scheduler will apply these to all weeks)
-    // We use the first week's dates to determine which day names to use
     const shiftPatterns = []
     for (let day = 0; day < 7; day++) {
       const currentDate = new Date(startDateObj)
       currentDate.setDate(currentDate.getDate() + day)
       const dayName = dayNames[currentDate.getDay()]
 
-      // Handle day_of_week - it can be a string or an array
       const dayShifts = shiftsData.filter(shift => {
         const shiftDays = shift.day_of_week
         if (Array.isArray(shiftDays)) {
@@ -127,11 +129,6 @@ export async function POST(request) {
     console.log('Weeks to generate:', weekCount)
 
     const formattedStaff = staffData.map(s => {
-      // Parse availability - it can be:
-      // 1. A JSON string that needs parsing
-      // 2. An array of day names like ["Monday", "Tuesday"]
-      // 3. An object like {monday: true, tuesday: true}
-      // 4. null/undefined
       let availability = s.availability || {}
       
       if (typeof availability === 'string') {
@@ -143,7 +140,6 @@ export async function POST(request) {
         }
       }
       
-      // If availability is an array of day names, convert to object format
       if (Array.isArray(availability)) {
         const availabilityObj = {}
         availability.forEach(day => {
@@ -154,7 +150,6 @@ export async function POST(request) {
         availability = availabilityObj
       }
       
-      // If it's already an object, ensure all keys are lowercase
       if (typeof availability === 'object' && availability !== null && !Array.isArray(availability)) {
         const normalizedAvailability = {}
         Object.keys(availability).forEach(key => {
@@ -163,9 +158,7 @@ export async function POST(request) {
         availability = normalizedAvailability
       }
       
-      // If still not an object, default to all days available
       if (typeof availability !== 'object' || availability === null || Array.isArray(availability)) {
-        console.warn(`Invalid availability format for ${s.name}, defaulting to all days`)
         availability = {
           monday: true,
           tuesday: true,
@@ -177,14 +170,17 @@ export async function POST(request) {
         }
       }
       
-      console.log(`Staff ${s.name} availability:`, Object.keys(availability).filter(k => availability[k]))
+      // Look up team name from the teams map
+      const teamName = s.team_id ? teamNameMap[s.team_id] : null
       
       return {
         id: s.id,
         name: s.name,
         contracted_hours: s.contracted_hours || 0,
         max_hours: s.max_hours_per_week || 48,
-        availability: availability
+        availability: availability,
+        team_name: teamName,
+        team_id: s.team_id
       }
     })
 
@@ -197,24 +193,12 @@ export async function POST(request) {
 
     const schedulerInput = {
       staff: formattedStaff,
-      shifts: shiftPatterns,  // Only send shift patterns for one week, scheduler will apply to all weeks
+      shifts: shiftPatterns,
       rules: formattedRules,
       weeks: weekCount
     }
 
     console.log('Calling Python scheduler API...')
-    console.log('Scheduler input summary:', {
-      staffCount: schedulerInput.staff.length,
-      shiftPatternsCount: schedulerInput.shifts.length,  // Patterns for one week
-      rulesCount: schedulerInput.rules.length,
-      weeks: schedulerInput.weeks,
-      expectedTotalShifts: schedulerInput.shifts.length * schedulerInput.weeks,
-      sampleStaff: schedulerInput.staff[0] ? {
-        name: schedulerInput.staff[0].name,
-        availabilityType: typeof schedulerInput.staff[0].availability,
-        availabilityIsObject: typeof schedulerInput.staff[0].availability === 'object' && !Array.isArray(schedulerInput.staff[0].availability)
-      } : null
-    })
     
     const pythonUrl = process.env.PYTHON_SCHEDULER_URL || 'https://shiftly-scheduler-e470.onrender.com'
     const response = await fetch(`${pythonUrl}/schedule`, {
@@ -233,8 +217,6 @@ export async function POST(request) {
 
     const result = await response.json()
     console.log('Scheduler result:', result.success)
-    console.log('Scheduler schedule length:', result.schedule ? result.schedule.length : 0)
-    console.log('Scheduler schedule weeks:', result.schedule ? result.schedule.map(w => w.week) : [])
     
     if (!result.success) {
       return NextResponse.json(
@@ -246,14 +228,14 @@ export async function POST(request) {
       )
     }
 
-    // Verify we got all weeks
-    if (result.schedule && result.schedule.length !== weekCount) {
-      console.warn(`Expected ${weekCount} weeks but got ${result.schedule.length} weeks from scheduler`)
-    }
+    // Create a map of staff name to team name for the response
+    const staffTeamMap = {}
+    formattedStaff.forEach(s => {
+      staffTeamMap[s.name] = s.team_name
+    })
 
     const formattedSchedule = []
     result.schedule.forEach(weekData => {
-      console.log(`Processing week ${weekData.week} with ${weekData.shifts.length} shifts`)
       weekData.shifts.forEach(shift => {
         const existingShift = formattedSchedule.find(s => 
           s.week === weekData.week &&
@@ -290,7 +272,9 @@ export async function POST(request) {
               if (shift.staff_name === staff.name) {
                 const [startH, startM] = shift.start_time.split(':').map(Number)
                 const [endH, endM] = shift.end_time.split(':').map(Number)
-                const hours = ((endH * 60 + endM) - (startH * 60 + startM)) / 60
+                let hours = ((endH * 60 + endM) - (startH * 60 + startM)) / 60
+                // Handle overnight shifts
+                if (hours < 0) hours += 24
                 totalHours += hours
               }
             })
@@ -305,6 +289,7 @@ export async function POST(request) {
 
       return {
         staff_name: staff.name,
+        team_name: staff.team_name,
         contracted: staff.contracted_hours,
         assigned: avgWeekly,
         weekly_hours: weeklyHours,
@@ -316,6 +301,7 @@ export async function POST(request) {
       schedule: formattedSchedule,
       hours_report: hoursReport,
       rule_compliance: result.rule_compliance || [],
+      staff_team_map: staffTeamMap,  // Include team mapping for display
       summary: 'Rota generated successfully',
       generation_method: 'or_tools',
       stats: result.stats || {},
@@ -324,15 +310,11 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('[ERROR] Error generating rota:', error)
-    console.error('[ERROR] Error name:', error.name)
-    console.error('[ERROR] Error message:', error.message)
-    console.error('[ERROR] Error stack:', error.stack)
     
     return NextResponse.json(
       { 
         error: error.message || 'Failed to generate rota',
-        details: error.toString(),
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        details: error.toString()
       },
       { status: 500 }
     )
