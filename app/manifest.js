@@ -3,7 +3,7 @@ export default function manifest() {
       name: 'Shiftly',
       short_name: 'Shiftly',
       description: 'AI-powered staff scheduling',
-      start_url: '/employee',
+      start_url: '/auth-redirect',
       display: 'standalone',
       background_color: '#ffffff',
       theme_color: '#ec4899',
