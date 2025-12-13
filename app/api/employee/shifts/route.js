@@ -50,25 +50,34 @@ export async function GET() {
           ? JSON.parse(rota.schedule_data) 
           : rota.schedule_data
 
-        // scheduleData structure: { staffId: { date: [shifts] } }
-        const staffSchedule = scheduleData[staffMember.id.toString()]
+        // The schedule is in scheduleData.schedule array
+        const scheduleArray = scheduleData.schedule || []
         
-        if (staffSchedule) {
-          for (const [date, dayShifts] of Object.entries(staffSchedule)) {
-            // Only include future dates
-            if (date >= today) {
-              for (const shift of dayShifts) {
-                shifts.push({
-                  date,
-                  shift_name: shift.shift_name || shift.name || 'Shift',
-                  start_time: shift.start_time,
-                  end_time: shift.end_time,
-                  hours: calculateHours(shift.start_time, shift.end_time),
-                  rota_id: rota.id,
-                  rota_name: rota.rota_name || rota.name
-                })
-              }
-            }
+        // Filter shifts where this staff member is assigned (by name)
+        const myShifts = scheduleArray.filter(shift => 
+          shift.assigned_staff && shift.assigned_staff.includes(staffMember.name)
+        )
+
+        // Convert day + week to actual date
+        const rotaStartDate = new Date(rota.start_date)
+        
+        for (const shift of myShifts) {
+          const actualDate = getActualDate(rotaStartDate, shift.week, shift.day)
+          
+          // Only include future dates
+          if (actualDate >= today) {
+            // Parse time "17:00-23:00" into start_time and end_time
+            const [startTime, endTime] = shift.time.split('-')
+            
+            shifts.push({
+              date: actualDate,
+              shift_name: shift.shift_name || 'Shift',
+              start_time: startTime,
+              end_time: endTime,
+              hours: calculateHours(startTime, endTime),
+              rota_id: rota.id,
+              rota_name: rota.rota_name || rota.name
+            })
           }
         }
       } catch (parseError) {
@@ -84,6 +93,32 @@ export async function GET() {
     console.error('Error fetching employee shifts:', error)
     return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 })
   }
+}
+
+// Convert week number and day name to actual date
+function getActualDate(rotaStartDate, weekNumber, dayName) {
+  const dayMap = {
+    'Monday': 0,
+    'Tuesday': 1,
+    'Wednesday': 2,
+    'Thursday': 3,
+    'Friday': 4,
+    'Saturday': 5,
+    'Sunday': 6
+  }
+  
+  // Clone the start date
+  const date = new Date(rotaStartDate)
+  
+  // Add days for weeks (week 1 = 0 extra weeks)
+  const weeksToAdd = (weekNumber - 1) * 7
+  
+  // Add days for the specific day of the week
+  const dayOffset = dayMap[dayName] || 0
+  
+  date.setDate(date.getDate() + weeksToAdd + dayOffset)
+  
+  return date.toISOString().split('T')[0]
 }
 
 function calculateHours(startTime, endTime) {

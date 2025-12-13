@@ -18,7 +18,8 @@ export default function EmployeeDashboard() {
     type: 'holiday',
     start_date: '',
     end_date: '',
-    reason: ''
+    reason: '',
+    swap_shift: ''
   })
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -75,7 +76,7 @@ export default function EmployeeDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employee-requests'] })
       setShowRequestModal(false)
-      setFormData({ type: 'holiday', start_date: '', end_date: '', reason: '' })
+      setFormData({ type: 'holiday', start_date: '', end_date: '', reason: '', swap_shift: '' })
     }
   })
 
@@ -114,11 +115,18 @@ export default function EmployeeDashboard() {
 
   const handleSubmitRequest = (e) => {
     e.preventDefault()
+    
+    // Build reason with swap shift info if applicable
+    let reason = formData.reason
+    if (formData.type === 'swap' && formData.swap_shift) {
+      reason = `Shift to swap: ${formData.swap_shift}${reason ? ` - ${reason}` : ''}`
+    }
+    
     submitRequestMutation.mutate({
       type: formData.type,
       start_date: formData.start_date,
       end_date: formData.end_date || formData.start_date,
-      reason: formData.reason
+      reason: reason
     })
   }
 
@@ -144,6 +152,10 @@ export default function EmployeeDashboard() {
       day: 'numeric',
       month: 'short'
     })
+  }
+
+  const formatShiftForSelect = (shift) => {
+    return `${formatDate(shift.date)} - ${shift.shift_name} (${shift.start_time}-${shift.end_time})`
   }
 
   const getStatusBadge = (status) => {
@@ -438,7 +450,7 @@ export default function EmployeeDashboard() {
                       <button
                         key={type.id}
                         type="button"
-                        onClick={() => setFormData({ ...formData, type: type.id })}
+                        onClick={() => setFormData({ ...formData, type: type.id, swap_shift: '' })}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                           formData.type === type.id
                             ? 'bg-pink-100 text-pink-700 border-2 border-pink-300'
@@ -451,39 +463,76 @@ export default function EmployeeDashboard() {
                   </div>
                 </div>
 
-                {/* Dates */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Shift Selector - Only show for Swap */}
+                {formData.type === 'swap' && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">From</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    />
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Which shift do you want to swap?
+                    </label>
+                    {shifts.length === 0 ? (
+                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+                        No upcoming shifts to swap
+                      </p>
+                    ) : (
+                      <select
+                        required
+                        value={formData.swap_shift}
+                        onChange={(e) => setFormData({ ...formData, swap_shift: e.target.value })}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
+                      >
+                        <option value="">Select a shift...</option>
+                        {shifts.map((shift, idx) => (
+                          <option key={idx} value={formatShiftForSelect(shift)}>
+                            {formatShiftForSelect(shift)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">To</label>
-                    <input
-                      type="date"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      min={formData.start_date}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    />
+                )}
+
+                {/* Dates - Hide for Swap since shift selection provides the date */}
+                {formData.type !== 'swap' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        First day off
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.start_date}
+                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Last day off
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        min={formData.start_date}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Optional for single day</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Reason */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Reason (optional)</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    {formData.type === 'swap' ? 'Additional notes (optional)' : 'Reason (optional)'}
+                  </label>
                   <textarea
                     value={formData.reason}
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
-                    placeholder="Add any notes..."
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white text-gray-900"
+                    placeholder={formData.type === 'swap' ? 'e.g., Willing to swap with anyone on Thursday' : 'Add any notes...'}
                   />
                 </div>
               </div>
@@ -492,14 +541,14 @@ export default function EmployeeDashboard() {
                 <button
                   type="button"
                   onClick={() => setShowRequestModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={submitRequestMutation.isPending}
-                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium disabled:opacity-50"
+                  disabled={submitRequestMutation.isPending || (formData.type === 'swap' && !formData.swap_shift)}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-pink-500/25 transition-all"
                 >
                   {submitRequestMutation.isPending ? 'Submitting...' : 'Submit'}
                 </button>
@@ -533,6 +582,7 @@ export default function EmployeeDashboard() {
               {daysOfWeek.map((day) => (
                 <button
                   key={day}
+                  type="button"
                   onClick={() => toggleAvailability(day)}
                   className={`w-full px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center justify-between ${
                     availabilityForm[day]
@@ -556,15 +606,17 @@ export default function EmployeeDashboard() {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowAvailabilityModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium"
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleUpdateAvailability}
                 disabled={updateAvailabilityMutation.isPending}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-pink-500/25 transition-all"
               >
                 {updateAvailabilityMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>

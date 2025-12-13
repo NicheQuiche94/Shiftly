@@ -29,7 +29,7 @@ export async function POST(request) {
     // Verify the staff member belongs to the user
     const { data: staffMember, error: staffError } = await supabase
       .from('Staff')
-      .select('*, team:team_id(user_id, name)')
+      .select('*, team:team_id(user_id, team_name)')
       .eq('id', staff_id)
       .single()
 
@@ -72,7 +72,7 @@ export async function POST(request) {
     const inviteUrl = `${baseUrl}/invite/${inviteToken}`
 
     // Send invite email
-    const teamName = staffMember.team?.name || 'your team'
+    const teamName = staffMember.team?.team_name || 'your team'
     
     try {
       await resend.emails.send({
