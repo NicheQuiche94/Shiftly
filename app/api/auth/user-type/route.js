@@ -17,7 +17,18 @@ export async function GET() {
       return NextResponse.json({ type: 'unknown' }, { status: 401 })
     }
 
-    // Check if user is an employee FIRST (has clerk_user_id in Staff table)
+    // Check if user is a MANAGER first (owns teams)
+    const { data: teams } = await supabase
+      .from('Teams')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+
+    if (teams && teams.length > 0) {
+      return NextResponse.json({ type: 'manager' })
+    }
+
+    // Then check if user is an employee (has clerk_user_id in Staff table)
     const { data: staffProfile, error: staffError } = await supabase
       .from('Staff')
       .select('id, name, role')
@@ -35,18 +46,7 @@ export async function GET() {
       })
     }
 
-    // Check if user is a manager (has teams)
-    const { data: teams } = await supabase
-      .from('Teams')
-      .select('id')
-      .eq('user_id', userId)
-      .limit(1)
-
-    if (teams && teams.length > 0) {
-      return NextResponse.json({ type: 'manager' })
-    }
-
-    // New user - default to manager
+    // New user - default to manager (will create a team)
     return NextResponse.json({ type: 'new' })
 
   } catch (error) {
