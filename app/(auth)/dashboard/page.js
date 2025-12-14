@@ -1,15 +1,38 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export default function DashboardPage() {
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const [isCheckingUserType, setIsCheckingUserType] = useState(true)
+
+  // Check if user is employee and redirect
+  useEffect(() => {
+    if (!isLoaded) return
+
+    const checkUserType = async () => {
+      try {
+        const response = await fetch('/api/auth/user-type')
+        const data = await response.json()
+        
+        if (data.type === 'employee') {
+          router.replace('/employee')
+          return
+        }
+      } catch (error) {
+        console.error('Error checking user type:', error)
+      }
+      setIsCheckingUserType(false)
+    }
+
+    checkUserType()
+  }, [isLoaded, router])
 
   // Fetch rotas with React Query - cached for 5 mins, instant on return
   const { data: rotas = [], isLoading } = useQuery({
@@ -18,7 +41,8 @@ export default function DashboardPage() {
       const response = await fetch('/api/rotas')
       if (!response.ok) throw new Error('Failed to fetch rotas')
       return response.json()
-    }
+    },
+    enabled: !isCheckingUserType
   })
 
   // Fetch pending requests count
@@ -28,7 +52,8 @@ export default function DashboardPage() {
       const response = await fetch('/api/requests')
       if (!response.ok) throw new Error('Failed to fetch requests')
       return response.json()
-    }
+    },
+    enabled: !isCheckingUserType
   })
 
   const pendingRequestsCount = useMemo(() => {
@@ -88,6 +113,18 @@ export default function DashboardPage() {
 
   const handleRotaClick = (rotaId) => {
     router.push(`/dashboard/generate?rota=${rotaId}`)
+  }
+
+  // Show loading while checking user type
+  if (isCheckingUserType) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading your dashboard...</p>
+        </div>
+      </main>
+    )
   }
 
   const firstName = user?.firstName || 'there'
