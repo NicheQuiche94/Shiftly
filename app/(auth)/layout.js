@@ -1,9 +1,12 @@
 import { ClerkProvider } from '@clerk/nextjs'
+import Providers from '../components/Providers'
 
 export default function AuthLayout({ children }) {
   return (
     <ClerkProvider>
-      {children}
+      <Providers>
+        {children}
+      </Providers>
     </ClerkProvider>
   )
 }
