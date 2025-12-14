@@ -17,9 +17,9 @@ export async function GET() {
       return NextResponse.json({ type: 'unknown' }, { status: 401 })
     }
 
-    // Check if user is an employee (has clerk_user_id in staff table)
+    // Check if user is an employee FIRST (has clerk_user_id in Staff table)
     const { data: staffProfile, error: staffError } = await supabase
-      .from('staff')
+      .from('Staff')
       .select('id, name, role')
       .eq('clerk_user_id', userId)
       .single()
@@ -35,9 +35,9 @@ export async function GET() {
       })
     }
 
-    // Check if user is a manager (has teams or rotas)
+    // Check if user is a manager (has teams)
     const { data: teams } = await supabase
-      .from('teams')
+      .from('Teams')
       .select('id')
       .eq('user_id', userId)
       .limit(1)

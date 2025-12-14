@@ -3,18 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
-
-export async function GET() {
-  if (!supabase) {
-    return Response.json({ error: 'Server not configured' }, { status: 500 })
-  }
-
+export async function GET(request) {
   try {
     const { userId } = await auth()
     
@@ -22,17 +16,23 @@ export async function GET() {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const teamId = searchParams.get('team_id')
+
+    if (!teamId) {
+      return Response.json({ error: 'team_id is required' }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('Rules')
       .select('*')
-      .eq('user_id', userId)
+      .eq('team_id', teamId)
 
     if (error) {
       console.error('Error fetching rules:', error)
       throw error
     }
 
-    console.log('Fetched rules for user:', userId, data)
     return Response.json(data || [])
   } catch (error) {
     console.error('Error in GET /api/rules:', error)
@@ -41,10 +41,6 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (!supabase) {
-    return Response.json({ error: 'Server not configured' }, { status: 500 })
-  }
-
   try {
     const { userId } = await auth()
     
@@ -53,15 +49,17 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { type, name, enabled, value } = body
+    const { team_id, type, enabled, value } = body
 
-    console.log('Saving rule:', { userId, type, name, enabled, value })
+    if (!team_id) {
+      return Response.json({ error: 'team_id is required' }, { status: 400 })
+    }
 
-    // Check if rule exists - use maybeSingle() to handle zero results gracefully
+    // Check if rule exists
     const { data: existing, error: selectError } = await supabase
       .from('Rules')
       .select('id')
-      .eq('user_id', userId)
+      .eq('team_id', team_id)
       .eq('type', type)
       .maybeSingle()
 
@@ -71,54 +69,34 @@ export async function POST(request) {
     }
 
     if (existing) {
-      console.log('Updating existing rule:', existing.id)
       // Update existing rule
       const { data, error } = await supabase
         .from('Rules')
-        .update({
-          name,
-          enabled,
-          value
-        })
+        .update({ enabled, value })
         .eq('id', existing.id)
         .select()
         .single()
 
-      if (error) {
-        console.error('Error updating rule:', error)
-        throw error
-      }
-      
-      console.log('Rule updated successfully:', data)
+      if (error) throw error
       return Response.json(data)
     } else {
-      console.log('Creating new rule')
       // Create new rule
       const { data, error } = await supabase
         .from('Rules')
         .insert({
-          user_id: userId,
+          team_id,
           type,
-          name,
           enabled,
           value
         })
         .select()
         .single()
 
-      if (error) {
-        console.error('Error creating rule:', error)
-        throw error
-      }
-      
-      console.log('Rule created successfully:', data)
+      if (error) throw error
       return Response.json(data)
     }
   } catch (error) {
     console.error('Error in POST /api/rules:', error)
-    return Response.json({ 
-      error: error.message,
-      details: error.toString()
-    }, { status: 500 })
+    return Response.json({ error: error.message }, { status: 500 })
   }
 }

@@ -103,29 +103,58 @@ export default function EmployeeDashboard() {
   useMemo(() => {
     if (profile?.availability) {
       try {
-        setAvailabilityForm(JSON.parse(profile.availability))
-      } catch {
-        setAvailabilityForm({
-          Monday: true, Tuesday: true, Wednesday: true, Thursday: true,
-          Friday: true, Saturday: true, Sunday: true
+        const parsed = JSON.parse(profile.availability)
+        // Handle legacy format (day: boolean) vs new format (day: {AM, PM})
+        const converted = {}
+        daysOfWeek.forEach(day => {
+          if (typeof parsed[day] === 'boolean') {
+            // Legacy format - convert to new
+            converted[day] = { AM: parsed[day], PM: parsed[day] }
+          } else if (parsed[day] && typeof parsed[day] === 'object') {
+            // New format
+            converted[day] = parsed[day]
+          } else {
+            // Default
+            converted[day] = { AM: true, PM: true }
+          }
         })
+        setAvailabilityForm(converted)
+      } catch {
+        const defaultAvailability = {}
+        daysOfWeek.forEach(day => {
+          defaultAvailability[day] = { AM: true, PM: true }
+        })
+        setAvailabilityForm(defaultAvailability)
       }
     }
   }, [profile?.availability])
+
+  const formatShiftForSelect = (shift) => {
+    return `${formatDate(shift.date)} - ${shift.shift_name} (${shift.start_time}-${shift.end_time})`
+  }
 
   const handleSubmitRequest = (e) => {
     e.preventDefault()
     
     // Build reason with swap shift info if applicable
     let reason = formData.reason
+    let startDate = formData.start_date
+    let endDate = formData.end_date
+    
     if (formData.type === 'swap' && formData.swap_shift) {
+      // Find the selected shift to get its date
+      const selectedShift = shifts.find(s => formatShiftForSelect(s) === formData.swap_shift)
+      if (selectedShift) {
+        startDate = selectedShift.date
+        endDate = selectedShift.date
+      }
       reason = `Shift to swap: ${formData.swap_shift}${reason ? ` - ${reason}` : ''}`
     }
     
     submitRequestMutation.mutate({
       type: formData.type,
-      start_date: formData.start_date,
-      end_date: formData.end_date || formData.start_date,
+      start_date: startDate,
+      end_date: endDate || startDate,
       reason: reason
     })
   }
@@ -134,10 +163,22 @@ export default function EmployeeDashboard() {
     updateAvailabilityMutation.mutate(JSON.stringify(availabilityForm))
   }
 
-  const toggleAvailability = (day) => {
+  const toggleAvailability = (day, period) => {
     setAvailabilityForm(prev => ({
       ...prev,
-      [day]: !prev[day]
+      [day]: {
+        ...prev[day],
+        [period]: !prev[day]?.[period]
+      }
+    }))
+  }
+
+  const toggleFullDay = (day) => {
+    const currentDay = availabilityForm[day] || { AM: true, PM: true }
+    const allOn = currentDay.AM && currentDay.PM
+    setAvailabilityForm(prev => ({
+      ...prev,
+      [day]: { AM: !allOn, PM: !allOn }
     }))
   }
 
@@ -152,10 +193,6 @@ export default function EmployeeDashboard() {
       day: 'numeric',
       month: 'short'
     })
-  }
-
-  const formatShiftForSelect = (shift) => {
-    return `${formatDate(shift.date)} - ${shift.shift_name} (${shift.start_time}-${shift.end_time})`
   }
 
   const getStatusBadge = (status) => {
@@ -575,33 +612,61 @@ export default function EmployeeDashboard() {
             </div>
 
             <p className="text-sm text-gray-600 mb-4">
-              Select the days you're available to work. Your manager will be notified of any changes.
+              Select when you're available to work. Tap the day to toggle all, or choose AM/PM individually.
             </p>
 
             <div className="space-y-2 mb-6">
-              {daysOfWeek.map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleAvailability(day)}
-                  className={`w-full px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center justify-between ${
-                    availabilityForm[day]
-                      ? 'bg-green-50 text-green-700 border border-green-200'
-                      : 'bg-gray-100 text-gray-500 border border-transparent'
-                  }`}
-                >
-                  <span>{day}</span>
-                  {availabilityForm[day] ? (
-                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  )}
-                </button>
-              ))}
+              {daysOfWeek.map((day) => {
+                const dayAvail = availabilityForm[day] || { AM: true, PM: true }
+                const allOn = dayAvail.AM && dayAvail.PM
+                const allOff = !dayAvail.AM && !dayAvail.PM
+                
+                return (
+                  <div
+                    key={day}
+                    className={`rounded-lg border transition-all ${
+                      allOn ? 'bg-green-50 border-green-200' : 
+                      allOff ? 'bg-gray-100 border-transparent' : 
+                      'bg-amber-50 border-amber-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleFullDay(day)}
+                        className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
+                      >
+                        {day}
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleAvailability(day, 'AM')}
+                          className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                            dayAvail.AM
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          AM
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleAvailability(day, 'PM')}
+                          className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                            dayAvail.PM
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          PM
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             <div className="flex gap-3">

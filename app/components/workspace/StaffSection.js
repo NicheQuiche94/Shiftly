@@ -3,6 +3,39 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+const getDefaultAvailability = () => {
+  const availability = {}
+  daysOfWeek.forEach(day => {
+    availability[day] = { AM: true, PM: true }
+  })
+  return availability
+}
+
+const parseAvailability = (availabilityString) => {
+  try {
+    const parsed = JSON.parse(availabilityString)
+    // Handle legacy format (day: boolean) vs new format (day: {AM, PM})
+    const converted = {}
+    daysOfWeek.forEach(day => {
+      if (typeof parsed[day] === 'boolean') {
+        // Legacy format - convert to new
+        converted[day] = { AM: parsed[day], PM: parsed[day] }
+      } else if (parsed[day] && typeof parsed[day] === 'object') {
+        // New format
+        converted[day] = parsed[day]
+      } else {
+        // Default
+        converted[day] = { AM: true, PM: true }
+      }
+    })
+    return converted
+  } catch {
+    return getDefaultAvailability()
+  }
+}
+
 export default function StaffSection({ selectedTeamId }) {
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
@@ -17,18 +50,8 @@ export default function StaffSection({ selectedTeamId }) {
     email: '',
     role: '',
     contracted_hours: '',
-    availability: JSON.stringify({
-      Monday: true,
-      Tuesday: true,
-      Wednesday: true,
-      Thursday: true,
-      Friday: true,
-      Saturday: true,
-      Sunday: true
-    })
+    availability: JSON.stringify(getDefaultAvailability())
   })
-
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   // Fetch staff with React Query
   const { data: staff = [], isLoading } = useQuery({
@@ -151,35 +174,20 @@ export default function StaffSection({ selectedTeamId }) {
       email: '',
       role: '',
       contracted_hours: '',
-      availability: JSON.stringify({
-        Monday: true,
-        Tuesday: true,
-        Wednesday: true,
-        Thursday: true,
-        Friday: true,
-        Saturday: true,
-        Sunday: true
-      })
+      availability: JSON.stringify(getDefaultAvailability())
     })
     setShowModal(true)
   }
 
   const openEditModal = (member) => {
     setEditingStaff(member)
+    const parsedAvailability = parseAvailability(member.availability)
     setFormData({
       name: member.name || '',
       email: member.email || '',
       role: member.role || '',
       contracted_hours: member.contracted_hours ? member.contracted_hours.toString() : '',
-      availability: member.availability || JSON.stringify({
-        Monday: true,
-        Tuesday: true,
-        Wednesday: true,
-        Thursday: true,
-        Friday: true,
-        Saturday: true,
-        Sunday: true
-      })
+      availability: JSON.stringify(parsedAvailability)
     })
     setShowModal(true)
   }
@@ -226,15 +234,7 @@ export default function StaffSection({ selectedTeamId }) {
         email: '',
         role: '',
         contracted_hours: '',
-        availability: JSON.stringify({
-          Monday: true,
-          Tuesday: true,
-          Wednesday: true,
-          Thursday: true,
-          Friday: true,
-          Saturday: true,
-          Sunday: true
-        })
+        availability: JSON.stringify(getDefaultAvailability())
       })
       setEditingStaff(null)
       setShowModal(false)
@@ -255,9 +255,23 @@ export default function StaffSection({ selectedTeamId }) {
     }
   }
 
-  const toggleAvailability = (day) => {
+  const toggleAvailability = (day, period) => {
     const availability = JSON.parse(formData.availability)
-    availability[day] = !availability[day]
+    availability[day] = {
+      ...availability[day],
+      [period]: !availability[day]?.[period]
+    }
+    setFormData({
+      ...formData,
+      availability: JSON.stringify(availability)
+    })
+  }
+
+  const toggleFullDay = (day) => {
+    const availability = JSON.parse(formData.availability)
+    const currentDay = availability[day] || { AM: true, PM: true }
+    const allOn = currentDay.AM && currentDay.PM
+    availability[day] = { AM: !allOn, PM: !allOn }
     setFormData({
       ...formData,
       availability: JSON.stringify(availability)
@@ -265,20 +279,16 @@ export default function StaffSection({ selectedTeamId }) {
   }
 
   const selectAllDays = () => {
-    const availability = {}
-    daysOfWeek.forEach(day => {
-      availability[day] = true
-    })
     setFormData(prev => ({
       ...prev,
-      availability: JSON.stringify(availability)
+      availability: JSON.stringify(getDefaultAvailability())
     }))
   }
 
   const deselectAllDays = () => {
     const availability = {}
     daysOfWeek.forEach(day => {
-      availability[day] = false
+      availability[day] = { AM: false, PM: false }
     })
     setFormData(prev => ({
       ...prev,
@@ -288,14 +298,23 @@ export default function StaffSection({ selectedTeamId }) {
 
   const getAvailabilityDisplay = (availabilityString) => {
     try {
-      const availability = JSON.parse(availabilityString)
-      const availableDays = Object.entries(availability)
-        .filter(([_, isAvailable]) => isAvailable)
-        .map(([day, _]) => day)
+      const parsed = parseAvailability(availabilityString)
+      let fullDays = 0
+      let partialDays = 0
       
-      if (availableDays.length === 7) return 'All days'
-      if (availableDays.length === 0) return 'No availability'
-      return `${availableDays.length} days`
+      daysOfWeek.forEach(day => {
+        const dayAvail = parsed[day] || { AM: false, PM: false }
+        if (dayAvail.AM && dayAvail.PM) {
+          fullDays++
+        } else if (dayAvail.AM || dayAvail.PM) {
+          partialDays++
+        }
+      })
+      
+      if (fullDays === 7) return 'All days'
+      if (fullDays === 0 && partialDays === 0) return 'No availability'
+      if (partialDays > 0) return `${fullDays} full, ${partialDays} partial`
+      return `${fullDays} days`
     } catch {
       return 'Not set'
     }
@@ -649,29 +668,63 @@ export default function StaffSection({ selectedTeamId }) {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <p className="text-xs text-gray-500 mb-3">
+                    Tap the day name to toggle all, or choose AM/PM individually
+                  </p>
+                  <div className="space-y-2">
                     {daysOfWeek.map((day) => {
                       const availability = JSON.parse(formData.availability)
+                      const dayAvail = availability[day] || { AM: true, PM: true }
+                      const allOn = dayAvail.AM && dayAvail.PM
+                      const allOff = !dayAvail.AM && !dayAvail.PM
+                      
                       return (
-                        <button
+                        <div
                           key={day}
-                          type="button"
-                          onClick={() => toggleAvailability(day)}
-                          className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm font-medium transition-all ${
-                            availability[day]
-                              ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          className={`rounded-lg border transition-all ${
+                            allOn ? 'bg-green-50 border-green-200' : 
+                            allOff ? 'bg-gray-100 border-transparent' : 
+                            'bg-amber-50 border-amber-200'
                           }`}
                         >
-                          {day.slice(0, 3)}
-                          <span className="hidden sm:inline">{day.slice(3)}</span>
-                        </button>
+                          <div className="flex items-center justify-between px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleFullDay(day)}
+                              className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
+                            >
+                              {day}
+                            </button>
+                            
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleAvailability(day, 'AM')}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                                  dayAvail.AM
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-200 text-gray-500'
+                                }`}
+                              >
+                                AM
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleAvailability(day, 'PM')}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                                  dayAvail.PM
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-200 text-gray-500'
+                                }`}
+                              >
+                                PM
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       )
                     })}
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Select the days this person is available to work
-                  </p>
                 </div>
               </div>
 
