@@ -14,17 +14,29 @@ export default function DashboardPage() {
 
   // Check if user is employee and redirect
   useEffect(() => {
-    if (!isLoaded) return
+    if (!isLoaded || !user) return
 
     const checkUserType = async () => {
+      // Cache key includes user ID so different users don't conflict
+      const cacheKey = `shiftly_user_type_${user.id}`
+      const cachedType = localStorage.getItem(cacheKey)
+      
+      if (cachedType === 'manager') {
+        setIsCheckingUserType(false)
+        return
+      }
+
       try {
         const response = await fetch('/api/auth/user-type')
         const data = await response.json()
         
         if (data.type === 'employee') {
+          localStorage.setItem(cacheKey, 'employee')
           router.replace('/employee')
           return
         }
+        
+        localStorage.setItem(cacheKey, 'manager')
       } catch (error) {
         console.error('Error checking user type:', error)
       }
@@ -32,7 +44,7 @@ export default function DashboardPage() {
     }
 
     checkUserType()
-  }, [isLoaded, router])
+  }, [isLoaded, user, router])
 
   // Fetch rotas with React Query - cached for 5 mins, instant on return
   const { data: rotas = [], isLoading } = useQuery({
@@ -70,7 +82,6 @@ export default function DashboardPage() {
       return rotaId
     },
     onSuccess: () => {
-      // Invalidate and refetch rotas after successful delete
       queryClient.invalidateQueries({ queryKey: ['rotas'] })
     },
     onError: (error) => {
@@ -83,7 +94,7 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     const approvedRotas = rotas.filter(r => r.approved)
     const totalWeeks = approvedRotas.reduce((sum, r) => sum + (r.week_count || 1), 0)
-    const timeSaved = approvedRotas.length * 2.5 // ~2.5 hours saved per rota
+    const timeSaved = approvedRotas.length * 2.5
     
     return {
       timeSaved: timeSaved.toFixed(1),
@@ -92,10 +103,8 @@ export default function DashboardPage() {
   }, [rotas])
 
   const handleDeleteRota = async (rotaId, e) => {
-    e.stopPropagation() // Prevent navigation when clicking delete
-    
+    e.stopPropagation()
     if (!confirm('Are you sure you want to delete this rota? This cannot be undone.')) return
-    
     deleteMutation.mutate(rotaId)
   }
 
@@ -131,12 +140,11 @@ export default function DashboardPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Split rotas into upcoming and past
   const approvedRotas = rotas.filter(r => r.approved)
   
   const upcomingRotas = approvedRotas
     .filter(r => {
-      if (!r.end_date) return true // No end date, assume upcoming
+      if (!r.end_date) return true
       const endDate = new Date(r.end_date)
       return endDate >= today
     })
@@ -148,14 +156,13 @@ export default function DashboardPage() {
       const endDate = new Date(r.end_date)
       return endDate < today
     })
-    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date)) // Most recent first
+    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 
-  // Draft rotas (not approved)
   const draftRotas = rotas.filter(r => !r.approved)
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-      {/* Welcome Header - Centered */}
+      {/* Welcome Header */}
       <div className="text-center mb-8 sm:mb-12">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2">
           Welcome back, {firstName}
@@ -165,9 +172,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards - Stack on mobile, 3 cols on desktop */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-10">
-        {/* Time Saved */}
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-6 text-center hover:shadow-lg hover:shadow-pink-500/10 transition-all">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-pink-100 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -178,7 +184,6 @@ export default function DashboardPage() {
           <p className="text-xs sm:text-sm text-gray-500">Time Saved</p>
         </div>
 
-        {/* Weeks Approved */}
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-6 text-center hover:shadow-lg hover:shadow-pink-500/10 transition-all">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-pink-100 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -189,7 +194,6 @@ export default function DashboardPage() {
           <p className="text-xs sm:text-sm text-gray-500">Weeks Approved</p>
         </div>
 
-        {/* Employee Requests - Clickable */}
         <Link 
           href="/dashboard/requests"
           className={`bg-white rounded-xl sm:rounded-2xl border p-3 sm:p-6 text-center hover:shadow-lg hover:shadow-pink-500/10 transition-all ${
@@ -379,7 +383,6 @@ export default function DashboardPage() {
   )
 }
 
-// Extracted Past Rotas section to keep main component cleaner
 function PastRotasSection({ pastRotas, onRotaClick, onDelete, deleteMutation, formatFullDate }) {
   const [showPastRotas, setShowPastRotas] = useState(false)
   

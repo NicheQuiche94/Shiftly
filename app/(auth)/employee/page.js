@@ -182,6 +182,11 @@ export default function EmployeeDashboard() {
     }))
   }
 
+  const handleSignOut = () => {
+    if (user) localStorage.removeItem(`shiftly_user_type_${user.id}`)
+    signOut(() => router.push('/'))
+  }
+
   const pendingRequests = requests.filter(r => r.status === 'pending')
   const resolvedRequests = requests.filter(r => r.status !== 'pending')
   const firstName = user?.firstName || profile?.name?.split(' ')[0] || 'there'
@@ -293,7 +298,7 @@ export default function EmployeeDashboard() {
           </p>
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => signOut(() => router.push('/'))}
+              onClick={handleSignOut}
               className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               Sign Out
@@ -324,7 +329,7 @@ export default function EmployeeDashboard() {
             <span className="font-bold text-gray-900">Shiftly</span>
           </div>
           <button
-            onClick={() => signOut(() => router.push('/'))}
+            onClick={handleSignOut}
             className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
             Sign Out
