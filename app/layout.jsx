@@ -7,8 +7,19 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: 'Shiftly',
-  description: 'Staff scheduling made simple',
+  title: 'Shiftly — Staff Scheduling Made Fair',
+  description: 'Build fair, balanced rotas in minutes. Set your rules once, Shiftly handles the rest. Built for retail and hospitality managers.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  openGraph: {
+    images: ['/og-image.png'],
+  },
 }
 
 export default function RootLayout({ children }) {

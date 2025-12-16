@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
+import Image from 'next/image'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -82,16 +83,30 @@ export default function Navigation() {
     return pathname.startsWith(path)
   }
 
+  // Logo component for nav
+  const NavLogo = ({ mobile = false }) => (
+    <Link href="/dashboard" className="flex items-center space-x-2">
+      <Image 
+        src="/logo-white.svg" 
+        alt="Shiftly" 
+        width={mobile ? 32 : 36} 
+        height={mobile ? 32 : 36}
+        className="flex-shrink-0"
+      />
+      <span 
+        className={`text-white font-semibold ${mobile ? 'text-xl' : 'text-2xl'}`}
+        style={{ fontFamily: "'Cal Sans', sans-serif" }}
+      >
+        Shiftly
+      </span>
+    </Link>
+  )
+
   return (
     <>
       {/* Mobile Header Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-pink-500 to-pink-600 flex items-center justify-between px-4 z-50">
-        <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg">
-            <span className="text-pink-600 font-bold text-base">S</span>
-          </div>
-          <span className="text-white font-bold text-lg">Shiftly</span>
-        </Link>
+        <NavLogo mobile />
         
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -171,12 +186,7 @@ export default function Navigation() {
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-52 bg-gradient-to-b from-pink-500 to-pink-600 flex-col z-50 rounded-r-[2rem]">
         {/* Logo */}
         <div className="p-6">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-pink-600 font-bold text-lg">S</span>
-            </div>
-            <span className="text-white font-bold text-xl">Shiftly</span>
-          </Link>
+          <NavLogo />
         </div>
 
         {/* Nav Items */}
