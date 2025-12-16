@@ -25,7 +25,7 @@ export default function Footer() {
 
           {/* Product */}
           <div>
-            <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4">Product</h3>
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4 font-cal">Product</h3>
             <ul className="space-y-3">
               <li>
                 <Link href="/#features" className="text-gray-300 hover:text-white transition-colors text-sm">
@@ -47,7 +47,7 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4">Company</h3>
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4 font-cal">Company</h3>
             <ul className="space-y-3">
               <li>
                 <Link href="/about" className="text-gray-300 hover:text-white transition-colors text-sm">
@@ -69,7 +69,7 @@ export default function Footer() {
 
           {/* Access */}
           <div>
-            <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4">Access</h3>
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-400 mb-4 font-cal">Access</h3>
             <ul className="space-y-3">
               <li>
                 <Link href="/sign-in" className="text-gray-300 hover:text-white transition-colors text-sm">

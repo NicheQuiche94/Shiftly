@@ -25,7 +25,7 @@ function RulesComplianceSection({ rules }) {
 
   return (
     <div className="p-4 sm:p-6 border-b border-gray-200/60 bg-gray-50/30 no-print">
-      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Rules Compliance</h3>
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 font-cal">Rules Compliance</h3>
       <div className="space-y-2">
         {rules.map((rule, idx) => {
           const isExpanded = expandedRules[idx]
@@ -597,7 +597,7 @@ function GenerateRotaContent() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
         {/* Header */}
         <div className="mb-6 sm:mb-8 no-print">
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 font-cal">
             Rota Builder
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
@@ -635,7 +635,7 @@ function GenerateRotaContent() {
 
         {/* Team Selection Card */}
         <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2 font-cal">
             <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -681,7 +681,7 @@ function GenerateRotaContent() {
 
         {/* Week Selection Card */}
         <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2 font-cal">
             <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -861,7 +861,7 @@ function GenerateRotaContent() {
         {/* Saved Rotas List */}
         {showSavedRotas && (
           <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Saved Rotas</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 font-cal">Saved Rotas</h3>
             {savedRotas.length === 0 ? (
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-full mb-4">
@@ -968,7 +968,7 @@ function GenerateRotaContent() {
                 <div className="space-y-6 sm:space-y-8">
                   {Array.from({ length: weekCount }, (_, weekIndex) => weekIndex + 1).map((weekNum) => (
                     <div key={weekNum} className="print:break-after-page">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 font-cal">
                         Week {weekNum}
                         <span className="text-sm font-normal text-gray-500 ml-2">
                           {getDateForDay(weekNum - 1, 'Monday')} - {getDateForDay(weekNum - 1, 'Sunday')}
@@ -1075,7 +1075,7 @@ function GenerateRotaContent() {
               {/* Hours Summary Tab */}
               {activeTab === 'hours' && rota.hours_report && (
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Staff Hours Summary</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 font-cal">Staff Hours Summary</h3>
                   
                   {(() => {
                     const staffWeeklyHours = {}
@@ -1203,7 +1203,7 @@ function GenerateRotaContent() {
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Save Rota as Draft</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 font-cal">Save Rota as Draft</h3>
             <p className="text-sm text-gray-600 mb-4">Save this rota to revisit later.</p>
             <input
               type="text"
@@ -1237,7 +1237,7 @@ function GenerateRotaContent() {
       {showApproveModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Save & Approve Rota</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 font-cal">Save & Approve Rota</h3>
             <p className="text-sm text-gray-600 mb-4">Approve this rota to finalize it.</p>
             <input
               type="text"

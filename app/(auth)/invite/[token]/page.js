@@ -98,7 +98,7 @@ export default function InvitePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Invite Invalid</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 font-cal">Invite Invalid</h1>
           <p className="text-gray-600 mb-6">{error}</p>
           <p className="text-sm text-gray-500">
             Please contact your manager for a new invite link.
@@ -117,7 +117,7 @@ export default function InvitePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">You're all set!</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 font-cal">You're all set!</h1>
           <p className="text-gray-600 mb-4">Welcome to Shiftly, {inviteData?.staff_name}!</p>
           <p className="text-sm text-gray-500">Redirecting to your dashboard...</p>
         </div>
@@ -135,7 +135,7 @@ export default function InvitePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">You're Invited!</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-cal">You're Invited!</h1>
         </div>
 
         {/* Invite Details */}

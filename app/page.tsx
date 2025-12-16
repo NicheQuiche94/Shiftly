@@ -18,10 +18,7 @@ export default function LandingPage() {
                 width={32} 
                 height={32}
               />
-              <span 
-                className="text-2xl text-gray-900"
-                style={{ fontFamily: "'Cal Sans', sans-serif" }}
-              >
+              <span className="text-2xl text-gray-900 font-cal">
                 Shiftly
               </span>
             </Link>
@@ -56,10 +53,7 @@ export default function LandingPage() {
             <span className="text-pink-600 text-sm font-medium">Staff scheduling that's actually fair</span>
           </div>
           
-          <h1 
-            className="text-5xl lg:text-7xl text-gray-900 mb-6 leading-tight"
-            style={{ fontFamily: "'Cal Sans', sans-serif" }}
-          >
+          <h1 className="text-5xl lg:text-7xl text-gray-900 mb-6 leading-tight font-cal">
             Build rotas in minutes,{' '}
             <span className="text-pink-500">not hours</span>
           </h1>
@@ -103,10 +97,7 @@ export default function LandingPage() {
       <section className="px-6 lg:px-8 py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 
-              className="text-3xl lg:text-4xl text-gray-900 mb-4"
-              style={{ fontFamily: "'Cal Sans', sans-serif" }}
-            >
+            <h2 className="text-3xl lg:text-4xl text-gray-900 mb-4 font-cal">
               The real cost of manual scheduling
             </h2>
             <p className="text-xl text-gray-600">
@@ -121,7 +112,7 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Endless complaints</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 font-cal">Endless complaints</h3>
               <p className="text-gray-600">
                 "Why do I always close?" "How come they never work weekends?" Staff unhappy with perceived unfairness.
               </p>
@@ -133,7 +124,7 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Hours wasted weekly</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 font-cal">Hours wasted weekly</h3>
               <p className="text-gray-600">
                 Juggling availability, preferences, contracted hours, and shift coverage. Every. Single. Week.
               </p>
@@ -145,7 +136,7 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Costly mistakes</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 font-cal">Costly mistakes</h3>
               <p className="text-gray-600">
                 Under contracted hours? Legal issue. Close then open? Burnout. Double-booked? Chaos.
               </p>
@@ -158,10 +149,7 @@ export default function LandingPage() {
       <section id="how-it-works" className="px-6 lg:px-8 py-20 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 
-              className="text-3xl lg:text-4xl text-gray-900 mb-4"
-              style={{ fontFamily: "'Cal Sans', sans-serif" }}
-            >
+            <h2 className="text-3xl lg:text-4xl text-gray-900 mb-4 font-cal">
               Set up once. Generate forever.
             </h2>
             <p className="text-xl text-gray-600">
@@ -175,10 +163,7 @@ export default function LandingPage() {
               <div className="inline-block px-3 py-1 bg-pink-100 text-pink-600 rounded-full text-sm font-semibold mb-4">
                 Step 1
               </div>
-              <h3 
-                className="text-2xl lg:text-3xl text-gray-900 mb-4"
-                style={{ fontFamily: "'Cal Sans', sans-serif" }}
-              >
+              <h3 className="text-2xl lg:text-3xl text-gray-900 mb-4 font-cal">
                 Add your team and shifts
               </h3>
               <p className="text-lg text-gray-600 mb-6">
@@ -234,10 +219,7 @@ export default function LandingPage() {
               <div className="inline-block px-3 py-1 bg-pink-100 text-pink-600 rounded-full text-sm font-semibold mb-4">
                 Step 2
               </div>
-              <h3 
-                className="text-2xl lg:text-3xl text-gray-900 mb-4"
-                style={{ fontFamily: "'Cal Sans', sans-serif" }}
-              >
+              <h3 className="text-2xl lg:text-3xl text-gray-900 mb-4 font-cal">
                 Set your fairness rules
               </h3>
               <p className="text-lg text-gray-600 mb-6">
@@ -272,10 +254,7 @@ export default function LandingPage() {
               <div className="inline-block px-3 py-1 bg-pink-100 text-pink-600 rounded-full text-sm font-semibold mb-4">
                 Step 3
               </div>
-              <h3 
-                className="text-2xl lg:text-3xl text-gray-900 mb-4"
-                style={{ fontFamily: "'Cal Sans', sans-serif" }}
-              >
+              <h3 className="text-2xl lg:text-3xl text-gray-900 mb-4 font-cal">
                 Generate and share
               </h3>
               <p className="text-lg text-gray-600 mb-6">
@@ -320,10 +299,7 @@ export default function LandingPage() {
       <section id="pricing" className="px-6 lg:px-8 py-20 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <h2 
-              className="text-3xl lg:text-4xl text-gray-900 mb-4"
-              style={{ fontFamily: "'Cal Sans', sans-serif" }}
-            >
+            <h2 className="text-3xl lg:text-4xl text-gray-900 mb-4 font-cal">
               Simple pricing. Everything included.
             </h2>
             <p className="text-xl text-gray-600">
@@ -422,10 +398,7 @@ export default function LandingPage() {
       {/* Social Proof / Trust */}
       <section className="px-6 lg:px-8 py-20 bg-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 
-            className="text-3xl lg:text-4xl text-gray-900 mb-4"
-            style={{ fontFamily: "'Cal Sans', sans-serif" }}
-          >
+          <h2 className="text-3xl lg:text-4xl text-gray-900 mb-4 font-cal">
             Built for retail and hospitality
           </h2>
           <p className="text-xl text-gray-600 mb-12">
@@ -452,10 +425,7 @@ export default function LandingPage() {
       {/* Final CTA */}
       <section className="px-6 lg:px-8 py-20 bg-pink-500">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 
-            className="text-3xl lg:text-5xl text-white mb-6"
-            style={{ fontFamily: "'Cal Sans', sans-serif" }}
-          >
+          <h2 className="text-3xl lg:text-5xl text-white mb-6 font-cal">
             Ready to stop being the rota referee?
           </h2>
           <p className="text-xl text-pink-100 mb-10">
@@ -482,10 +452,7 @@ export default function LandingPage() {
                 width={28} 
                 height={28}
               />
-              <span 
-                className="text-xl text-white"
-                style={{ fontFamily: "'Cal Sans', sans-serif" }}
-              >
+              <span className="text-xl text-white font-cal">
                 Shiftly
               </span>
             </div>

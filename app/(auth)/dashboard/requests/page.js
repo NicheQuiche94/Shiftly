@@ -315,7 +315,7 @@ export default function RequestsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xl">{config.icon}</span>
-              <h3 className="font-semibold text-gray-900">{config.label}</h3>
+              <h3 className="font-semibold text-gray-900 font-cal">{config.label}</h3>
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.badgeColor}`}>
                 {requests.length}
               </span>
@@ -348,7 +348,7 @@ export default function RequestsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 font-cal">
             Requests
           </h1>
           <p className="text-gray-600 text-sm sm:text-base">
@@ -504,7 +504,7 @@ export default function RequestsPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-cal">
                 {modalType === 'incoming' ? 'Log Staff Request' : 'Send Request to Staff'}
               </h2>
               <button 

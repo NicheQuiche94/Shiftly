@@ -327,7 +327,7 @@ export default function StaffSection({ selectedTeamId }) {
       {/* Header with Hours Comparison */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Staff Members</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-cal">Staff Members</h2>
           <p className="text-sm text-gray-600 mt-1">Manage your team and their availability</p>
         </div>
         
@@ -571,7 +571,7 @@ export default function StaffSection({ selectedTeamId }) {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center mb-5 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-cal">
                 {editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}
               </h2>
               <button 
@@ -764,7 +764,7 @@ export default function StaffSection({ selectedTeamId }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Invite Sent!</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2 font-cal">Invite Sent!</h2>
               <p className="text-gray-600">
                 We've emailed an invite link to
               </p>

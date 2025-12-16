@@ -303,7 +303,7 @@ export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButt
             {createStep === 1 && (
               <>
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Name Your Team</h2>
+                  <h2 className="text-xl font-bold text-gray-900 font-cal">Name Your Team</h2>
                   <p className="text-gray-500 text-sm mt-1">Create a team to organize staff and shifts</p>
                 </div>
 
@@ -363,7 +363,7 @@ export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButt
             {createStep === 2 && (
               <>
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Import Existing Rota?</h2>
+                  <h2 className="text-xl font-bold text-gray-900 font-cal">Import Existing Rota?</h2>
                   <p className="text-gray-500 text-sm mt-1">We can extract staff and shifts from your existing schedule</p>
                 </div>
 
@@ -416,7 +416,7 @@ export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButt
             {createStep === 3 && (
               <>
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className="text-xl font-bold text-gray-900 font-cal">
                     {parsedData ? 'Review Import' : 'Upload File'}
                   </h2>
                   <p className="text-gray-500 text-sm mt-1">
@@ -467,7 +467,7 @@ export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButt
                     {/* Staff Section */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900">Staff ({parsedData.staff.length})</h3>
+                        <h3 className="font-semibold text-gray-900 font-cal">Staff ({parsedData.staff.length})</h3>
                       </div>
                       <div className="space-y-2">
                         {parsedData.staff.map((staff, idx) => (
@@ -502,7 +502,7 @@ export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButt
                     {/* Shifts Section */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900">Shifts ({parsedData.shifts.length})</h3>
+                        <h3 className="font-semibold text-gray-900 font-cal">Shifts ({parsedData.shifts.length})</h3>
                       </div>
                       <div className="space-y-2">
                         {parsedData.shifts.map((shift, idx) => (

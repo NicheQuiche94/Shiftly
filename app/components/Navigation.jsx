@@ -93,10 +93,7 @@ export default function Navigation() {
         height={mobile ? 32 : 36}
         className="flex-shrink-0"
       />
-      <span 
-        className={`text-white font-semibold ${mobile ? 'text-xl' : 'text-2xl'}`}
-        style={{ fontFamily: "'Cal Sans', sans-serif" }}
-      >
+      <span className={`text-white font-semibold font-cal ${mobile ? 'text-xl' : 'text-2xl'}`}>
         Shiftly
       </span>
     </Link>

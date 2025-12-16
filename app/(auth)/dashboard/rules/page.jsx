@@ -160,7 +160,7 @@ export default function RulesPage() {
     <>
       <main className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cal">
             Scheduling Rules
           </h1>
           <p className="text-gray-600">
@@ -198,7 +198,7 @@ export default function RulesPage() {
                 </button>
               </div>
               
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 font-cal">
                 {rule.name}
               </h3>
               <p className="text-sm text-gray-600 mb-4">

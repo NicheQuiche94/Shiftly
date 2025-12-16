@@ -170,7 +170,7 @@ export default function RulesSection({ selectedTeamId }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Scheduling Rules</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-cal">Scheduling Rules</h2>
           <p className="text-sm text-gray-600 mt-1">Configure constraints for fair and balanced scheduling</p>
         </div>
         
@@ -205,7 +205,7 @@ export default function RulesSection({ selectedTeamId }) {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-3 mb-1">
-                  <h3 className="text-sm sm:text-base font-semibold text-gray-900">
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 font-cal">
                     {rule.name}
                   </h3>
                   

@@ -108,7 +108,7 @@ export default function ShiftEditModal({
       <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">Edit Shift</h3>
+          <h3 className="text-xl font-bold text-gray-900 font-cal">Edit Shift</h3>
           <button 
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

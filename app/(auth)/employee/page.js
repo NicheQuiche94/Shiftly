@@ -242,7 +242,7 @@ export default function EmployeeDashboard() {
 
         <div className="max-w-md mx-auto px-4 py-12">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Employee Sign In</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 font-cal">Employee Sign In</h1>
             <p className="text-gray-600">
               Sign in to view your schedule and submit requests
             </p>
@@ -292,7 +292,7 @@ export default function EmployeeDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Account Not Linked</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2 font-cal">Account Not Linked</h1>
           <p className="text-gray-600 mb-6">
             Your account isn't linked to a staff profile yet. Please ask your manager for an invite link.
           </p>
@@ -340,7 +340,7 @@ export default function EmployeeDashboard() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* Welcome */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Hi, {firstName}! 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-cal">Hi, {firstName}! 👋</h1>
           <p className="text-gray-600">{profile.role} · {profile.contracted_hours}h/week</p>
         </div>
 
@@ -376,7 +376,7 @@ export default function EmployeeDashboard() {
         {/* Pending Requests */}
         {pendingRequests.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <h2 className="font-semibold text-amber-800 mb-2">
+            <h2 className="font-semibold text-amber-800 mb-2 font-cal">
               Pending Requests ({pendingRequests.length})
             </h2>
             <div className="space-y-2">
@@ -399,7 +399,7 @@ export default function EmployeeDashboard() {
         {/* Recent Approved/Rejected Requests */}
         {resolvedRequests.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-            <h2 className="font-semibold text-gray-900 mb-2">
+            <h2 className="font-semibold text-gray-900 mb-2 font-cal">
               Recent Requests
             </h2>
             <div className="space-y-2">
@@ -426,7 +426,7 @@ export default function EmployeeDashboard() {
         {/* Upcoming Shifts */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Upcoming Shifts</h2>
+            <h2 className="font-semibold text-gray-900 font-cal">Upcoming Shifts</h2>
           </div>
           
           {shiftsLoading ? (
@@ -467,7 +467,7 @@ export default function EmployeeDashboard() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-gray-900">Request Time Off</h2>
+              <h2 className="text-xl font-bold text-gray-900 font-cal">Request Time Off</h2>
               <button 
                 onClick={() => setShowRequestModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -605,7 +605,7 @@ export default function EmployeeDashboard() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-gray-900">My Availability</h2>
+              <h2 className="text-xl font-bold text-gray-900 font-cal">My Availability</h2>
               <button 
                 onClick={() => setShowAvailabilityModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"

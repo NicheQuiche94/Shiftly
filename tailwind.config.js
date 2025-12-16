@@ -9,6 +9,7 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        cal: ["'Cal Sans'", 'sans-serif'],
       },
       colors: {
         pink: {

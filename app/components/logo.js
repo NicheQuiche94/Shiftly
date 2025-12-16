@@ -7,10 +7,7 @@ export default function Logo({ size = "default" }) {
     }
     
     return (
-      <span 
-        className={`${sizes[size]} tracking-tight`}
-        style={{ fontFamily: "'Cal Sans', sans-serif" }}
-      >
+      <span className={`${sizes[size]} tracking-tight font-cal`}>
         Shiftly
       </span>
     )

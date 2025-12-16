@@ -394,7 +394,7 @@ export default function ShiftsPage() {
         {/* Header */}
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cal">
               Shift Patterns
             </h1>
             <p className="text-gray-600">
@@ -601,7 +601,7 @@ export default function ShiftsPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900 font-cal">
                 {editingShift ? 'Edit Shift' : editingGroup ? 'Edit Shift Pattern' : 'Add Shift Pattern'}
               </h2>
               <button 

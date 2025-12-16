@@ -164,7 +164,7 @@ export default function DashboardPage() {
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       {/* Welcome Header */}
       <div className="text-center mb-8 sm:mb-12">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2 font-cal">
           Welcome back, {firstName}
         </h1>
         <p className="text-gray-500 text-sm sm:text-base">
@@ -219,7 +219,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Upcoming Rotas</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 font-cal">Upcoming Rotas</h2>
             <button
               onClick={() => router.push('/dashboard/generate')}
               className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all whitespace-nowrap"
@@ -314,7 +314,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Drafts</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 font-cal">Drafts</h2>
               <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
                 {draftRotas.length}
               </span>
@@ -395,7 +395,7 @@ function PastRotasSection({ pastRotas, onRotaClick, onDelete, deleteMutation, fo
         className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">Past Rotas</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 font-cal">Past Rotas</h2>
           <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
             {pastRotas.length}
           </span>

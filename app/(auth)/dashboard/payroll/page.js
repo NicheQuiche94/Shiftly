@@ -223,7 +223,7 @@ export default function PayrollPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Payroll Access</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 font-cal">Payroll Access</h1>
             <p className="text-sm sm:text-base text-gray-600">
               Enter your account password to access sensitive payroll information
             </p>
@@ -285,7 +285,7 @@ export default function PayrollPage() {
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Payroll</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 font-cal">Payroll</h1>
             <p className="text-sm sm:text-base text-gray-600">Manage staff pay rates and calculate rota costs</p>
           </div>
           <button
@@ -305,7 +305,7 @@ export default function PayrollPage() {
 
       {/* Team Selector */}
       <div className="bg-white rounded-2xl border-2 border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Select Team</h2>
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 font-cal">Select Team</h2>
         <TeamSelector
           selectedTeamId={selectedTeamId}
           onTeamChange={setSelectedTeamId}
@@ -341,7 +341,7 @@ export default function PayrollPage() {
       {activeTab === 'pay' && (
         <div className="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gray-50">
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Staff Pay Information</h3>
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base font-cal">Staff Pay Information</h3>
             <p className="text-xs sm:text-sm text-gray-500">Set hourly rates or annual salaries for each team member</p>
           </div>
 
@@ -478,7 +478,7 @@ export default function PayrollPage() {
         <div className="space-y-4 sm:space-y-6">
           {/* Rota Selector */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 p-4 sm:p-6">
-            <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Select Rota</h3>
+            <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base font-cal">Select Rota</h3>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <select
                 value={selectedRotaId || ''}
@@ -519,7 +519,7 @@ export default function PayrollPage() {
               <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
-                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{rotaCosts.rota_name}</h3>
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base font-cal">{rotaCosts.rota_name}</h3>
                     <p className="text-xs sm:text-sm text-gray-500">
                       {formatDate(rotaCosts.start_date)} - {formatDate(rotaCosts.end_date)} • {rotaCosts.week_count} week{rotaCosts.week_count > 1 ? 's' : ''}
                     </p>

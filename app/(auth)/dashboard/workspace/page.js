@@ -44,7 +44,7 @@ export default function WorkspacePage() {
 
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">
+        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 font-cal">
           My Workspace
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
