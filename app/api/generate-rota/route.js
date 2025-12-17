@@ -177,7 +177,7 @@ export async function POST(request) {
         id: s.id,
         name: s.name,
         contracted_hours: s.contracted_hours || 0,
-        max_hours: s.max_hours_per_week || 48,
+        max_hours: s.max_hours || s.contracted_hours || 48,
         availability: availability,
         team_name: teamName,
         team_id: s.team_id

@@ -38,7 +38,6 @@ class ShiftlyScheduler:
             contracted_hours = staff.get('contracted_hours', 0)
             max_hours = staff.get('max_hours', contracted_hours) or contracted_hours
             
-            # Ensure max_hours is at least contracted_hours
             if max_hours < contracted_hours:
                 max_hours = contracted_hours
             
@@ -48,25 +47,40 @@ class ShiftlyScheduler:
                 for shift_idx in range(len(self.shifts))
             )
             
-            # Must work at least contracted hours (with small tolerance)
             if contracted_hours > 0:
                 model.Add(total_minutes >= (contracted_hours * 60) - 60)
             
-            # Cannot exceed max hours
             model.Add(total_minutes <= max_hours * 60)
         
-        # Availability constraint
+        # Availability constraint (handles both old boolean and new AM/PM format)
         for shift_idx, shift in enumerate(self.shifts):
             shift_day = shift['day'].lower()
+            shift_start = self._parse_time(shift['start_time'])
+            is_morning = shift_start < 12 * 60  # Before noon = AM shift
+            
             for staff_idx, staff in enumerate(self.staff):
                 availability = staff.get('availability', {})
-                is_available = availability.get(shift_day, True)
+                day_availability = availability.get(shift_day, True)
+                
+                # Handle different availability formats
+                if isinstance(day_availability, dict):
+                    # New format: { 'AM': True, 'PM': False }
+                    if is_morning:
+                        is_available = day_availability.get('AM', True)
+                    else:
+                        is_available = day_availability.get('PM', True)
+                elif isinstance(day_availability, bool):
+                    # Old format: True/False for whole day
+                    is_available = day_availability
+                else:
+                    # Default to available if format is unknown
+                    is_available = True
+                
                 if not is_available:
                     model.Add(schedule[shift_idx][staff_idx] == 0)
         
         # ============================================================
         # HARD CONSTRAINT: Maximum 1 shift per staff per day
-        # This is fundamental - no one should ever work 2 shifts in a day
         # ============================================================
         shifts_by_day = {}
         for shift_idx, shift in enumerate(self.shifts):
@@ -77,7 +91,6 @@ class ShiftlyScheduler:
         
         for day, shift_indices_on_day in shifts_by_day.items():
             for staff_idx in range(len(self.staff)):
-                # Sum of all shifts for this staff on this day must be <= 1
                 model.Add(
                     sum(schedule[shift_idx][staff_idx] for shift_idx in shift_indices_on_day) <= 1
                 )
@@ -135,7 +148,6 @@ class ShiftlyScheduler:
         problems = []
         actions = []
         
-        # Check if max capacity can fulfill shifts
         if total_max_hours < total_shift_hours - 2:
             shortage = total_shift_hours - total_max_hours
             problems.append(f"Your staff can work up to {total_max_hours:.0f}h (max) but shifts need {total_shift_hours:.0f}h")
@@ -152,7 +164,13 @@ class ShiftlyScheduler:
                 continue
             
             availability = staff.get('availability', {})
-            available_days = [day for day, avail in availability.items() if avail]
+            available_days = []
+            for day, avail in availability.items():
+                if isinstance(avail, dict):
+                    if avail.get('AM', False) or avail.get('PM', False):
+                        available_days.append(day)
+                elif avail:
+                    available_days.append(day)
             
             max_possible = 0
             days_counted = set()
@@ -208,7 +226,6 @@ class ShiftlyScheduler:
             return f"Week {week_num} couldn't be generated. Try reducing the number of weeks or adjusting availability."
     
     def _add_rules_to_model(self, model, schedule):
-        # Group shifts by day for rule checking
         shifts_by_day = {}
         for shift_idx, shift in enumerate(self.shifts):
             day = shift['day']
@@ -318,7 +335,6 @@ class ShiftlyScheduler:
     def _validate_rules(self, schedule):
         compliance = []
         
-        # 1. No Double Shifts (always check - it's a fundamental constraint)
         double_shift_violations = self._check_no_double_shifts(schedule)
         if len(double_shift_violations) == 0:
             compliance.append({
@@ -335,7 +351,6 @@ class ShiftlyScheduler:
                 'violations': double_shift_violations
             })
         
-        # 2. Rest Between Shifts - ONLY if enabled
         if self._rule_enabled('rest_between_shifts'):
             min_hours = self._get_rule_value('rest_between_shifts', 12)
             rest_violations = self._check_overnight_rest(schedule, min_hours=min_hours)
@@ -354,7 +369,6 @@ class ShiftlyScheduler:
                     'violations': rest_violations
                 })
         
-        # 3. No Clopening - ONLY if enabled
         if self._rule_enabled('no_clopening'):
             violations = self._check_no_clopening(schedule)
             if len(violations) == 0:
@@ -372,7 +386,6 @@ class ShiftlyScheduler:
                     'violations': violations
                 })
         
-        # 4. Fair Weekend Distribution - ONLY if enabled
         if self._rule_enabled('fair_weekend_distribution'):
             weekend_patterns = self._check_fair_weekends(schedule)
             
@@ -411,7 +424,6 @@ class ShiftlyScheduler:
                     'violations': weekend_violations
                 })
         
-        # 5. Maximum Consecutive Days - ONLY if enabled
         if self._rule_enabled('max_consecutive_days'):
             max_days = self._get_rule_value('max_consecutive_days', 6)
             violations = self._check_max_consecutive(schedule, max_days)
@@ -431,7 +443,6 @@ class ShiftlyScheduler:
                     'violations': violations
                 })
         
-        # 6. Minimum Days Off - ONLY if enabled
         if self._rule_enabled('minimum_days_off'):
             min_days_off = self._get_rule_value('minimum_days_off', 2)
             days_off_violations = self._check_minimum_days_off(schedule, min_days_off=min_days_off)
@@ -652,7 +663,6 @@ class ShiftlyScheduler:
     
     def _check_minimum_days_off(self, schedule, min_days_off=2):
         violations = []
-        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         
         for week_data in schedule:
             staff_worked_days = {}
@@ -729,7 +739,6 @@ class ShiftlyScheduler:
             weekly_hours = staff_total_hours.get(staff['name'], [0] * self.weeks)
             avg_actual = sum(weekly_hours) / len(weekly_hours) if weekly_hours else 0
             
-            # Only flag if below contracted (not if using overtime up to max)
             if avg_actual < contracted - 0.5:
                 reason = self._diagnose_contract_mismatch(staff, avg_actual, contracted)
                 
@@ -756,7 +765,13 @@ class ShiftlyScheduler:
             return f"shift lengths are {', '.join(durations_list)} which can't combine to exactly {int(contracted)}h"
         
         availability = staff.get('availability', {})
-        available_days = [day for day, avail in availability.items() if avail]
+        available_days = []
+        for day, avail in availability.items():
+            if isinstance(avail, dict):
+                if avail.get('AM', False) or avail.get('PM', False):
+                    available_days.append(day)
+            elif avail:
+                available_days.append(day)
         
         if len(available_days) < 4:
             return f"only available {len(available_days)} days per week"
