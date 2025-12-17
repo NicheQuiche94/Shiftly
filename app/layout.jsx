@@ -7,7 +7,7 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: 'Shiftly — Staff Scheduling Made Fair',
+  title: 'Shiftly - Staff Scheduling Made Fair',
   description: 'Build fair, balanced rotas in minutes. Set your rules once, Shiftly handles the rest. Built for retail and hospitality managers.',
   icons: {
     icon: [

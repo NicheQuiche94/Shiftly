@@ -29,7 +29,7 @@ const TOUR_STEPS = [
   {
     id: 'shifts',
     title: 'Create Shift Patterns',
-    content: "Set up your recurring shifts — morning, afternoon, evening, or whatever works for your business.",
+    content: "Set up your recurring shifts - morning, afternoon, evening, or whatever works for your business.",
     position: 'right',
     target: 'nav-workspace',
     tip: "💡 Shifts are reusable templates, set them once and use forever"
@@ -37,7 +37,7 @@ const TOUR_STEPS = [
   {
     id: 'rules',
     title: 'Set Fairness Rules',
-    content: "Define what 'fair' means for your team. No clopening shifts, even weekend distribution, max consecutive days — you decide.",
+    content: "Define what 'fair' means for your team. No clopening shifts, even weekend distribution, max consecutive days - you decide.",
     position: 'right',
     target: 'nav-workspace',
     tip: "💡 Rules are enforced automatically every time you generate a rota"

@@ -101,7 +101,7 @@ export default function LandingPage() {
               The real cost of manual scheduling
             </h2>
             <p className="text-xl text-gray-600">
-              It's not just the hours spent—it's the drama that follows
+              It's not just the hours spent - it's the drama that follows
             </p>
           </div>
 
@@ -167,7 +167,7 @@ export default function LandingPage() {
                 Add your team and shifts
               </h3>
               <p className="text-lg text-gray-600 mb-6">
-                Enter your staff, their contracted hours, and availability. Define your shift patterns—morning, evening, whatever works for your business.
+                Enter your staff, their contracted hours, and availability. Define your shift patterns - morning, evening, whatever works for your business.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-gray-700">
@@ -223,7 +223,7 @@ export default function LandingPage() {
                 Set your fairness rules
               </h3>
               <p className="text-lg text-gray-600 mb-6">
-                Define what "fair" means for your team. No clopening shifts, even weekend distribution, maximum consecutive days—you decide, Shiftly enforces.
+                Define what "fair" means for your team. No clopening shifts, even weekend distribution, maximum consecutive days - you decide, Shiftly enforces.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-gray-700">
@@ -328,49 +328,49 @@ export default function LandingPage() {
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Unlimited staff</strong> — add your whole team</span>
+                  <span className="text-gray-700"><strong>Unlimited staff</strong> - add your whole team</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Unlimited rotas</strong> — generate as many as you need</span>
+                  <span className="text-gray-700"><strong>Unlimited rotas</strong> - generate as many as you need</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>All fairness rules</strong> — every rule, no restrictions</span>
+                  <span className="text-gray-700"><strong>All fairness rules</strong> - every rule, no restrictions</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Staff mobile app</strong> — they see schedules, request time off</span>
+                  <span className="text-gray-700"><strong>Staff mobile app</strong> - they see schedules, request time off</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Time-off management</strong> — approve/reject requests</span>
+                  <span className="text-gray-700"><strong>Time-off management</strong> - approve/reject requests</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Payroll integration</strong> — yes, included (not "Enterprise only")</span>
+                  <span className="text-gray-700"><strong>Payroll integration</strong> - yes, included (not "Enterprise only")</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Multiple teams</strong> — manage different departments</span>
+                  <span className="text-gray-700"><strong>Multiple teams</strong> - manage different departments</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-gray-700"><strong>Priority support</strong> — we actually respond</span>
+                  <span className="text-gray-700"><strong>Priority support</strong> - we actually respond</span>
                 </li>
               </ul>
 

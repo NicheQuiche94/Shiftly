@@ -1054,7 +1054,7 @@ function GenerateRotaContent() {
                                                 )
                                               })
                                             ) : (
-                                              <span className="text-gray-300 text-center block text-xs py-3">—</span>
+                                              <span className="text-gray-300 text-center block text-xs py-3">-</span>
                                             )}
                                           </div>
                                         </td>
