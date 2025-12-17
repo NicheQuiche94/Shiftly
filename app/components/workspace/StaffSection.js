@@ -16,17 +16,13 @@ const getDefaultAvailability = () => {
 const parseAvailability = (availabilityString) => {
   try {
     const parsed = JSON.parse(availabilityString)
-    // Handle legacy format (day: boolean) vs new format (day: {AM, PM})
     const converted = {}
     daysOfWeek.forEach(day => {
       if (typeof parsed[day] === 'boolean') {
-        // Legacy format - convert to new
         converted[day] = { AM: parsed[day], PM: parsed[day] }
       } else if (parsed[day] && typeof parsed[day] === 'object') {
-        // New format
         converted[day] = parsed[day]
       } else {
-        // Default
         converted[day] = { AM: true, PM: true }
       }
     })
@@ -50,6 +46,7 @@ export default function StaffSection({ selectedTeamId }) {
     email: '',
     role: '',
     contracted_hours: '',
+    max_hours: '',
     availability: JSON.stringify(getDefaultAvailability())
   })
 
@@ -142,9 +139,10 @@ export default function StaffSection({ selectedTeamId }) {
     }
   })
 
-  // Calculate hours (memoized)
-  const { staffHours, shiftHours, hoursMatch, hoursDiff } = useMemo(() => {
+  // Calculate hours (memoized) - now includes max_hours for capacity check
+  const { staffHours, maxStaffHours, shiftHours, hoursMatch, canFulfill, hoursDiff } = useMemo(() => {
     const totalStaffHours = staff.reduce((sum, member) => sum + (member.contracted_hours || 0), 0)
+    const totalMaxHours = staff.reduce((sum, member) => sum + (member.max_hours || member.contracted_hours || 0), 0)
 
     let totalShiftHours = 0
     shifts.forEach(shift => {
@@ -157,12 +155,15 @@ export default function StaffSection({ selectedTeamId }) {
     })
 
     const match = Math.abs(totalStaffHours - totalShiftHours) < 0.5
+    const canFulfillShifts = totalMaxHours >= totalShiftHours
     const diff = totalStaffHours - totalShiftHours
 
     return {
       staffHours: totalStaffHours,
+      maxStaffHours: totalMaxHours,
       shiftHours: totalShiftHours,
       hoursMatch: match,
+      canFulfill: canFulfillShifts,
       hoursDiff: diff
     }
   }, [staff, shifts])
@@ -174,6 +175,7 @@ export default function StaffSection({ selectedTeamId }) {
       email: '',
       role: '',
       contracted_hours: '',
+      max_hours: '',
       availability: JSON.stringify(getDefaultAvailability())
     })
     setShowModal(true)
@@ -187,6 +189,7 @@ export default function StaffSection({ selectedTeamId }) {
       email: member.email || '',
       role: member.role || '',
       contracted_hours: member.contracted_hours ? member.contracted_hours.toString() : '',
+      max_hours: member.max_hours ? member.max_hours.toString() : '',
       availability: JSON.stringify(parsedAvailability)
     })
     setShowModal(true)
@@ -208,6 +211,15 @@ export default function StaffSection({ selectedTeamId }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    const contractedHours = parseInt(formData.contracted_hours)
+    const maxHours = formData.max_hours ? parseInt(formData.max_hours) : contractedHours
+    
+    // Validate max_hours >= contracted_hours
+    if (maxHours < contractedHours) {
+      alert('Max hours cannot be less than contracted hours')
+      return
+    }
+    
     try {
       if (editingStaff) {
         await updateStaffMutation.mutateAsync({
@@ -215,7 +227,8 @@ export default function StaffSection({ selectedTeamId }) {
           name: formData.name,
           email: formData.email,
           role: formData.role,
-          contracted_hours: parseInt(formData.contracted_hours),
+          contracted_hours: contractedHours,
+          max_hours: maxHours,
           availability: formData.availability
         })
       } else {
@@ -224,7 +237,8 @@ export default function StaffSection({ selectedTeamId }) {
           name: formData.name,
           email: formData.email,
           role: formData.role,
-          contracted_hours: parseInt(formData.contracted_hours),
+          contracted_hours: contractedHours,
+          max_hours: maxHours,
           availability: formData.availability
         })
       }
@@ -234,6 +248,7 @@ export default function StaffSection({ selectedTeamId }) {
         email: '',
         role: '',
         contracted_hours: '',
+        max_hours: '',
         availability: JSON.stringify(getDefaultAvailability())
       })
       setEditingStaff(null)
@@ -333,45 +348,56 @@ export default function StaffSection({ selectedTeamId }) {
         
         {staff.length > 0 && (
           <div className={`rounded-lg border px-4 sm:px-5 py-2 sm:py-3 ${
-            hoursMatch 
+            canFulfill 
               ? 'bg-green-50 border-green-200' 
-              : 'bg-amber-50 border-amber-200'
+              : 'bg-red-50 border-red-200'
           }`}>
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="text-center">
-                <div className="text-xs text-gray-600 mb-0.5">Staff</div>
-                <div className={`text-lg sm:text-xl font-bold ${hoursMatch ? 'text-green-700' : 'text-gray-900'}`}>
+                <div className="text-xs text-gray-600 mb-0.5">Contracted</div>
+                <div className={`text-lg sm:text-xl font-bold ${canFulfill ? 'text-green-700' : 'text-gray-900'}`}>
                   {staffHours}h
                 </div>
+                {maxStaffHours > staffHours && (
+                  <div className="text-xs text-gray-500">
+                    (max {maxStaffHours}h)
+                  </div>
+                )}
               </div>
               
               <div className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full ${
-                hoursMatch ? 'bg-green-200' : 'bg-amber-200'
+                canFulfill ? 'bg-green-200' : 'bg-red-200'
               }`}>
-                {hoursMatch ? (
+                {canFulfill ? (
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 )}
               </div>
               
               <div className="text-center">
                 <div className="text-xs text-gray-600 mb-0.5">Shifts</div>
-                <div className={`text-lg sm:text-xl font-bold ${hoursMatch ? 'text-green-700' : 'text-gray-900'}`}>
+                <div className={`text-lg sm:text-xl font-bold ${canFulfill ? 'text-green-700' : 'text-gray-900'}`}>
                   {shiftHours.toFixed(0)}h
                 </div>
               </div>
             </div>
             
-            {!hoursMatch && (
-              <div className="text-xs text-amber-700 mt-1 text-center">
+            {!canFulfill && (
+              <div className="text-xs text-red-700 mt-1 text-center font-medium">
+                Need {Math.abs(shiftHours - maxStaffHours).toFixed(0)}h more capacity
+              </div>
+            )}
+            
+            {canFulfill && !hoursMatch && (
+              <div className="text-xs text-green-700 mt-1 text-center">
                 {hoursDiff > 0 
-                  ? `${hoursDiff.toFixed(0)}h more staff than shifts`
-                  : `${Math.abs(hoursDiff).toFixed(0)}h more shifts than staff`
+                  ? `${hoursDiff.toFixed(0)}h under contract (overtime available)`
+                  : `${Math.abs(hoursDiff).toFixed(0)}h overtime needed`
                 }
               </div>
             )}
@@ -437,7 +463,6 @@ export default function StaffSection({ selectedTeamId }) {
                       </div>
                     </div>
                     <div className="flex items-center space-x-1">
-                      {/* Invite button - mobile */}
                       {!member.clerk_user_id && (
                         <button 
                           onClick={() => handleInvite(member)}
@@ -477,7 +502,10 @@ export default function StaffSection({ selectedTeamId }) {
                       {getAvailabilityDisplay(member.availability)}
                     </div>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
-                      {member.contracted_hours}h/week
+                      {member.contracted_hours}h
+                      {member.max_hours && member.max_hours > member.contracted_hours && (
+                        <span className="text-pink-500 ml-1">(max {member.max_hours}h)</span>
+                      )}
                     </span>
                     {member.clerk_user_id ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
@@ -513,7 +541,10 @@ export default function StaffSection({ selectedTeamId }) {
                   </div>
                   <div className="col-span-2 flex items-center">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
-                      {member.contracted_hours}h/week
+                      {member.contracted_hours}h
+                      {member.max_hours && member.max_hours > member.contracted_hours && (
+                        <span className="text-pink-500 ml-1">(max {member.max_hours})</span>
+                      )}
                     </span>
                   </div>
                   <div className="col-span-1 flex items-center">
@@ -528,7 +559,6 @@ export default function StaffSection({ selectedTeamId }) {
                     )}
                   </div>
                   <div className="col-span-2 flex items-center justify-end space-x-2">
-                    {/* Invite button - only show if not already connected */}
                     {!member.clerk_user_id && (
                       <button 
                         onClick={() => handleInvite(member)}
@@ -631,19 +661,63 @@ export default function StaffSection({ selectedTeamId }) {
                   />
                 </div>
 
-                {/* Contracted Hours */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Contracted Hours per Week</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    max="168"
-                    value={formData.contracted_hours}
-                    onChange={(e) => setFormData({...formData, contracted_hours: e.target.value})}
-                    className="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
-                    placeholder="40"
-                  />
+                {/* Hours Section */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Contracted Hours */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Contracted Hours</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      max="168"
+                      value={formData.contracted_hours}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setFormData({
+                          ...formData, 
+                          contracted_hours: val,
+                          // Auto-set max_hours if not yet set or if it was equal to old contracted
+                          max_hours: (!formData.max_hours || formData.max_hours === formData.contracted_hours) ? val : formData.max_hours
+                        })
+                      }}
+                      className="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
+                      placeholder="20"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Guaranteed minimum
+                    </p>
+                  </div>
+
+                  {/* Max Hours */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">Max Hours</label>
+                    <input
+                      type="number"
+                      min={formData.contracted_hours || 0}
+                      max="168"
+                      value={formData.max_hours}
+                      onChange={(e) => setFormData({...formData, max_hours: e.target.value})}
+                      className="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all text-base"
+                      placeholder="30"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Willing to work (incl. overtime)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Info tip about hours */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <div className="flex gap-2">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-sm text-blue-800">
+                      <p><strong>Contracted hours</strong> = minimum guaranteed each week</p>
+                      <p className="mt-1"><strong>Max hours</strong> = most they're willing to work (for overtime flexibility)</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Availability */}
@@ -757,7 +831,6 @@ export default function StaffSection({ selectedTeamId }) {
       {showInviteModal && inviteData && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-md p-5 sm:p-6 shadow-2xl">
-            {/* Success Header */}
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -773,7 +846,6 @@ export default function StaffSection({ selectedTeamId }) {
               </p>
             </div>
 
-            {/* Info */}
             <div className="bg-gray-50 rounded-lg p-4 mb-5">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -786,7 +858,6 @@ export default function StaffSection({ selectedTeamId }) {
               </div>
             </div>
 
-            {/* Copy Link Toggle */}
             {!showCopyLink ? (
               <button
                 onClick={() => setShowCopyLink(true)}
@@ -822,7 +893,6 @@ export default function StaffSection({ selectedTeamId }) {
               </div>
             )}
 
-            {/* Done Button */}
             <button
               onClick={() => {
                 setShowInviteModal(false)

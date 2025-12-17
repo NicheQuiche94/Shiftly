@@ -5,6 +5,7 @@ import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import OnboardingTour from '../../../components/OnboardingTour'
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser()
@@ -379,6 +380,9 @@ export default function DashboardPage() {
           Manage Staff & Shifts →
         </button>
       </div>
+
+      {/* Onboarding Tour */}
+      <OnboardingTour />
     </main>
   )
 }

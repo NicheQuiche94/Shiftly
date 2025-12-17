@@ -29,6 +29,7 @@ export default function Navigation() {
 
   const navItems = [
     { 
+      id: 'nav-dashboard',
       name: 'Dashboard', 
       path: '/dashboard',
       icon: (
@@ -38,6 +39,7 @@ export default function Navigation() {
       )
     },
     { 
+      id: 'nav-workspace',
       name: 'Workspace', 
       path: '/dashboard/workspace',
       icon: (
@@ -47,6 +49,7 @@ export default function Navigation() {
       )
     },
     { 
+      id: 'nav-generate',
       name: 'Rota Builder', 
       path: '/dashboard/generate',
       icon: (
@@ -56,6 +59,7 @@ export default function Navigation() {
       )
     },
     { 
+      id: 'nav-requests',
       name: 'Requests', 
       path: '/dashboard/requests',
       icon: (
@@ -65,6 +69,7 @@ export default function Navigation() {
       )
     },
     { 
+      id: 'nav-payroll',
       name: 'Payroll', 
       path: '/dashboard/payroll',
       locked: true,
@@ -93,7 +98,10 @@ export default function Navigation() {
         height={mobile ? 32 : 36}
         className="flex-shrink-0"
       />
-      <span className={`text-white font-semibold font-cal ${mobile ? 'text-xl' : 'text-2xl'}`}>
+      <span 
+        className={`text-white font-semibold ${mobile ? 'text-xl' : 'text-2xl'}`}
+        style={{ fontFamily: "'Cal Sans', sans-serif" }}
+      >
         Shiftly
       </span>
     </Link>
@@ -139,6 +147,7 @@ export default function Navigation() {
             {navItems.map((item) => (
               <Link
                 key={item.path}
+                id={`${item.id}-mobile`}
                 href={item.path}
                 className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
                   isActive(item.path)
@@ -192,6 +201,7 @@ export default function Navigation() {
             {navItems.map((item) => (
               <Link
                 key={item.path}
+                id={item.id}
                 href={item.path}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                   isActive(item.path)

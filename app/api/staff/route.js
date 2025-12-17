@@ -13,7 +13,6 @@ export async function GET(request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get team_id from query params
   const { searchParams } = new URL(request.url)
   const teamId = searchParams.get('team_id')
 
@@ -22,7 +21,6 @@ export async function GET(request) {
     .select('*')
     .eq('user_id', userId)
 
-  // Filter by team if team_id is provided
   if (teamId) {
     query = query.eq('team_id', teamId)
   }
@@ -46,10 +44,12 @@ export async function POST(request) {
 
   const body = await request.json()
 
-  // team_id is now required
   if (!body.team_id) {
     return Response.json({ error: 'team_id is required' }, { status: 400 })
   }
+
+  const contractedHours = body.contracted_hours || 0
+  const maxHours = body.max_hours || contractedHours
 
   const insertData = {
     user_id: userId,
@@ -57,7 +57,8 @@ export async function POST(request) {
     name: body.name,
     email: body.email,
     role: body.role,
-    contracted_hours: body.contracted_hours || 0,
+    contracted_hours: contractedHours,
+    max_hours: maxHours,
     availability: body.availability
   }
 
@@ -84,15 +85,22 @@ export async function PUT(request) {
 
   const body = await request.json()
 
+  const updateData = {
+    name: body.name,
+    email: body.email,
+    role: body.role,
+    contracted_hours: body.contracted_hours,
+    availability: body.availability
+  }
+
+  // Only include max_hours if provided
+  if (body.max_hours !== undefined) {
+    updateData.max_hours = body.max_hours
+  }
+
   const { data, error } = await supabase
     .from('Staff')
-    .update({
-      name: body.name,
-      email: body.email,
-      role: body.role,
-      contracted_hours: body.contracted_hours,
-      availability: body.availability
-    })
+    .update(updateData)
     .eq('id', body.id)
     .eq('user_id', userId)
     .select()
