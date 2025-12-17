@@ -33,27 +33,26 @@ class ShiftlyScheduler:
             model.Add(sum(schedule[shift_idx][staff_idx] 
                          for staff_idx in range(len(self.staff))) == staff_required)
         
-        # Contracted hours constraint (with ±1 hour tolerance)
+        # Hours constraints: must get AT LEAST contracted hours, up to max hours
         for staff_idx, staff in enumerate(self.staff):
             contracted_hours = staff.get('contracted_hours', 0)
-            if contracted_hours > 0:
-                total_minutes = sum(
-                    schedule[shift_idx][staff_idx] * 
-                    self._get_shift_duration(self.shifts[shift_idx])
-                    for shift_idx in range(len(self.shifts))
-                )
-                contracted_minutes = contracted_hours * 60
-                model.Add(total_minutes >= contracted_minutes - 60)
-                model.Add(total_minutes <= contracted_minutes + 60)
-        
-        # Max hours constraint
-        for staff_idx, staff in enumerate(self.staff):
-            max_hours = staff.get('max_hours', 48)
+            max_hours = staff.get('max_hours', contracted_hours) or contracted_hours
+            
+            # Ensure max_hours is at least contracted_hours
+            if max_hours < contracted_hours:
+                max_hours = contracted_hours
+            
             total_minutes = sum(
                 schedule[shift_idx][staff_idx] * 
                 self._get_shift_duration(self.shifts[shift_idx])
                 for shift_idx in range(len(self.shifts))
             )
+            
+            # Must work at least contracted hours (with small tolerance)
+            if contracted_hours > 0:
+                model.Add(total_minutes >= (contracted_hours * 60) - 60)
+            
+            # Cannot exceed max hours
             model.Add(total_minutes <= max_hours * 60)
         
         # Availability constraint
@@ -126,6 +125,7 @@ class ShiftlyScheduler:
     
     def _generate_solve_failure_diagnostic(self, week_num, previous_solutions):
         total_contracted = sum(s.get('contracted_hours', 0) for s in self.staff)
+        total_max_hours = sum(s.get('max_hours', s.get('contracted_hours', 0)) for s in self.staff)
         total_shift_hours = 0
         for shift in self.shifts:
             shift_hours = self._get_shift_duration(shift) / 60
@@ -135,13 +135,19 @@ class ShiftlyScheduler:
         problems = []
         actions = []
         
-        if total_contracted > total_shift_hours + 2:
-            shortage = total_contracted - total_shift_hours
-            problems.append(f"Your staff need {total_contracted:.0f}h total but you only have {total_shift_hours:.0f}h of shifts")
-            actions.append(f"Add {int(shortage)}+ hours of shifts, or reduce contracted hours by {int(shortage)}h total")
+        # Check if max capacity can fulfill shifts
+        if total_max_hours < total_shift_hours - 2:
+            shortage = total_shift_hours - total_max_hours
+            problems.append(f"Your staff can work up to {total_max_hours:.0f}h (max) but shifts need {total_shift_hours:.0f}h")
+            actions.append(f"Increase max hours for some staff, add more staff, or remove {int(shortage)}h of shifts")
+        elif total_contracted > total_shift_hours + 2:
+            surplus = total_contracted - total_shift_hours
+            problems.append(f"Your staff need {total_contracted:.0f}h (contracted) but you only have {total_shift_hours:.0f}h of shifts")
+            actions.append(f"Add {int(surplus)}+ hours of shifts, or reduce contracted hours by {int(surplus)}h total")
         
         for staff in self.staff:
             contracted = staff.get('contracted_hours', 0)
+            max_hours = staff.get('max_hours', contracted) or contracted
             if contracted == 0:
                 continue
             
@@ -196,7 +202,7 @@ class ShiftlyScheduler:
                 output += f"{i}. {problem}\n"
             output += f"\nTo fix this:\n"
             for i, action in enumerate(actions, 1):
-                output += f"• {action}\n"
+                output += f"- {action}\n"
             return output.strip()
         else:
             return f"Week {week_num} couldn't be generated. Try reducing the number of weeks or adjusting availability."
@@ -370,13 +376,11 @@ class ShiftlyScheduler:
         if self._rule_enabled('fair_weekend_distribution'):
             weekend_patterns = self._check_fair_weekends(schedule)
             
-            # Calculate fairness based on full weekends worked
             full_weekends_worked = {name: data['full_weekends_worked'] for name, data in weekend_patterns.items()}
             min_full_weekends = min(full_weekends_worked.values()) if full_weekends_worked else 0
             max_full_weekends = max(full_weekends_worked.values()) if full_weekends_worked else 0
             difference = max_full_weekends - min_full_weekends
             
-            # Allow some variance - 1 full weekend difference is acceptable
             if difference <= 1:
                 compliance.append({
                     'rule': 'Fair Weekend Distribution',
@@ -385,14 +389,12 @@ class ShiftlyScheduler:
                     'violations': []
                 })
             else:
-                # Build detailed violation info
                 weekend_violations = []
                 for staff_name, patterns in sorted(weekend_patterns.items(), key=lambda x: x[1]['full_weekends_worked'], reverse=True):
                     full_worked = patterns['full_weekends_worked']
                     partial = patterns['partial_weekends']
                     full_off = patterns['full_weekends_off']
                     
-                    # Only flag staff who work significantly more full weekends
                     if full_worked > min_full_weekends + 1:
                         weekend_violations.append({
                             'staff': staff_name,
@@ -451,7 +453,6 @@ class ShiftlyScheduler:
         return compliance
     
     def _check_no_double_shifts(self, schedule):
-        """Check that no staff member works more than one shift per day"""
         violations = []
         
         for week_data in schedule:
@@ -466,7 +467,6 @@ class ShiftlyScheduler:
                     shifts_by_day_staff[key] = []
                 shifts_by_day_staff[key].append(shift)
             
-            # Any staff with more than 1 shift on a day is a violation
             for key, shifts_list in shifts_by_day_staff.items():
                 if len(shifts_list) > 1:
                     staff_name = shifts_list[0]['staff_name']
@@ -570,21 +570,17 @@ class ShiftlyScheduler:
         return violations
     
     def _check_fair_weekends(self, schedule):
-        """Check weekend distribution - tracking full weekends vs partial"""
         staff_weekend_patterns = {}
         
-        # Initialize tracking for each staff member
         for staff in self.staff:
             staff_weekend_patterns[staff['name']] = {
-                'full_weekends_worked': 0,  # Both Sat + Sun
-                'partial_weekends': 0,       # Only Sat OR Sun
-                'full_weekends_off': 0,      # Neither Sat nor Sun
+                'full_weekends_worked': 0,
+                'partial_weekends': 0,
+                'full_weekends_off': 0,
                 'total_shifts': 0
             }
         
-        # Analyze each week
         for week_data in schedule:
-            # Track who works which days this week
             staff_weekend_days = {}
             for shift in week_data['shifts']:
                 if shift['day'] in ['Saturday', 'Sunday']:
@@ -594,19 +590,15 @@ class ShiftlyScheduler:
                     staff_weekend_days[staff].add(shift['day'])
                     staff_weekend_patterns[staff]['total_shifts'] += 1
             
-            # Categorize the weekend pattern for each staff member this week
             for staff in self.staff:
                 staff_name = staff['name']
                 days_worked = staff_weekend_days.get(staff_name, set())
                 
                 if len(days_worked) == 2:
-                    # Worked both Saturday and Sunday
                     staff_weekend_patterns[staff_name]['full_weekends_worked'] += 1
                 elif len(days_worked) == 1:
-                    # Worked only Saturday or Sunday
                     staff_weekend_patterns[staff_name]['partial_weekends'] += 1
                 else:
-                    # Full weekend off
                     staff_weekend_patterns[staff_name]['full_weekends_off'] += 1
         
         return staff_weekend_patterns
@@ -730,19 +722,21 @@ class ShiftlyScheduler:
         
         for staff in self.staff:
             contracted = staff.get('contracted_hours', 0)
+            max_hours = staff.get('max_hours', contracted) or contracted
             if contracted == 0:
                 continue
             
             weekly_hours = staff_total_hours.get(staff['name'], [0] * self.weeks)
             avg_actual = sum(weekly_hours) / len(weekly_hours) if weekly_hours else 0
-            difference = abs(avg_actual - contracted)
             
-            if difference > 0.5:
+            # Only flag if below contracted (not if using overtime up to max)
+            if avg_actual < contracted - 0.5:
                 reason = self._diagnose_contract_mismatch(staff, avg_actual, contracted)
                 
                 self.contract_issues.append({
                     'staff_name': staff['name'],
                     'contracted': contracted,
+                    'max_hours': max_hours,
                     'actual': avg_actual,
                     'difference': contracted - avg_actual,
                     'reason': reason

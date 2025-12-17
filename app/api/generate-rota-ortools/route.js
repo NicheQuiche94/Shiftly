@@ -5,7 +5,6 @@ import { createClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request) {
-  // Debug: Log environment variable status (values are masked for security)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
@@ -74,15 +73,12 @@ export async function POST(request) {
     const startDateObj = new Date(startDate)
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-    // Generate shift patterns for a single week (the scheduler will apply these to all weeks)
-    // We use the first week's dates to determine which day names to use
     const shiftPatterns = []
     for (let day = 0; day < 7; day++) {
       const currentDate = new Date(startDateObj)
       currentDate.setDate(currentDate.getDate() + day)
       const dayName = dayNames[currentDate.getDay()]
 
-      // Handle day_of_week - it can be a string or an array
       const dayShifts = shiftsData.filter(shift => {
         const shiftDays = shift.day_of_week
         if (Array.isArray(shiftDays)) {
@@ -108,11 +104,6 @@ export async function POST(request) {
     console.log('Weeks to generate:', weekCount)
 
     const formattedStaff = staffData.map(s => {
-      // Parse availability - it can be:
-      // 1. A JSON string that needs parsing
-      // 2. An array of day names like ["Monday", "Tuesday"]
-      // 3. An object like {monday: true, tuesday: true}
-      // 4. null/undefined
       let availability = s.availability || {}
       
       if (typeof availability === 'string') {
@@ -124,7 +115,6 @@ export async function POST(request) {
         }
       }
       
-      // If availability is an array of day names, convert to object format
       if (Array.isArray(availability)) {
         const availabilityObj = {}
         availability.forEach(day => {
@@ -135,7 +125,6 @@ export async function POST(request) {
         availability = availabilityObj
       }
       
-      // If it's already an object, ensure all keys are lowercase
       if (typeof availability === 'object' && availability !== null && !Array.isArray(availability)) {
         const normalizedAvailability = {}
         Object.keys(availability).forEach(key => {
@@ -144,7 +133,6 @@ export async function POST(request) {
         availability = normalizedAvailability
       }
       
-      // If still not an object, default to all days available
       if (typeof availability !== 'object' || availability === null || Array.isArray(availability)) {
         console.warn(`Invalid availability format for ${s.name}, defaulting to all days`)
         availability = {
@@ -158,11 +146,13 @@ export async function POST(request) {
         }
       }
       
+      const contractedHours = s.contracted_hours || 0
+      
       return {
         id: s.id,
         name: s.name,
-        contracted_hours: s.contracted_hours || 0,
-        max_hours: s.max_hours_per_week || 48,
+        contracted_hours: contractedHours,
+        max_hours: s.max_hours || contractedHours || 48,
         availability: availability
       }
     })
@@ -176,7 +166,7 @@ export async function POST(request) {
 
     const schedulerInput = {
       staff: formattedStaff,
-      shifts: shiftPatterns,  // Only send shift patterns for one week, scheduler will apply to all weeks
+      shifts: shiftPatterns,
       rules: formattedRules,
       weeks: weekCount
     }
