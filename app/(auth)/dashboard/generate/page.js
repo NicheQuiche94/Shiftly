@@ -102,7 +102,6 @@ function RulesComplianceSection({ rules }) {
   )
 }
 
-// Inner component that uses useSearchParams
 function GenerateRotaContent() {
   const searchParams = useSearchParams()
   const rotaIdFromUrl = searchParams.get('rota')
@@ -121,19 +120,15 @@ function GenerateRotaContent() {
   const [hoveredCell, setHoveredCell] = useState(null)
   const [timeSaved, setTimeSaved] = useState(null)
   
-  // Team selection state
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [showAllTeams, setShowAllTeams] = useState(false)
   
-  // Staff list for editing
   const [allStaff, setAllStaff] = useState([])
   
-  // Shift edit modal state
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingShift, setEditingShift] = useState(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   
-  // Week selection state
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
     const dayOfWeek = today.getDay()
@@ -146,19 +141,16 @@ function GenerateRotaContent() {
   
   const [weekCount, setWeekCount] = useState(1)
 
-  // Filter to only allow Mondays
   const filterMondays = (date) => {
     return date.getDay() === 1
   }
 
-  // Calculate end date
   const getEndDate = () => {
     const end = new Date(startDate)
     end.setDate(end.getDate() + (weekCount * 7) - 1)
     return end
   }
 
-  // Format date for display
   const formatDate = (date) => {
     return date.toLocaleDateString('en-GB', { 
       day: 'numeric', 
@@ -167,7 +159,6 @@ function GenerateRotaContent() {
     })
   }
 
-  // Get date for a specific day in the rota
   const getDateForDay = (weekIndex, dayName) => {
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     const dayIndex = dayNames.indexOf(dayName)
@@ -176,29 +167,24 @@ function GenerateRotaContent() {
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
 
-  // Get short day name
   const getShortDay = (dayName) => {
     return dayName.slice(0, 3)
   }
 
-  // Print function
   const handlePrint = () => {
     window.print()
   }
 
-  // Load saved rotas on mount and check for URL param
   useEffect(() => {
     loadSavedRotas()
   }, [])
 
-  // Load rota from URL param after saved rotas are loaded
   useEffect(() => {
     if (rotaIdFromUrl && !rota) {
       handleLoadRota(rotaIdFromUrl)
     }
   }, [rotaIdFromUrl])
 
-  // Load staff when team changes
   useEffect(() => {
     if (selectedTeamId) {
       loadStaff()
@@ -209,7 +195,7 @@ function GenerateRotaContent() {
     try {
       let url = `/api/staff?team_id=${selectedTeamId}`
       if (showAllTeams) {
-        url = `/api/staff` // Load all staff when showing all teams
+        url = `/api/staff`
       }
       const response = await fetch(url)
       if (response.ok) {
@@ -301,13 +287,11 @@ function GenerateRotaContent() {
         throw new Error('Failed to save rota')
       }
 
-      // If approved, increment counter and get time saved
       if (approved) {
         const settingsResponse = await fetch('/api/user-settings')
         if (settingsResponse.ok) {
           const settings = await settingsResponse.json()
           
-          // Increment counter
           await fetch('/api/user-settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -316,7 +300,6 @@ function GenerateRotaContent() {
             })
           })
 
-          // Show time saved message
           if (settings?.manual_rota_time) {
             setTimeSaved(settings.manual_rota_time)
             setTimeout(() => setTimeSaved(null), 5000)
@@ -388,7 +371,6 @@ function GenerateRotaContent() {
     }
   }
 
-  // Handle shift card click - open edit modal
   const handleShiftClick = (staffName, day, shiftName, time, week) => {
     setEditingShift({
       staffName,
@@ -400,7 +382,6 @@ function GenerateRotaContent() {
     setShowEditModal(true)
   }
 
-  // Handle reassigning a shift to a different staff member
   const handleReassign = (shiftData, newStaffName) => {
     if (!rota || !rota.schedule) return
 
@@ -420,7 +401,6 @@ function GenerateRotaContent() {
     setHasUnsavedChanges(true)
   }
 
-  // Handle removing a staff member from a shift
   const handleRemove = (shiftData) => {
     if (!rota || !rota.schedule) return
 
@@ -440,7 +420,6 @@ function GenerateRotaContent() {
     setHasUnsavedChanges(true)
   }
 
-  // Handle swapping two shifts
   const handleSwap = (shiftData, targetShift) => {
     if (!rota || !rota.schedule) return
 
@@ -477,11 +456,10 @@ function GenerateRotaContent() {
     const [endH, endM] = endTime.split(':').map(Number)
     const startMins = startH * 60 + startM
     let endMins = endH * 60 + endM
-    if (endMins < startMins) endMins += 24 * 60 // Handle overnight shifts
+    if (endMins < startMins) endMins += 24 * 60
     return ((endMins - startMins) / 60).toFixed(1)
   }
 
-  // Get unique staff members for the grid
   const getUniqueStaff = () => {
     if (!rota || !rota.schedule) return []
     const staffSet = new Set()
@@ -493,7 +471,6 @@ function GenerateRotaContent() {
 
   const uniqueStaff = getUniqueStaff()
 
-  // Get team name for a staff member
   const getStaffTeam = (staffName) => {
     if (rota && rota.staff_team_map) {
       return rota.staff_team_map[staffName] || null
@@ -501,19 +478,27 @@ function GenerateRotaContent() {
     return null
   }
 
-  // Team color mapping for badges
-  const teamColors = {
-    'Main Team': 'bg-blue-100 text-blue-700',
-    'Kitchen': 'bg-orange-100 text-orange-700',
-    'Front of House': 'bg-green-100 text-green-700',
-    'Bar': 'bg-purple-100 text-purple-700',
+  const teamColors = [
+    { bg: 'bg-pink-100', text: 'text-pink-700', line: 'bg-pink-200' },
+    { bg: 'bg-blue-100', text: 'text-blue-700', line: 'bg-blue-200' },
+    { bg: 'bg-green-100', text: 'text-green-700', line: 'bg-green-200' },
+    { bg: 'bg-purple-100', text: 'text-purple-700', line: 'bg-purple-200' },
+    { bg: 'bg-orange-100', text: 'text-orange-700', line: 'bg-orange-200' },
+    { bg: 'bg-teal-100', text: 'text-teal-700', line: 'bg-teal-200' },
+  ]
+
+  const getTeamColor = (teamIndex) => {
+    return teamColors[teamIndex % teamColors.length]
   }
 
   const getTeamBadgeColor = (teamName) => {
-    return teamColors[teamName] || 'bg-gray-100 text-gray-700'
+    if (!rota || !rota.teams) return 'bg-gray-100 text-gray-700'
+    const teamIndex = rota.teams.findIndex(t => t.name === teamName)
+    if (teamIndex === -1) return 'bg-gray-100 text-gray-700'
+    const color = getTeamColor(teamIndex)
+    return `${color.bg} ${color.text}`
   }
 
-  // Color palette for staff
   const staffColors = [
     'bg-gradient-to-br from-pink-500 to-pink-600',
     'bg-gradient-to-br from-purple-500 to-purple-600',
@@ -532,7 +517,6 @@ function GenerateRotaContent() {
     return staffColors[index % staffColors.length]
   }
 
-  // Get shifts for a specific staff member on a specific day/week
   const getStaffShiftsForDay = (staffName, dayName, weekNum) => {
     if (!rota || !rota.schedule) return []
     
@@ -566,7 +550,6 @@ function GenerateRotaContent() {
 
   return (
     <>
-      {/* Print-specific styles */}
       <style jsx global>{`
         @media print {
           body * {
@@ -595,7 +578,6 @@ function GenerateRotaContent() {
       `}</style>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
-        {/* Header */}
         <div className="mb-6 sm:mb-8 no-print">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 font-cal">
             Rota Builder
@@ -605,7 +587,6 @@ function GenerateRotaContent() {
           </p>
         </div>
 
-        {/* Time Saved Banner */}
         {timeSaved && (
           <div className="mb-4 sm:mb-6 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4 sm:p-6 shadow-lg animate-fade-in no-print">
             <div className="flex items-center justify-center gap-2 sm:gap-3">
@@ -619,7 +600,6 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Unsaved Changes Banner */}
         {hasUnsavedChanges && (
           <div className="mb-4 sm:mb-6 bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 no-print">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -633,7 +613,6 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Team Selection Card */}
         <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2 font-cal">
             <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -655,7 +634,6 @@ function GenerateRotaContent() {
               />
             </div>
             
-            {/* Show All Teams Toggle */}
             <button
               onClick={() => setShowAllTeams(!showAllTeams)}
               className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
@@ -673,13 +651,12 @@ function GenerateRotaContent() {
           
           <p className="text-xs text-gray-500 mt-2 sm:mt-3">
             {showAllTeams 
-              ? 'Generating rota for all teams combined' 
+              ? 'Generating separate rotas for each team, displayed together' 
               : 'Choose which team to generate a rota for'
             }
           </p>
         </div>
 
-        {/* Week Selection Card */}
         <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2 font-cal">
             <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -689,7 +666,6 @@ function GenerateRotaContent() {
           </h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {/* Date Picker */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Week Starting (Monday)
@@ -707,7 +683,6 @@ function GenerateRotaContent() {
               <p className="text-xs text-gray-500 mt-1">Rotas must start on a Monday</p>
             </div>
 
-            {/* Week Count Selector */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Number of Weeks
@@ -724,13 +699,12 @@ function GenerateRotaContent() {
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                {weekCount} week{weekCount > 1 ? 's' : ''} • {formatDate(startDate)} - {formatDate(getEndDate())}
+                {weekCount} week{weekCount > 1 ? 's' : ''} - {formatDate(startDate)} - {formatDate(getEndDate())}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 no-print">
           <button
             onClick={handleGenerate}
@@ -803,7 +777,6 @@ function GenerateRotaContent() {
           )}
         </div>
 
-        {/* Edit Mode Indicator */}
         {rota && rota.schedule && (
           <div className="mb-4 sm:mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 no-print">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -817,19 +790,17 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Loading State */}
         {loading && (
           <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 no-print">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-600"></div>
               <p className="text-pink-900 font-medium text-sm sm:text-base">
-                Generating rota...
+                Generating rota{showAllTeams ? 's for all teams' : ''}...
               </p>
             </div>
           </div>
         )}
 
-        {/* Error State */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 no-print">
             <div className="flex items-start gap-3 mb-4">
@@ -838,17 +809,17 @@ function GenerateRotaContent() {
               </svg>
               <div className="flex-1">
                 <p className="text-red-900 font-bold text-base sm:text-lg mb-2">Unable to Generate Rota</p>
-                <p className="text-red-800 text-sm sm:text-base">{typeof error === 'string' ? error : error.message}</p>
+                <p className="text-red-800 text-sm sm:text-base whitespace-pre-wrap">{typeof error === 'string' ? error : error.message}</p>
               </div>
             </div>
 
             {rota?.diagnostics && rota.diagnostics.suggestions && rota.diagnostics.suggestions.length > 0 && (
               <div className="mt-4 pt-4 border-t border-red-200">
-                <p className="text-sm font-semibold text-red-900 mb-2">💡 How to fix:</p>
+                <p className="text-sm font-semibold text-red-900 mb-2">How to fix:</p>
                 <ul className="space-y-2">
                   {rota.diagnostics.suggestions.map((suggestion, idx) => (
                     <li key={idx} className="text-xs sm:text-sm text-red-800 flex items-start gap-2">
-                      <span className="text-red-600 mt-0.5">•</span>
+                      <span className="text-red-600 mt-0.5">-</span>
                       <span>{suggestion}</span>
                     </li>
                   ))}
@@ -858,7 +829,6 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Saved Rotas List */}
         {showSavedRotas && (
           <div className="bg-white rounded-xl border border-gray-200/60 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 font-cal">Saved Rotas</h3>
@@ -922,21 +892,17 @@ function GenerateRotaContent() {
           </div>
         )}
 
-        {/* Generated Rota Display - WITH TEAM BADGES */}
         {rota && rota.schedule && rota.schedule.length > 0 && (
           <div id="printable-rota" className="bg-white rounded-xl border border-gray-200/60 overflow-hidden">
-            {/* Print Header */}
             <div className="hidden print:block p-6 border-b border-gray-200">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Staff Rota</h1>
               <p className="text-gray-600">{formatDate(startDate)} - {formatDate(getEndDate())}</p>
             </div>
 
-            {/* Rules Compliance */}
             {rota && rota.rule_compliance && rota.rule_compliance.length > 0 && (
               <RulesComplianceSection rules={rota.rule_compliance} />
             )}
 
-            {/* Content Tabs */}
             <div className="border-b border-gray-200/60 bg-gray-50/50 no-print">
               <div className="flex">
                 <button
@@ -963,112 +929,128 @@ function GenerateRotaContent() {
             </div>
 
             <div className="p-4 sm:p-6">
-              {/* Schedule Tab - Staff as rows, Days as columns */}
+              {/* Schedule Tab - Staff as rows, Days as columns, GROUPED BY TEAM */}
               {activeTab === 'schedule' && (
                 <div className="space-y-6 sm:space-y-8">
-                  {Array.from({ length: weekCount }, (_, weekIndex) => weekIndex + 1).map((weekNum) => (
-                    <div key={weekNum} className="print:break-after-page">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 font-cal">
-                        Week {weekNum}
-                        <span className="text-sm font-normal text-gray-500 ml-2">
-                          {getDateForDay(weekNum - 1, 'Monday')} - {getDateForDay(weekNum - 1, 'Sunday')}
-                        </span>
-                      </h3>
-                      
-                      {/* Scrollable container for mobile */}
-                      <div className="overflow-x-auto -mx-4 sm:mx-0">
-                        <div className="min-w-[640px] px-4 sm:px-0">
-                          <table className="w-full border-collapse print:text-sm">
-                            <thead>
-                              <tr className="bg-gray-50/50">
-                                <th className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 w-32 sm:w-44 sticky left-0 bg-gray-50 z-10">
-                                  Staff
-                                </th>
-                                {dayNames.map((day) => (
-                                  <th key={day} className="border border-gray-200/60 px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700 min-w-[80px] sm:min-w-[100px]">
-                                    <div className="sm:hidden">{getShortDay(day)}</div>
-                                    <div className="hidden sm:block">{day}</div>
-                                    <div className="text-xs font-normal text-gray-500 mt-0.5">
-                                      {getDateForDay(weekNum - 1, day)}
-                                    </div>
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {uniqueStaff.map((staffName) => {
-                                const colorClass = getStaffColor(staffName)
-                                const teamName = getStaffTeam(staffName)
-                                
-                                return (
-                                  <tr key={staffName} className="hover:bg-gray-50/50">
-                                    {/* Staff name with team badge - sticky on mobile */}
-                                    <td className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 bg-gray-50/30 sticky left-0 z-10">
-                                      <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                          <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${colorClass} flex-shrink-0`}></div>
-                                          <span className="text-xs sm:text-sm truncate">{staffName}</span>
-                                        </div>
-                                        {teamName && (showAllTeams || rota.staff_team_map) && (
-                                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getTeamBadgeColor(teamName)} w-fit`}>
-                                            {teamName}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    
-                                    {/* Days */}
-                                    {dayNames.map((day) => {
-                                      const shifts = getStaffShiftsForDay(staffName, day, weekNum)
-                                      
-                                      return (
-                                        <td 
-                                          key={day} 
-                                          className="border border-gray-200/60 px-1 sm:px-2 py-1 sm:py-2 bg-gray-50/20"
-                                        >
-                                          <div className="min-h-[40px] sm:min-h-[50px] flex flex-col gap-1">
-                                            {shifts.length > 0 ? (
-                                              shifts.map((shift, idx) => {
-                                                const [startTime, endTime] = shift.time.split('-')
-                                                const hours = calculateShiftHours(startTime, endTime)
-                                                
-                                                return (
-                                                  <button
-                                                    key={idx}
-                                                    onClick={() => handleShiftClick(
-                                                      staffName, 
-                                                      day, 
-                                                      shift.shift_name, 
-                                                      shift.time,
-                                                      weekNum
+                  {Array.from({ length: weekCount }, (_, weekIndex) => weekIndex + 1).map((weekNum) => {
+                    const teamsInRota = rota.teams && rota.teams.length > 0 ? rota.teams : [{ id: null, name: null }]
+                    const hasMultipleTeams = teamsInRota.length > 1 || (rota.teams && rota.teams.length > 1)
+
+                    return (
+                      <div key={weekNum} className="print:break-after-page">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 font-cal">
+                          Week {weekNum}
+                          <span className="text-sm font-normal text-gray-500 ml-2">
+                            {getDateForDay(weekNum - 1, 'Monday')} - {getDateForDay(weekNum - 1, 'Sunday')}
+                          </span>
+                        </h3>
+                        
+                        {teamsInRota.map((team, teamIndex) => {
+                          const teamStaff = uniqueStaff.filter(staffName => {
+                            if (!hasMultipleTeams) return true
+                            return getStaffTeam(staffName) === team.name
+                          })
+
+                          if (teamStaff.length === 0) return null
+
+                          const teamColor = getTeamColor(teamIndex)
+
+                          return (
+                            <div key={team.id || 'single'} className={teamIndex > 0 ? 'mt-6 sm:mt-8' : ''}>
+                              {hasMultipleTeams && team.name && (
+                                <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                                  <div className={`h-1 flex-1 rounded ${teamColor.line}`}></div>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${teamColor.bg} ${teamColor.text}`}>
+                                    {team.name}
+                                  </span>
+                                  <div className={`h-1 flex-1 rounded ${teamColor.line}`}></div>
+                                </div>
+                              )}
+
+                              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                <div className="min-w-[640px] px-4 sm:px-0">
+                                  <table className="w-full border-collapse print:text-sm">
+                                    <thead>
+                                      <tr className="bg-gray-50/50">
+                                        <th className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 w-32 sm:w-44 sticky left-0 bg-gray-50 z-10">
+                                          Staff
+                                        </th>
+                                        {dayNames.map((day) => (
+                                          <th key={day} className="border border-gray-200/60 px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-700 min-w-[80px] sm:min-w-[100px]">
+                                            <div className="sm:hidden">{getShortDay(day)}</div>
+                                            <div className="hidden sm:block">{day}</div>
+                                            <div className="text-xs font-normal text-gray-500 mt-0.5">
+                                              {getDateForDay(weekNum - 1, day)}
+                                            </div>
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {teamStaff.map((staffName) => {
+                                        const colorClass = getStaffColor(staffName)
+                                        
+                                        return (
+                                          <tr key={staffName} className="hover:bg-gray-50/50">
+                                            <td className="border border-gray-200/60 px-3 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 bg-gray-50/30 sticky left-0 z-10">
+                                              <div className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${colorClass} flex-shrink-0`}></div>
+                                                <span className="text-xs sm:text-sm truncate">{staffName}</span>
+                                              </div>
+                                            </td>
+                                            
+                                            {dayNames.map((day) => {
+                                              const shifts = getStaffShiftsForDay(staffName, day, weekNum)
+                                              
+                                              return (
+                                                <td 
+                                                  key={day} 
+                                                  className="border border-gray-200/60 px-1 sm:px-2 py-1 sm:py-2 bg-gray-50/20"
+                                                >
+                                                  <div className="min-h-[40px] sm:min-h-[50px] flex flex-col gap-1">
+                                                    {shifts.length > 0 ? (
+                                                      shifts.map((shift, idx) => {
+                                                        return (
+                                                          <button
+                                                            key={idx}
+                                                            onClick={() => handleShiftClick(
+                                                              staffName, 
+                                                              day, 
+                                                              shift.shift_name, 
+                                                              shift.time,
+                                                              weekNum
+                                                            )}
+                                                            className={`w-full px-1.5 sm:px-2 py-1 sm:py-1.5 ${colorClass} rounded text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
+                                                          >
+                                                            <span className="text-white font-medium text-[10px] sm:text-xs block truncate">
+                                                              {shift.shift_name}
+                                                            </span>
+                                                            <span className="text-white/80 text-[9px] sm:text-[10px] block">
+                                                              {shift.time}
+                                                            </span>
+                                                          </button>
+                                                        )
+                                                      })
+                                                    ) : (
+                                                      <span className="text-gray-300 text-center block text-xs py-3">-</span>
                                                     )}
-                                                    className={`w-full px-1.5 sm:px-2 py-1 sm:py-1.5 ${colorClass} rounded text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
-                                                  >
-                                                    <span className="text-white font-medium text-[10px] sm:text-xs block truncate">
-                                                      {shift.shift_name}
-                                                    </span>
-                                                    <span className="text-white/80 text-[9px] sm:text-[10px] block">
-                                                      {shift.time}
-                                                    </span>
-                                                  </button>
-                                                )
-                                              })
-                                            ) : (
-                                              <span className="text-gray-300 text-center block text-xs py-3">-</span>
-                                            )}
-                                          </div>
-                                        </td>
-                                      )
-                                    })}
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                                                  </div>
+                                                </td>
+                                              )
+                                            })}
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
 
@@ -1078,97 +1060,88 @@ function GenerateRotaContent() {
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 font-cal">Staff Hours Summary</h3>
                   
                   {(() => {
-                    const staffWeeklyHours = {}
-                    const allStaffNames = new Set()
-                    rota.schedule.forEach(shift => {
-                      shift.assigned_staff?.forEach(name => allStaffNames.add(name))
-                    })
-                    
-                    allStaffNames.forEach(staffName => {
-                      staffWeeklyHours[staffName] = {}
-                      for (let w = 1; w <= weekCount; w++) {
-                        staffWeeklyHours[staffName][w] = 0
-                      }
-                    })
-                    
-                    rota.schedule.forEach(shift => {
-                      const week = shift.week || 1
-                      const [startTime, endTime] = shift.time.split('-')
-                      const hours = parseFloat(calculateShiftHours(startTime, endTime))
-                      
-                      shift.assigned_staff?.forEach(staffName => {
-                        staffWeeklyHours[staffName][week] += hours
-                      })
-                    })
-                    
-                    const contractedHours = {}
-                    if (rota.hours_report) {
-                      rota.hours_report.forEach(person => {
-                        contractedHours[person.staff_name] = person.contracted || 0
-                      })
-                    }
-                    
+                    const teamsInRota = rota.teams && rota.teams.length > 0 ? rota.teams : [{ id: null, name: null }]
+                    const hasMultipleTeams = teamsInRota.length > 1
+
                     return (
-                      <div className="overflow-x-auto -mx-4 sm:mx-0">
-                        <div className="min-w-[400px] px-4 sm:px-0">
-                          <table className="w-full border-collapse">
-                            <thead>
-                              <tr className="bg-gray-50/50 border-b border-gray-200/60">
-                                <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 sticky left-0 bg-gray-50">Staff</th>
-                                {showAllTeams && (
-                                  <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Team</th>
-                                )}
-                                {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => (
-                                  <th key={weekNum} className="px-3 sm:px-6 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">
-                                    Wk {weekNum}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200/60">
-                              {Array.from(allStaffNames).sort().map((staffName, idx) => {
-                                const contracted = contractedHours[staffName] || 0
-                                const teamName = getStaffTeam(staffName)
-                                
-                                return (
-                                  <tr key={idx} className="hover:bg-gray-50/50">
-                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900 sticky left-0 bg-white">{staffName}</td>
-                                    {showAllTeams && (
-                                      <td className="px-3 sm:px-6 py-3 sm:py-4">
-                                        {teamName && (
-                                          <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${getTeamBadgeColor(teamName)}`}>
-                                            {teamName}
-                                          </span>
-                                        )}
-                                      </td>
-                                    )}
-                                    {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => {
-                                      const actual = staffWeeklyHours[staffName][weekNum] || 0
-                                      const meetsMinimum = contracted === 0 || Math.abs(actual - contracted) < 0.5
-                                      
-                                      return (
-                                        <td key={weekNum} className="px-3 sm:px-6 py-3 sm:py-4 text-center">
-                                          <div className="text-xs sm:text-sm">
-                                            {contracted > 0 && (
-                                              <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5">
-                                                {contracted}h
-                                              </div>
-                                            )}
-                                            <div className={`font-semibold ${
-                                              !meetsMinimum ? 'text-red-700' : 'text-green-700'
-                                            }`}>
-                                              {actual.toFixed(1)}h
-                                            </div>
-                                          </div>
-                                        </td>
-                                      )
-                                    })}
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                      <div className="space-y-6">
+                        {teamsInRota.map((team, teamIndex) => {
+                          const teamHoursReport = rota.hours_report.filter(report => {
+                            if (!hasMultipleTeams) return true
+                            return report.team_name === team.name
+                          })
+
+                          if (teamHoursReport.length === 0) return null
+
+                          const teamColor = getTeamColor(teamIndex)
+
+                          return (
+                            <div key={team.id || 'single'}>
+                              {hasMultipleTeams && team.name && (
+                                <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                                  <div className={`h-1 flex-1 rounded ${teamColor.line}`}></div>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${teamColor.bg} ${teamColor.text}`}>
+                                    {team.name}
+                                  </span>
+                                  <div className={`h-1 flex-1 rounded ${teamColor.line}`}></div>
+                                </div>
+                              )}
+
+                              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                                <div className="min-w-[400px] px-4 sm:px-0">
+                                  <table className="w-full border-collapse">
+                                    <thead>
+                                      <tr className="bg-gray-50/50 border-b border-gray-200/60">
+                                        <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 sticky left-0 bg-gray-50">Staff</th>
+                                        <th className="px-3 sm:px-6 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">Contract</th>
+                                        {Array.from({ length: weekCount }, (_, i) => i + 1).map(weekNum => (
+                                          <th key={weekNum} className="px-3 sm:px-6 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">
+                                            Wk {weekNum}
+                                          </th>
+                                        ))}
+                                        <th className="px-3 sm:px-6 py-3 text-center text-xs sm:text-sm font-semibold text-gray-700">Status</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200/60">
+                                      {teamHoursReport.map((report, idx) => {
+                                        return (
+                                          <tr key={idx} className="hover:bg-gray-50/50">
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                                              {report.staff_name}
+                                            </td>
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm text-gray-600">
+                                              {report.contracted}h
+                                            </td>
+                                            {report.weekly_hours.map((hours, wIdx) => (
+                                              <td key={wIdx} className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                                                <span className={`text-xs sm:text-sm font-semibold ${
+                                                  report.contracted > 0 && Math.abs(hours - report.contracted) > 0.5
+                                                    ? 'text-red-700'
+                                                    : 'text-green-700'
+                                                }`}>
+                                                  {hours.toFixed(1)}h
+                                                </span>
+                                              </td>
+                                            ))}
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                report.status === 'Met'
+                                                  ? 'bg-green-100 text-green-800'
+                                                  : 'bg-red-100 text-red-800'
+                                              }`}>
+                                                {report.status}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )
                   })()}
@@ -1187,7 +1160,6 @@ function GenerateRotaContent() {
         )}
       </main>
 
-      {/* Shift Edit Modal */}
       <ShiftEditModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -1199,7 +1171,6 @@ function GenerateRotaContent() {
         rota={rota}
       />
 
-      {/* Save Modal (Draft) */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
@@ -1233,7 +1204,6 @@ function GenerateRotaContent() {
         </div>
       )}
 
-      {/* Approve & Save Modal */}
       {showApproveModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
@@ -1267,13 +1237,11 @@ function GenerateRotaContent() {
         </div>
       )}
 
-      {/* Portal container for DatePicker */}
       <div id="date-picker-portal"></div>
     </>
   )
 }
 
-// Main export with Suspense wrapper
 export default function GenerateRotaPage() {
   return (
     <Suspense fallback={
