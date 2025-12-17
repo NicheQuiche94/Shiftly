@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-
-// Force static generation - this page will be pre-rendered at build time
-export const dynamic = 'force-static'
+import PricingSection from '@/app/components/PricingSection'
 
 export default function LandingPage() {
   return (
@@ -62,7 +60,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="/sign-up"
+              href="#pricing"
               className="inline-block px-8 py-4 bg-pink-500 text-white text-lg font-semibold rounded-xl hover:bg-pink-600 transition-all"
             >
               Start Free Trial
@@ -74,7 +72,7 @@ export default function LandingPage() {
               See How It Works
             </Link>
           </div>
-          <p className="text-sm text-gray-500 mt-4">14-day free trial • No credit card required</p>
+          <p className="text-sm text-gray-500 mt-4">14-day free trial - Cancel anytime</p>
         </div>
       </section>
 
@@ -190,7 +188,6 @@ export default function LandingPage() {
                 </li>
               </ul>
             </div>
-            {/* Screenshot */}
             <div className="rounded-2xl shadow-xl overflow-hidden border border-gray-200">
               <Image 
                 src="/screenshots/workspace.png" 
@@ -281,7 +278,6 @@ export default function LandingPage() {
                 </li>
               </ul>
             </div>
-            {/* Screenshot */}
             <div className="rounded-2xl shadow-xl overflow-hidden border border-gray-200">
               <Image 
                 src="/screenshots/rota.png" 
@@ -295,105 +291,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="px-6 lg:px-8 py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl text-gray-900 mb-4 font-cal">
-              Simple pricing. Everything included.
-            </h2>
-            <p className="text-xl text-gray-600">
-              No tiers. No feature gates. No "contact sales for enterprise."
-            </p>
-          </div>
-
-          {/* Pricing Card */}
-          <div className="bg-white rounded-3xl border-2 border-pink-200 shadow-xl overflow-hidden max-w-lg mx-auto">
-            <div className="bg-pink-500 px-8 py-6 text-center">
-              <p className="text-pink-100 text-sm font-medium uppercase tracking-wide mb-1">One plan. Everything.</p>
-              <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl font-bold text-white">$49</span>
-                <span className="text-pink-100 text-lg">/month</span>
-              </div>
-              <p className="text-pink-100 text-sm mt-2">or $499/year (save $89)</p>
-            </div>
-
-            <div className="p-8">
-              <p className="text-gray-600 text-center mb-8">
-                Most scheduling tools gate features behind "Enterprise" tiers. We think that's nonsense. Here's everything you get:
-              </p>
-
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Unlimited staff</strong> - add your whole team</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Unlimited rotas</strong> - generate as many as you need</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>All fairness rules</strong> - every rule, no restrictions</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Staff mobile app</strong> - they see schedules, request time off</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Time-off management</strong> - approve/reject requests</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Payroll integration</strong> - yes, included (not "Enterprise only")</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Multiple teams</strong> - manage different departments</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-pink-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700"><strong>Priority support</strong> - we actually respond</span>
-                </li>
-              </ul>
-
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <Link 
-                  href="/sign-up"
-                  className="block w-full py-4 bg-pink-500 text-white text-center text-lg font-semibold rounded-xl hover:bg-pink-600 transition-all"
-                >
-                  Start 14-Day Free Trial
-                </Link>
-                <p className="text-center text-gray-500 text-sm mt-3">No credit card required</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tongue-in-cheek note */}
-          <div className="mt-12 text-center">
-            <p className="text-gray-500 text-sm max-w-md mx-auto">
-              Looking for an "Enterprise" tier with a 6-month sales cycle and mandatory demos? Sorry, we don't do that. Everyone gets everything.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* Pricing Section - Client Component */}
+      <PricingSection />
 
       {/* Social Proof / Trust */}
       <section className="px-6 lg:px-8 py-20 bg-white">
@@ -432,12 +331,12 @@ export default function LandingPage() {
             Join managers who've taken back their time
           </p>
           <Link 
-            href="/sign-up"
+            href="#pricing"
             className="inline-block px-8 py-4 bg-white text-pink-500 text-lg font-semibold rounded-xl hover:bg-gray-100 transition-all"
           >
             Start Free Trial
           </Link>
-          <p className="text-pink-200 text-sm mt-4">14-day free trial • No credit card required</p>
+          <p className="text-pink-200 text-sm mt-4">14-day free trial - Cancel anytime</p>
         </div>
       </section>
 
