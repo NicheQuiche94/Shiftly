@@ -12,13 +12,14 @@ export default function DashboardPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [isCheckingUserType, setIsCheckingUserType] = useState(true)
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true)
+  const [subscription, setSubscription] = useState(null)
 
   // Check if user is employee and redirect
   useEffect(() => {
     if (!isLoaded || !user) return
 
     const checkUserType = async () => {
-      // Cache key includes user ID so different users don't conflict
       const cacheKey = `shiftly_user_type_${user.id}`
       const cachedType = localStorage.getItem(cacheKey)
       
@@ -47,6 +48,32 @@ export default function DashboardPage() {
     checkUserType()
   }, [isLoaded, user, router])
 
+  // Check subscription status
+  useEffect(() => {
+    if (isCheckingUserType) return
+
+    const checkSubscription = async () => {
+      try {
+        const response = await fetch('/api/subscription')
+        const data = await response.json()
+        
+        setSubscription(data)
+        
+        // If no active subscription, redirect to checkout
+        if (!data.hasAccess) {
+          router.replace('/checkout')
+          return
+        }
+      } catch (error) {
+        console.error('Error checking subscription:', error)
+        // On error, allow through but log it
+      }
+      setIsCheckingSubscription(false)
+    }
+
+    checkSubscription()
+  }, [isCheckingUserType, router])
+
   // Fetch rotas with React Query - cached for 5 mins, instant on return
   const { data: rotas = [], isLoading } = useQuery({
     queryKey: ['rotas'],
@@ -55,7 +82,7 @@ export default function DashboardPage() {
       if (!response.ok) throw new Error('Failed to fetch rotas')
       return response.json()
     },
-    enabled: !isCheckingUserType
+    enabled: !isCheckingUserType && !isCheckingSubscription
   })
 
   // Fetch pending requests count
@@ -66,14 +93,14 @@ export default function DashboardPage() {
       if (!response.ok) throw new Error('Failed to fetch requests')
       return response.json()
     },
-    enabled: !isCheckingUserType
+    enabled: !isCheckingUserType && !isCheckingSubscription
   })
 
   const pendingRequestsCount = useMemo(() => {
     return requests.filter(r => r.status === 'pending').length
   }, [requests])
 
-  // Delete mutation - automatically refreshes the list after delete
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (rotaId) => {
       const response = await fetch(`/api/rotas/${rotaId}`, {
@@ -91,7 +118,7 @@ export default function DashboardPage() {
     }
   })
 
-  // Calculate stats from rotas data (memoized to avoid recalculation)
+  // Calculate stats from rotas data
   const stats = useMemo(() => {
     const approvedRotas = rotas.filter(r => r.approved)
     const totalWeeks = approvedRotas.reduce((sum, r) => sum + (r.week_count || 1), 0)
@@ -102,6 +129,16 @@ export default function DashboardPage() {
       weeksApproved: totalWeeks
     }
   }, [rotas])
+
+  // Calculate trial days remaining
+  const trialDaysRemaining = useMemo(() => {
+    if (!subscription?.isTrialing || !subscription?.trial_end) return null
+    const trialEnd = new Date(subscription.trial_end)
+    const now = new Date()
+    const diffTime = trialEnd - now
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays > 0 ? diffDays : 0
+  }, [subscription])
 
   const handleDeleteRota = async (rotaId, e) => {
     e.stopPropagation()
@@ -125,8 +162,8 @@ export default function DashboardPage() {
     router.push(`/dashboard/generate?rota=${rotaId}`)
   }
 
-  // Show loading while checking user type
-  if (isCheckingUserType) {
+  // Show loading while checking user type or subscription
+  if (isCheckingUserType || isCheckingSubscription) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -163,6 +200,44 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+      {/* Trial Banner */}
+      {subscription?.isTrialing && trialDaysRemaining !== null && (
+        <div className={`mb-6 rounded-xl p-4 flex items-center justify-between ${
+          trialDaysRemaining <= 3 
+            ? 'bg-amber-50 border border-amber-200' 
+            : 'bg-blue-50 border border-blue-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              trialDaysRemaining <= 3 ? 'bg-amber-100' : 'bg-blue-100'
+            }`}>
+              <svg className={`w-5 h-5 ${trialDaysRemaining <= 3 ? 'text-amber-600' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className={`font-semibold ${trialDaysRemaining <= 3 ? 'text-amber-900' : 'text-blue-900'}`}>
+                {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} left in your trial
+              </p>
+              <p className={`text-sm ${trialDaysRemaining <= 3 ? 'text-amber-700' : 'text-blue-700'}`}>
+                {trialDaysRemaining <= 3 
+                  ? 'Add a payment method to keep your account active'
+                  : 'You have full access to all features'
+                }
+              </p>
+            </div>
+          </div>
+          {trialDaysRemaining <= 3 && (
+            <Link
+              href="/dashboard/settings"
+              className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+            >
+              Manage Billing
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="text-center mb-8 sm:mb-12">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2 font-cal">
