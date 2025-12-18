@@ -11,11 +11,19 @@ function CheckoutContent() {
   const [billingCycle, setBillingCycle] = useState('monthly')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [promoCode, setPromoCode] = useState('')
+  const [showPromoInput, setShowPromoInput] = useState(false)
 
   useEffect(() => {
     const plan = searchParams.get('plan')
     if (plan === 'annual') {
       setBillingCycle('annual')
+    }
+    // Check for promo code in URL
+    const code = searchParams.get('code')
+    if (code) {
+      setPromoCode(code)
+      setShowPromoInput(true)
     }
   }, [searchParams])
 
@@ -36,6 +44,7 @@ function CheckoutContent() {
         body: JSON.stringify({
           priceId,
           email: user.primaryEmailAddress?.emailAddress,
+          promoCode: promoCode.trim() || undefined,
         }),
       })
 
@@ -123,6 +132,47 @@ function CheckoutContent() {
               </div>
             </button>
           </div>
+        </div>
+
+        {/* Promo Code */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
+          {!showPromoInput ? (
+            <button
+              onClick={() => setShowPromoInput(true)}
+              className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+            >
+              Have a promo code?
+            </button>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Promo code</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Enter code"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none text-sm uppercase"
+                />
+                {promoCode && (
+                  <button
+                    onClick={() => {
+                      setPromoCode('')
+                      setShowPromoInput(false)
+                    }}
+                    className="px-3 py-2 text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {promoCode && (
+                <p className="text-xs text-green-600 mt-2">Code will be applied at checkout</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* What's included */}
