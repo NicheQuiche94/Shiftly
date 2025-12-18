@@ -10,12 +10,10 @@ export default function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [pathname])
 
-  // Prevent scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden'
@@ -69,6 +67,17 @@ export default function Navigation() {
       )
     },
     { 
+      id: 'nav-settings',
+      name: 'Settings', 
+      path: '/dashboard/settings',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      )
+    },
+    { 
       id: 'nav-payroll',
       name: 'Payroll', 
       path: '/dashboard/payroll',
@@ -88,7 +97,6 @@ export default function Navigation() {
     return pathname.startsWith(path)
   }
 
-  // Logo component for nav
   const NavLogo = ({ mobile = false }) => (
     <Link href="/dashboard" className="flex items-center space-x-2">
       <Image 
@@ -109,7 +117,6 @@ export default function Navigation() {
 
   return (
     <>
-      {/* Mobile Header Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-pink-500 to-pink-600 flex items-center justify-between px-4 z-50">
         <NavLogo mobile />
         
@@ -129,7 +136,6 @@ export default function Navigation() {
         </button>
       </div>
 
-      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -137,11 +143,9 @@ export default function Navigation() {
         />
       )}
 
-      {/* Mobile Slide-out Menu */}
       <div className={`lg:hidden fixed top-16 left-0 bottom-0 w-72 bg-gradient-to-b from-pink-500 to-pink-600 z-50 transform transition-transform duration-300 ease-in-out ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        {/* Nav Items */}
         <div className="flex-1 px-3 py-4">
           <div className="space-y-1">
             {navItems.map((item) => (
@@ -169,7 +173,6 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* User Section */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/20">
           <div className="flex items-center space-x-3 px-2">
             <UserButton 
@@ -182,20 +185,17 @@ export default function Navigation() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-white font-medium text-sm truncate">Account</p>
-              <p className="text-white/60 text-xs truncate">Settings</p>
+              <p className="text-white/60 text-xs truncate">Manage profile</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Desktop Sidebar - Hidden on mobile */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-52 bg-gradient-to-b from-pink-500 to-pink-600 flex-col z-50 rounded-r-[2rem]">
-        {/* Logo */}
         <div className="p-6">
           <NavLogo />
         </div>
 
-        {/* Nav Items */}
         <div className="flex-1 px-3 py-4">
           <div className="space-y-1">
             {navItems.map((item) => (
@@ -223,7 +223,6 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* User Section */}
         <div className="p-4 border-t border-white/20">
           <div className="flex items-center space-x-3 px-2">
             <UserButton 
@@ -236,7 +235,7 @@ export default function Navigation() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-white font-medium text-sm truncate">Account</p>
-              <p className="text-white/60 text-xs truncate">Settings</p>
+              <p className="text-white/60 text-xs truncate">Manage profile</p>
             </div>
           </div>
         </div>
