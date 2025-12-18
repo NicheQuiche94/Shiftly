@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const { user, isLoaded } = useUser()
   const searchParams = useSearchParams()
   const [billingCycle, setBillingCycle] = useState('monthly')
@@ -65,7 +65,6 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Image src="/logo.svg" alt="Shiftly" width={40} height={40} />
@@ -75,7 +74,6 @@ export default function CheckoutPage() {
           <p className="text-gray-600 mt-2">14 days free, then ${billingCycle === 'monthly' ? '49/month' : '499/year'}</p>
         </div>
 
-        {/* Plan Selection */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-3">Select your plan</label>
           
@@ -125,7 +123,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* What's included */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
           <p className="text-sm font-medium text-gray-700 mb-3">Everything included:</p>
           <ul className="space-y-2 text-sm text-gray-600">
@@ -156,14 +153,12 @@ export default function CheckoutPage() {
           </ul>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
             <p className="text-red-700 text-sm">{error}</p>
           </div>
         )}
 
-        {/* Checkout button */}
         <button
           onClick={handleCheckout}
           disabled={loading}
@@ -186,7 +181,6 @@ export default function CheckoutPage() {
           You won't be charged during your 14-day trial. Cancel anytime.
         </p>
 
-        {/* Powered by Stripe badge */}
         <div className="flex items-center justify-center gap-2 mt-6 text-gray-400">
           <span className="text-xs">Secured by</span>
           <svg className="h-5" viewBox="0 0 60 25" fill="currentColor">
@@ -195,5 +189,17 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin"></div>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   )
 }
