@@ -104,22 +104,14 @@ export async function GET(request) {
           staffCosts[staffName] = {
             name: staffName,
             totalHours: 0,
-            weeklyHours: {},
             hourlyRate: staffPayrollMap[staffName]?.hourly_rate || null,
             annualSalary: staffPayrollMap[staffName]?.annual_salary || null,
             payType: staffPayrollMap[staffName]?.pay_type || null,
             cost: 0
           }
-          for (let w = 1; w <= weekCount; w++) {
-            staffCosts[staffName].weeklyHours[w] = 0
-          }
         }
         
-        const week = shift.week || 1
         staffCosts[staffName].totalHours += hours
-        if (staffCosts[staffName].weeklyHours[week] !== undefined) {
-          staffCosts[staffName].weeklyHours[week] += hours
-        }
       })
     })
 
@@ -135,48 +127,49 @@ export async function GET(request) {
       totalCost += s.cost || 0
     })
 
-    // Generate CSV
+    // Generate CSV - Clean format for payroll software
     const rotaName = rota.rota_name || rota.name || 'Rota'
     const startDate = rota.start_date ? new Date(rota.start_date).toLocaleDateString('en-GB') : ''
     const endDate = rota.end_date ? new Date(rota.end_date).toLocaleDateString('en-GB') : ''
 
-    // Build CSV header row with weekly columns
-    let weeklyHeaders = ''
-    for (let w = 1; w <= weekCount; w++) {
-      weeklyHeaders += `,Week ${w} Hours`
-    }
-
-    let csv = `Payroll Export - ${rotaName}\n`
+    // Build clean CSV
+    let csv = ''
+    
+    // Header info
+    csv += `Payroll Export - ${rotaName}\n`
     csv += `Period: ${startDate} to ${endDate}\n`
     csv += `Weeks: ${weekCount}\n`
     csv += `\n`
-    csv += `Staff Name,Pay Type,Hourly Rate,Annual Salary${weeklyHeaders},Total Hours,Total Cost\n`
+    
+    // Column headers - simplified for payroll import
+    csv += `Staff Name,Pay Type,Hourly Rate,Total Hours,Gross Pay\n`
 
+    // Staff rows
     Object.values(staffCosts)
       .sort((a, b) => a.name.localeCompare(b.name))
       .forEach(s => {
-        let weeklyHoursStr = ''
-        for (let w = 1; w <= weekCount; w++) {
-          weeklyHoursStr += `,${(s.weeklyHours[w] || 0).toFixed(1)}`
-        }
+        const payType = s.payType ? (s.payType.charAt(0).toUpperCase() + s.payType.slice(1)) : 'Not Set'
+        const hourlyRate = s.hourlyRate ? s.hourlyRate.toFixed(2) : (s.annualSalary ? (s.annualSalary / 52 / 40).toFixed(2) : '')
+        const grossPay = s.cost ? s.cost.toFixed(2) : '0.00'
         
-        const hourlyRate = s.hourlyRate ? `£${s.hourlyRate.toFixed(2)}` : ''
-        const annualSalary = s.annualSalary ? `£${s.annualSalary.toFixed(2)}` : ''
-        const cost = s.cost ? `£${s.cost.toFixed(2)}` : '£0.00'
-        
-        csv += `"${s.name}",${s.payType || 'Not Set'},${hourlyRate},${annualSalary}${weeklyHoursStr},${s.totalHours.toFixed(1)},${cost}\n`
+        csv += `"${s.name}",${payType},${hourlyRate},${s.totalHours.toFixed(1)},${grossPay}\n`
       })
 
+    // Total row
     csv += `\n`
-    csv += `,,,,Total Cost:,,,£${totalCost.toFixed(2)}\n`
+    csv += `Total Wages,,,,${totalCost.toFixed(2)}\n`
 
-    // Return CSV file
+    // Return CSV file with UTF-8 BOM to fix £ encoding in Excel
     const filename = `payroll-${rotaName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${startDate.replace(/\//g, '-')}.csv`
     
-    return new NextResponse(csv, {
+    // Add UTF-8 BOM (Byte Order Mark) for Excel to recognize encoding
+    const BOM = '\uFEFF'
+    const csvWithBOM = BOM + csv
+    
+    return new NextResponse(csvWithBOM, {
       status: 200,
       headers: {
-        'Content-Type': 'text/csv',
+        'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
