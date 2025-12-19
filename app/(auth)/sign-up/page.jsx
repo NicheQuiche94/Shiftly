@@ -1,11 +1,13 @@
+'use client'
+
 import { SignUp } from '@clerk/nextjs'
 
-export default function Page() {
+export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <SignUp 
         routing="hash"
-        afterSignUpUrl="/dashboard"
+        afterSignUpUrl="/checkout"
         appearance={{
           elements: {
             formButtonPrimary: 'bg-pink-600 hover:bg-pink-700 text-sm normal-case',

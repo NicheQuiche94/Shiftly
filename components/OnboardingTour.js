@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 const TOUR_STEPS = [
   {
@@ -71,15 +72,23 @@ export default function OnboardingTour({ onComplete }) {
   const [isVisible, setIsVisible] = useState(false)
   const [targetRect, setTargetRect] = useState(null)
   const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const searchParams = useSearchParams()
 
   // Check if tour should show
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('shiftly_tour_complete')
-    if (!hasSeenTour) {
+    const isNewSubscription = searchParams.get('subscription') === 'success'
+    
+    // Show tour if: never seen it OR just completed subscription (new user)
+    if (!hasSeenTour || isNewSubscription) {
+      // Reset tour if new subscription to ensure they see it
+      if (isNewSubscription) {
+        localStorage.removeItem('shiftly_tour_complete')
+      }
       // Small delay to let the page render first
-      setTimeout(() => setIsVisible(true), 500)
+      setTimeout(() => setIsVisible(true), 800)
     }
-  }, [])
+  }, [searchParams])
 
   // Listen for PWA install prompt
   useEffect(() => {
