@@ -18,7 +18,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Price ID is required' }, { status: 400 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://shiftly.so'
 
     // Build session config
     const sessionConfig = {
@@ -37,7 +37,6 @@ export async function POST(request) {
       subscription_data: {
         trial_period_days: 14,
       },
-      allow_promotion_codes: true, // Always allow manual entry in Stripe checkout
     }
 
     // If a promo code was provided, look it up and apply it
@@ -54,6 +53,7 @@ export async function POST(request) {
           const promoCodeObj = promotionCodes.data[0]
           
           // Apply the promotion code discount
+          // Note: When using discounts, we cannot also use allow_promotion_codes
           sessionConfig.discounts = [
             {
               promotion_code: promoCodeObj.id,
@@ -74,6 +74,9 @@ export async function POST(request) {
         console.error('Promo code lookup error:', promoError)
         // Continue without promo code if lookup fails
       }
+    } else {
+      // Only allow manual promo code entry if no code was pre-applied
+      sessionConfig.allow_promotion_codes = true
     }
 
     const session = await stripe.checkout.sessions.create(sessionConfig)
