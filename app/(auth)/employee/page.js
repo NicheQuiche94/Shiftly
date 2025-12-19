@@ -5,6 +5,7 @@ import { useUser, useClerk, SignIn } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
+import PWAInstallPrompt from '@/app/components/PWAInstallPrompt'
 
 export default function EmployeeDashboard() {
   const { user, isLoaded, isSignedIn } = useUser()
@@ -694,6 +695,9 @@ export default function EmployeeDashboard() {
           </div>
         </div>
       )}
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </main>
   )
 }
