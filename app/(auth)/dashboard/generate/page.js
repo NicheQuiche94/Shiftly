@@ -230,6 +230,8 @@ function GenerateRotaContent() {
     setRota(null)
     setTimeSaved(null)
     setHasUnsavedChanges(false)
+    // Clear viewingRotaId when generating a new rota
+    setViewingRotaId(null)
   
     let data = null
   
@@ -269,22 +271,50 @@ function GenerateRotaContent() {
     }
 
     try {
-      const response = await fetch('/api/rotas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: rotaName,
-          rota_data: rota,
-          start_date: startDate.toISOString(),
-          end_date: getEndDate().toISOString(),
-          week_count: weekCount,
-          team_id: selectedTeamId,
-          approved: approved
+      let response
+      let savedRotaId = viewingRotaId
+
+      if (viewingRotaId) {
+        // UPDATE existing rota with PATCH
+        response = await fetch(`/api/rotas/${viewingRotaId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: rotaName,
+            rota_data: rota,
+            start_date: startDate.toISOString(),
+            end_date: getEndDate().toISOString(),
+            week_count: weekCount,
+            team_id: selectedTeamId,
+            approved: approved
+          })
         })
-      })
+      } else {
+        // CREATE new rota with POST
+        response = await fetch('/api/rotas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: rotaName,
+            rota_data: rota,
+            start_date: startDate.toISOString(),
+            end_date: getEndDate().toISOString(),
+            week_count: weekCount,
+            team_id: selectedTeamId,
+            approved: approved
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          savedRotaId = data.id
+          setViewingRotaId(data.id)
+        }
+      }
 
       if (!response.ok) {
-        throw new Error('Failed to save rota')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save rota')
       }
 
       if (approved) {
@@ -319,6 +349,7 @@ function GenerateRotaContent() {
         alert('Rota saved as draft!')
       }
     } catch (err) {
+      console.error('Save error:', err)
       alert('Error saving rota: ' + err.message)
     }
   }
@@ -331,6 +362,7 @@ function GenerateRotaContent() {
         const data = await response.json()
         setRota(data.rota_data)
         setViewingRotaId(rotaId)
+        setRotaName(data.name || data.rota_name || '')
         setShowSavedRotas(false)
         setHasUnsavedChanges(false)
         
@@ -364,6 +396,7 @@ function GenerateRotaContent() {
         if (viewingRotaId === rotaId) {
           setRota(null)
           setViewingRotaId(null)
+          setRotaName('')
         }
       }
     } catch (err) {
@@ -1174,8 +1207,12 @@ function GenerateRotaContent() {
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 font-cal">Save Rota as Draft</h3>
-            <p className="text-sm text-gray-600 mb-4">Save this rota to revisit later.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 font-cal">
+              {viewingRotaId ? 'Update Rota Draft' : 'Save Rota as Draft'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {viewingRotaId ? 'Update this rota with your changes.' : 'Save this rota to revisit later.'}
+            </p>
             <input
               type="text"
               value={rotaName}
@@ -1187,7 +1224,7 @@ function GenerateRotaContent() {
               <button
                 onClick={() => {
                   setShowSaveModal(false)
-                  setRotaName('')
+                  if (!viewingRotaId) setRotaName('')
                 }}
                 className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
               >
@@ -1197,7 +1234,7 @@ function GenerateRotaContent() {
                 onClick={() => handleSaveRota(false)}
                 className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-semibold transition-all"
               >
-                Save Draft
+                {viewingRotaId ? 'Update Draft' : 'Save Draft'}
               </button>
             </div>
           </div>
@@ -1207,8 +1244,12 @@ function GenerateRotaContent() {
       {showApproveModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 no-print">
           <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 font-cal">Save & Approve Rota</h3>
-            <p className="text-sm text-gray-600 mb-4">Approve this rota to finalize it.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 font-cal">
+              {viewingRotaId ? 'Update & Approve Rota' : 'Save & Approve Rota'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {viewingRotaId ? 'Approve this rota to finalize it.' : 'Approve this rota to finalize it.'}
+            </p>
             <input
               type="text"
               value={rotaName}
@@ -1220,7 +1261,7 @@ function GenerateRotaContent() {
               <button
                 onClick={() => {
                   setShowApproveModal(false)
-                  setRotaName('')
+                  if (!viewingRotaId) setRotaName('')
                 }}
                 className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
               >
@@ -1230,7 +1271,7 @@ function GenerateRotaContent() {
                 onClick={() => handleSaveRota(true)}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
               >
-                Approve
+                {viewingRotaId ? 'Update & Approve' : 'Approve'}
               </button>
             </div>
           </div>
