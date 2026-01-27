@@ -130,15 +130,32 @@ export default function DashboardPage() {
     }
   }, [rotas])
 
-  // Calculate trial days remaining
+  // Calculate trial days remaining - only for genuine trials with valid end dates
+  // Users with BETA100 (100% off forever) have null trial_end and should NOT see trial banner
   const trialDaysRemaining = useMemo(() => {
-    if (!subscription?.isTrialing || !subscription?.trial_end) return null
+    // No trial banner for non-trialing users
+    if (!subscription?.isTrialing) return null
+    
+    // No trial banner if trial_end is missing (e.g., BETA100 free access users)
+    if (!subscription?.trial_end) return null
+    
     const trialEnd = new Date(subscription.trial_end)
+    
+    // Check if trial_end is a valid date
+    if (isNaN(trialEnd.getTime())) return null
+    
     const now = new Date()
     const diffTime = trialEnd - now
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays > 0 ? diffDays : 0
+    
+    // If trial has already ended (0 or negative days), return null to hide banner
+    // Users with expired trials will be handled by the subscription access check
+    return diffDays > 0 ? diffDays : null
   }, [subscription])
+
+  // Determine if we should show the trial banner
+  // Only show if user is trialing AND has a valid future trial end date
+  const showTrialBanner = subscription?.isTrialing && trialDaysRemaining !== null && trialDaysRemaining > 0
 
   const handleDeleteRota = async (rotaId, e) => {
     e.stopPropagation()
@@ -200,8 +217,8 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-      {/* Trial Banner */}
-      {subscription?.isTrialing && trialDaysRemaining !== null && (
+      {/* Trial Banner - only shown for genuine trials with valid end dates */}
+      {showTrialBanner && (
         <div className={`mb-6 rounded-xl p-4 flex items-center justify-between ${
           trialDaysRemaining <= 3 
             ? 'bg-amber-50 border border-amber-200' 
