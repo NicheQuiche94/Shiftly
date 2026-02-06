@@ -53,39 +53,13 @@ export default function DashboardPage() {
     checkUserType()
   }, [isLoaded, user, router])
 
-  // Check subscription status — only for managers
+  // STRIPE DISABLED — skip subscription check during development
+  // TODO: Re-enable before launch by restoring the subscription check:
+  //   fetch('/api/subscription') → if (!data.hasAccess) → router.replace('/checkout')
   useEffect(() => {
     if (isCheckingUserType) return
-
-    const checkSubscription = async () => {
-      try {
-        // Safety net: if user was identified as employee, redirect and don't check subscription
-        const cacheKey = `shiftly_user_type_${user?.id}`
-        const cachedType = localStorage.getItem(cacheKey)
-        if (cachedType === 'employee') {
-          router.replace('/employee')
-          return
-        }
-
-        const response = await fetch('/api/subscription')
-        const data = await response.json()
-        
-        setSubscription(data)
-        
-        // If no active subscription, redirect to checkout
-        if (!data.hasAccess) {
-          router.replace('/checkout')
-          return
-        }
-      } catch (error) {
-        console.error('Error checking subscription:', error)
-        // On error, allow through but log it
-      }
-      setIsCheckingSubscription(false)
-    }
-
-    checkSubscription()
-  }, [isCheckingUserType, router, user?.id])
+    setIsCheckingSubscription(false)
+  }, [isCheckingUserType])
 
   // Fetch rotas with React Query - cached for 5 mins, instant on return
   const { data: rotas = [], isLoading } = useQuery({
@@ -143,22 +117,8 @@ export default function DashboardPage() {
     }
   }, [rotas])
 
-  // Calculate trial days remaining - only for genuine trials with valid end dates
-  const trialDaysRemaining = useMemo(() => {
-    if (!subscription?.isTrialing) return null
-    if (!subscription?.trial_end) return null
-    
-    const trialEnd = new Date(subscription.trial_end)
-    if (isNaN(trialEnd.getTime())) return null
-    
-    const now = new Date()
-    const diffTime = trialEnd - now
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    return diffDays > 0 ? diffDays : null
-  }, [subscription])
-
-  const showTrialBanner = subscription?.isTrialing && trialDaysRemaining !== null && trialDaysRemaining > 0
+  // Trial banner disabled while Stripe is disabled
+  const showTrialBanner = false
 
   const handleDeleteRota = async (rotaId, e) => {
     e.stopPropagation()
@@ -182,7 +142,7 @@ export default function DashboardPage() {
     router.push(`/dashboard/generate?rota=${rotaId}`)
   }
 
-  // Show loading while checking user type or subscription
+  // Show loading while checking user type
   if (isCheckingUserType || isCheckingSubscription) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -220,44 +180,6 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-      {/* Trial Banner */}
-      {showTrialBanner && (
-        <div className={`mb-6 rounded-xl p-4 flex items-center justify-between ${
-          trialDaysRemaining <= 3 
-            ? 'bg-amber-50 border border-amber-200' 
-            : 'bg-blue-50 border border-blue-200'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              trialDaysRemaining <= 3 ? 'bg-amber-100' : 'bg-blue-100'
-            }`}>
-              <svg className={`w-5 h-5 ${trialDaysRemaining <= 3 ? 'text-amber-600' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className={`font-semibold ${trialDaysRemaining <= 3 ? 'text-amber-900' : 'text-blue-900'}`}>
-                {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} left in your trial
-              </p>
-              <p className={`text-sm ${trialDaysRemaining <= 3 ? 'text-amber-700' : 'text-blue-700'}`}>
-                {trialDaysRemaining <= 3 
-                  ? 'Add a payment method to keep your account active'
-                  : 'You have full access to all features'
-                }
-              </p>
-            </div>
-          </div>
-          {trialDaysRemaining <= 3 && (
-            <Link
-              href="/dashboard/settings"
-              className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
-            >
-              Manage Billing
-            </Link>
-          )}
-        </div>
-      )}
-
       {/* Welcome Header */}
       <div className="text-center mb-8 sm:mb-12">
         <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2 font-cal">
