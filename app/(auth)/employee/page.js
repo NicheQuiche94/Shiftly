@@ -13,6 +13,8 @@ import RequestsList from '@/app/components/employee/RequestsList'
 import RequestModal from '@/app/components/employee/RequestModal'
 import AvailabilityModal from '@/app/components/employee/AvailabilityModal'
 import ShiftDetailModal from '@/app/components/employee/ShiftDetailModal'
+import SwapFlowModal from '@/app/components/employee/SwapFlowModal'
+import OpenShiftsCard from '@/app/components/employee/OpenShiftsCard'
 import PWAInstallPrompt from '@/app/components/PWAInstallPrompt'
 
 export default function EmployeeDashboard() {
@@ -24,6 +26,7 @@ export default function EmployeeDashboard() {
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false)
   const [selectedShift, setSelectedShift] = useState(null)
+  const [swapShift, setSwapShift] = useState(null)
 
   const handleSignOut = () => {
     if (user) localStorage.removeItem(`shiftly_user_type_${user.id}`)
@@ -53,14 +56,37 @@ export default function EmployeeDashboard() {
     enabled: !!profile?.id
   })
 
+  const { data: openShifts = [] } = useQuery({
+    queryKey: ['open-shifts', profile?.team_id],
+    queryFn: async () => { const res = await fetch('/api/employee/open-shifts'); if (!res.ok) throw new Error(); return res.json() },
+    enabled: !!profile?.id,
+    refetchInterval: 30000 // Poll every 30s for new open shifts
+  })
+
   // ── Mutations ──
   const submitRequest = useMutation({
     mutationFn: async (data) => {
       const res = await fetch('/api/employee/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
       if (!res.ok) throw new Error(); return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employee-requests'] }); setShowRequestModal(false) }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['open-shifts'] })
+    }
   })
+
+  const acceptShift = async (requestId) => {
+    const res = await fetch('/api/employee/open-shifts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request_id: requestId })
+    })
+    if (!res.ok) throw new Error('Failed to accept shift')
+    queryClient.invalidateQueries({ queryKey: ['open-shifts'] })
+    queryClient.invalidateQueries({ queryKey: ['employee-shifts'] })
+    queryClient.invalidateQueries({ queryKey: ['employee-requests'] })
+    return res.json()
+  }
 
   const updateAvailability = useMutation({
     mutationFn: async (availability) => {
@@ -69,6 +95,18 @@ export default function EmployeeDashboard() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employee-profile'] }); setShowAvailabilityModal(false) }
   })
+
+  // ── Cover handler (posts open cover request) ──
+  const handleCoverRequest = (shift) => {
+    submitRequest.mutate({
+      type: 'cover',
+      start_date: shift.date,
+      end_date: shift.date,
+      shift_id: shift.rota_id || null,
+      swap_with_staff_id: null, // Open to anyone
+      reason: `Cover needed: ${shift.shift_name} (${shift.start_time}–${shift.end_time})`
+    })
+  }
 
   // ── Loading / Auth states ──
   if (!isLoaded) {
@@ -133,6 +171,12 @@ export default function EmployeeDashboard() {
           <p className="text-gray-500 mt-0.5">{profile.role} · {profile.contracted_hours}h/week</p>
         </div>
 
+        {/* Open shifts from teammates — high visibility */}
+        <OpenShiftsCard
+          openShifts={openShifts}
+          onAccept={acceptShift}
+        />
+
         <QuickActions
           onRequestTimeOff={() => setShowRequestModal(true)}
           onUpdateAvailability={() => setShowAvailabilityModal(true)}
@@ -155,11 +199,11 @@ export default function EmployeeDashboard() {
           onClose={() => setSelectedShift(null)}
           onRequestSwap={(shift) => {
             setSelectedShift(null)
-            console.log('Request swap for:', shift)
+            setSwapShift(shift)
           }}
           onRequestCover={(shift) => {
             setSelectedShift(null)
-            console.log('Request cover for:', shift)
+            handleCoverRequest(shift)
           }}
           onRequestTimeOff={(shift) => {
             setSelectedShift(null)
@@ -168,10 +212,21 @@ export default function EmployeeDashboard() {
         />
       )}
 
-      {/* Existing Modals */}
+      {/* Swap Flow Modal (SS-01 to SS-03) */}
+      {swapShift && (
+        <SwapFlowModal
+          shift={swapShift}
+          onSubmit={(data) => submitRequest.mutate(data)}
+          onClose={() => setSwapShift(null)}
+          isPending={submitRequest.isPending}
+        />
+      )}
+
+      {/* Request Modal with Calendar Picker (TO-01 to TO-06) */}
       {showRequestModal && (
         <RequestModal
           shifts={shifts}
+          requests={requests}
           onSubmit={(data) => submitRequest.mutate(data)}
           onClose={() => setShowRequestModal(false)}
           isPending={submitRequest.isPending}

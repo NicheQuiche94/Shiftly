@@ -83,7 +83,7 @@ export default function ShiftDetailModal({ shift, colourMap = {}, onClose, onReq
               </div>
               <div>
                 <p className="font-medium text-gray-900 text-sm">Request Swap</p>
-                <p className="text-xs text-gray-500">Swap this shift with a colleague</p>
+                <p className="text-xs text-gray-500">Open to team or pick a colleague</p>
               </div>
             </button>
 
@@ -97,8 +97,8 @@ export default function ShiftDetailModal({ shift, colourMap = {}, onClose, onReq
                 </svg>
               </div>
               <div>
-                <p className="font-medium text-gray-900 text-sm">Request Cover</p>
-                <p className="text-xs text-gray-500">Ask someone to cover this shift</p>
+                <p className="font-medium text-gray-900 text-sm">Can't Make It</p>
+                <p className="text-xs text-gray-500">Post for a teammate to pick up</p>
               </div>
             </button>
 
@@ -113,7 +113,7 @@ export default function ShiftDetailModal({ shift, colourMap = {}, onClose, onReq
               </div>
               <div>
                 <p className="font-medium text-gray-900 text-sm">Book Time Off</p>
-                <p className="text-xs text-gray-500">Request time off around this shift</p>
+                <p className="text-xs text-gray-500">Request holiday around this shift</p>
               </div>
             </button>
           </div>
