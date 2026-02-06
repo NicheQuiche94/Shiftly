@@ -123,19 +123,16 @@ export default function EmployeeDashboard() {
   const firstName = user?.firstName || profile?.name?.split(' ')[0] || 'there'
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-100">
       <EmployeeHeader onSignOut={handleSignOut} />
 
-      {/* Branded welcome area */}
-      <div className="bg-gradient-to-b from-pink-500 to-pink-400 px-4 pt-6 pb-10">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold text-white font-cal">Hi, {firstName}! 👋</h1>
-          <p className="text-pink-100">{profile.role} · {profile.contracted_hours}h/week</p>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Welcome card */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 font-cal">Hi, {firstName}! 👋</h1>
+          <p className="text-gray-500 mt-0.5">{profile.role} · {profile.contracted_hours}h/week</p>
         </div>
-      </div>
 
-      {/* Content area — overlaps the pink banner */}
-      <div className="max-w-2xl mx-auto px-4 -mt-6">
         <QuickActions
           onRequestTimeOff={() => setShowRequestModal(true)}
           onUpdateAvailability={() => setShowAvailabilityModal(true)}
@@ -158,12 +155,10 @@ export default function EmployeeDashboard() {
           onClose={() => setSelectedShift(null)}
           onRequestSwap={(shift) => {
             setSelectedShift(null)
-            // TODO (SS-01): Open swap flow
             console.log('Request swap for:', shift)
           }}
           onRequestCover={(shift) => {
             setSelectedShift(null)
-            // TODO (MSG-06): Post cover request to channel
             console.log('Request cover for:', shift)
           }}
           onRequestTimeOff={(shift) => {
