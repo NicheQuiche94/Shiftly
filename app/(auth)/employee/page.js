@@ -12,6 +12,7 @@ import QuickActions from '@/app/components/employee/QuickActions'
 import RequestsList from '@/app/components/employee/RequestsList'
 import RequestModal from '@/app/components/employee/RequestModal'
 import AvailabilityModal from '@/app/components/employee/AvailabilityModal'
+import ShiftDetailModal from '@/app/components/employee/ShiftDetailModal'
 import PWAInstallPrompt from '@/app/components/PWAInstallPrompt'
 
 export default function EmployeeDashboard() {
@@ -22,6 +23,7 @@ export default function EmployeeDashboard() {
 
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false)
+  const [selectedShift, setSelectedShift] = useState(null)
 
   const handleSignOut = () => {
     if (user) localStorage.removeItem(`shiftly_user_type_${user.id}`)
@@ -124,32 +126,54 @@ export default function EmployeeDashboard() {
     <main className="min-h-screen bg-gray-50">
       <EmployeeHeader onSignOut={handleSignOut} />
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Welcome */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 font-cal">Hi, {firstName}! 👋</h1>
-          <p className="text-gray-600">{profile.role} · {profile.contracted_hours}h/week</p>
+      {/* Branded welcome area */}
+      <div className="bg-gradient-to-b from-pink-500 to-pink-400 px-4 pt-6 pb-10">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-2xl font-bold text-white font-cal">Hi, {firstName}! 👋</h1>
+          <p className="text-pink-100">{profile.role} · {profile.contracted_hours}h/week</p>
         </div>
+      </div>
 
+      {/* Content area — overlaps the pink banner */}
+      <div className="max-w-2xl mx-auto px-4 -mt-6">
         <QuickActions
           onRequestTimeOff={() => setShowRequestModal(true)}
           onUpdateAvailability={() => setShowAvailabilityModal(true)}
         />
 
-        <RequestsList requests={requests} />
-
-        {/* Rota View — the new week grid (SA-01 to SA-06) */}
+        {/* Rota View (SA-01 to SA-06) */}
         <EmployeeRotaView
           shifts={shifts}
           isLoading={shiftsLoading}
-          onShiftTap={(shift) => {
-            // TODO (SA-03): Open shift detail bottom sheet
-            console.log('Shift tapped:', shift)
-          }}
+          onShiftTap={(shift) => setSelectedShift(shift)}
         />
+
+        <RequestsList requests={requests} />
       </div>
 
-      {/* Modals */}
+      {/* Shift Detail Modal (SA-03) */}
+      {selectedShift && (
+        <ShiftDetailModal
+          shift={selectedShift}
+          onClose={() => setSelectedShift(null)}
+          onRequestSwap={(shift) => {
+            setSelectedShift(null)
+            // TODO (SS-01): Open swap flow
+            console.log('Request swap for:', shift)
+          }}
+          onRequestCover={(shift) => {
+            setSelectedShift(null)
+            // TODO (MSG-06): Post cover request to channel
+            console.log('Request cover for:', shift)
+          }}
+          onRequestTimeOff={(shift) => {
+            setSelectedShift(null)
+            setShowRequestModal(true)
+          }}
+        />
+      )}
+
+      {/* Existing Modals */}
       {showRequestModal && (
         <RequestModal
           shifts={shifts}
