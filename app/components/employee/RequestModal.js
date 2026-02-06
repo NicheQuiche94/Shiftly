@@ -25,6 +25,7 @@ function countDays(start, end) {
 }
 
 export default function RequestModal({ shifts = [], requests = [], onSubmit, onClose, isPending }) {
+  const [submitted, setSubmitted] = useState(false)
   const [formData, setFormData] = useState({
     type: 'holiday',
     start_date: null,
@@ -64,6 +65,7 @@ export default function RequestModal({ shifts = [], requests = [], onSubmit, onC
       end_date: endDate || startDate,
       reason
     })
+    setSubmitted(true)
   }
 
   const days = countDays(formData.start_date, formData.end_date)
@@ -93,134 +95,154 @@ export default function RequestModal({ shifts = [], requests = [], onSubmit, onC
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              {/* Request Type */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'holiday', label: '🌴 Holiday' },
-                    { id: 'sick', label: '🤒 Sick' },
-                    { id: 'swap', label: '🔄 Swap' }
-                  ].map((type) => (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, type: type.id, swap_shift: '', start_date: null, end_date: null })}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        formData.type === type.id
-                          ? 'bg-pink-100 text-pink-700 border-2 border-pink-300'
-                          : 'bg-gray-100 text-gray-700 border-2 border-transparent'
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
+          {submitted ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#FFF0F5' }}>
+                <svg className="w-8 h-8" style={{ color: '#FF1F7D' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-
-              {/* Calendar Range Picker — Holiday & Sick (TO-01) */}
-              {formData.type !== 'swap' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    {formData.start_date && !formData.end_date
-                      ? 'Now tap your last day off'
-                      : 'Tap your first day off'}
-                  </label>
-                  <CalendarRangePicker
-                    startDate={formData.start_date}
-                    endDate={formData.end_date}
-                    onSelect={handleDateSelect}
-                    shifts={shifts}
-                    existingTimeOff={approvedTimeOff}
-                  />
-
-                  {/* Selection summary (TO-03) */}
-                  {formData.start_date && (
-                    <div className="mt-3 bg-pink-50 rounded-xl p-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatDateNice(formData.start_date)}
-                          {formData.end_date && formData.end_date !== formData.start_date &&
-                            ` → ${formatDateNice(formData.end_date)}`
-                          }
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {days} {days === 1 ? 'day' : 'days'} off
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, start_date: null, end_date: null }))}
-                        className="text-xs text-pink-600 font-medium hover:text-pink-700"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Shift Selector — Swap only */}
-              {formData.type === 'swap' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Which shift do you want to swap?
-                  </label>
-                  {shifts.length === 0 ? (
-                    <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">No upcoming shifts to swap</p>
-                  ) : (
-                    <select
-                      required
-                      value={formData.swap_shift}
-                      onChange={(e) => setFormData({ ...formData, swap_shift: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
-                    >
-                      <option value="">Select a shift...</option>
-                      {shifts.map((shift, idx) => (
-                        <option key={idx} value={formatShiftForSelect(shift)}>
-                          {formatShiftForSelect(shift)}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-
-              {/* Reason */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  {formData.type === 'swap' ? 'Additional notes (optional)' : 'Reason (optional)'}
-                </label>
-                <textarea
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white text-gray-900"
-                  placeholder={formData.type === 'swap' ? 'e.g., Willing to swap with anyone on Thursday' : 'Add any notes...'}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3">
+              <h3 className="text-lg font-bold text-gray-900 font-cal mb-1">Request Submitted</h3>
+              <p className="text-sm text-gray-500 mb-6">Your manager will review this shortly</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isPending || !hasValidDates}
-                className="flex-1 px-4 py-2.5 text-white rounded-lg font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-pink-500/25 transition-all"
+                className="px-6 py-2.5 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all"
                 style={{ background: '#FF1F7D' }}
               >
-                {isPending ? 'Submitting...' : 'Submit Request'}
+                Done
               </button>
             </div>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                {/* Request Type */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'holiday', label: '🌴 Holiday' },
+                      { id: 'sick', label: '🤒 Sick' },
+                      { id: 'swap', label: '🔄 Swap' }
+                    ].map((type) => (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, type: type.id, swap_shift: '', start_date: null, end_date: null })}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          formData.type === type.id
+                            ? 'bg-pink-100 text-pink-700 border-2 border-pink-300'
+                            : 'bg-gray-100 text-gray-700 border-2 border-transparent'
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Calendar Range Picker — Holiday & Sick (TO-01) */}
+                {formData.type !== 'swap' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      {formData.start_date && !formData.end_date
+                        ? 'Now tap your last day off'
+                        : 'Tap your first day off'}
+                    </label>
+                    <CalendarRangePicker
+                      startDate={formData.start_date}
+                      endDate={formData.end_date}
+                      onSelect={handleDateSelect}
+                      shifts={shifts}
+                      existingTimeOff={approvedTimeOff}
+                    />
+
+                    {/* Selection summary (TO-03) */}
+                    {formData.start_date && (
+                      <div className="mt-3 bg-pink-50 rounded-xl p-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatDateNice(formData.start_date)}
+                            {formData.end_date && formData.end_date !== formData.start_date &&
+                              ` → ${formatDateNice(formData.end_date)}`
+                            }
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {days} {days === 1 ? 'day' : 'days'} off
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, start_date: null, end_date: null }))}
+                          className="text-xs text-pink-600 font-medium hover:text-pink-700"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Shift Selector — Swap only */}
+                {formData.type === 'swap' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Which shift do you want to swap?
+                    </label>
+                    {shifts.length === 0 ? (
+                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">No upcoming shifts to swap</p>
+                    ) : (
+                      <select
+                        required
+                        value={formData.swap_shift}
+                        onChange={(e) => setFormData({ ...formData, swap_shift: e.target.value })}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
+                      >
+                        <option value="">Select a shift...</option>
+                        {shifts.map((shift, idx) => (
+                          <option key={idx} value={formatShiftForSelect(shift)}>
+                            {formatShiftForSelect(shift)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    {formData.type === 'swap' ? 'Additional notes (optional)' : 'Reason (optional)'}
+                  </label>
+                  <textarea
+                    value={formData.reason}
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white text-gray-900"
+                    placeholder={formData.type === 'swap' ? 'e.g., Willing to swap with anyone on Thursday' : 'Add any notes...'}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || !hasValidDates}
+                  className="flex-1 px-4 py-2.5 text-white rounded-lg font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-pink-500/25 transition-all"
+                  style={{ background: '#FF1F7D' }}
+                >
+                  {isPending ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import Image from 'next/image'
 
 export default function EmployeeHeader({ onSignOut, showBackLink = false }) {
   return (
-    <header className="bg-gradient-to-r from-pink-500 to-pink-600 sticky top-0 z-40">
+    <header className="sticky top-0 z-40" style={{ background: '#FF1F7D' }}>
       <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/employee" className="flex items-center gap-2">
           <Image
