@@ -28,6 +28,11 @@ export default function DashboardPage() {
         return
       }
 
+      if (cachedType === 'employee') {
+        router.replace('/employee')
+        return
+      }
+
       try {
         const response = await fetch('/api/auth/user-type')
         const data = await response.json()
@@ -48,12 +53,20 @@ export default function DashboardPage() {
     checkUserType()
   }, [isLoaded, user, router])
 
-  // Check subscription status
+  // Check subscription status — only for managers
   useEffect(() => {
     if (isCheckingUserType) return
 
     const checkSubscription = async () => {
       try {
+        // Safety net: if user was identified as employee, redirect and don't check subscription
+        const cacheKey = `shiftly_user_type_${user?.id}`
+        const cachedType = localStorage.getItem(cacheKey)
+        if (cachedType === 'employee') {
+          router.replace('/employee')
+          return
+        }
+
         const response = await fetch('/api/subscription')
         const data = await response.json()
         
@@ -72,7 +85,7 @@ export default function DashboardPage() {
     }
 
     checkSubscription()
-  }, [isCheckingUserType, router])
+  }, [isCheckingUserType, router, user?.id])
 
   // Fetch rotas with React Query - cached for 5 mins, instant on return
   const { data: rotas = [], isLoading } = useQuery({
@@ -131,30 +144,20 @@ export default function DashboardPage() {
   }, [rotas])
 
   // Calculate trial days remaining - only for genuine trials with valid end dates
-  // Users with BETA100 (100% off forever) have null trial_end and should NOT see trial banner
   const trialDaysRemaining = useMemo(() => {
-    // No trial banner for non-trialing users
     if (!subscription?.isTrialing) return null
-    
-    // No trial banner if trial_end is missing (e.g., BETA100 free access users)
     if (!subscription?.trial_end) return null
     
     const trialEnd = new Date(subscription.trial_end)
-    
-    // Check if trial_end is a valid date
     if (isNaN(trialEnd.getTime())) return null
     
     const now = new Date()
     const diffTime = trialEnd - now
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     
-    // If trial has already ended (0 or negative days), return null to hide banner
-    // Users with expired trials will be handled by the subscription access check
     return diffDays > 0 ? diffDays : null
   }, [subscription])
 
-  // Determine if we should show the trial banner
-  // Only show if user is trialing AND has a valid future trial end date
   const showTrialBanner = subscription?.isTrialing && trialDaysRemaining !== null && trialDaysRemaining > 0
 
   const handleDeleteRota = async (rotaId, e) => {
@@ -217,7 +220,7 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-      {/* Trial Banner - only shown for genuine trials with valid end dates */}
+      {/* Trial Banner */}
       {showTrialBanner && (
         <div className={`mb-6 rounded-xl p-4 flex items-center justify-between ${
           trialDaysRemaining <= 3 
