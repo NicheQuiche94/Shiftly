@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import TeamSelector from '@/app/components/TeamSelector'
+import { generatePayrollPDF } from '@/lib/generatePayrollPDF'
 
 function getMonday(date) {
   const d = new Date(date)
@@ -72,6 +73,8 @@ export default function ReportsPage() {
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [filterStaff, setFilterStaff] = useState('all')
+  const [exporting, setExporting] = useState(null) // 'csv' | 'pdf' | null
+  const [teamName, setTeamName] = useState('Team')
 
   const currentMonday = useMemo(() => {
     const monday = getMonday(new Date())
@@ -79,6 +82,12 @@ export default function ReportsPage() {
     d.setDate(d.getDate() + weekOffset * 7)
     return d.toISOString().split('T')[0]
   }, [weekOffset])
+
+  const weekEndStr = useMemo(() => {
+    const d = new Date(currentMonday)
+    d.setDate(d.getDate() + 6)
+    return d.toISOString().split('T')[0]
+  }, [currentMonday])
 
   // Fetch labour report
   const { data: labourData, isLoading } = useQuery({
@@ -110,6 +119,41 @@ export default function ReportsPage() {
     : report.filter(s => s.staff_id === parseInt(filterStaff))
 
   const maxTrendCost = trendData ? Math.max(...trendData.map(w => w.total_cost), 1) : 1
+
+  // ── Export handlers ──
+  const handleExportCSV = async () => {
+    setExporting('csv')
+    try {
+      const res = await fetch(`/api/reports/export-csv?start_date=${currentMonday}&team_id=${selectedTeamId}`)
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `payroll-${currentMonday}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('CSV export failed:', err)
+      alert('Failed to export CSV')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const handleExportPDF = async () => {
+    setExporting('pdf')
+    try {
+      await generatePayrollPDF(report, summary, labourData?.teamName || 'Team', currentMonday, weekEndStr)
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      alert('Failed to export PDF')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   return (
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
@@ -145,37 +189,66 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          {/* Week navigation */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center justify-between">
-            <button
-              onClick={() => setWeekOffset(prev => prev - 1)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+          {/* Week navigation + export buttons */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setWeekOffset(prev => prev - 1)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
 
-            <div className="text-center">
-              <p className="font-semibold text-gray-900 font-cal">{formatWeek(currentMonday)}</p>
-              {weekOffset !== 0 && (
-                <button
-                  onClick={() => setWeekOffset(0)}
-                  className="text-xs text-pink-600 font-medium hover:text-pink-700"
-                >
-                  ← This week
-                </button>
-              )}
+              <div className="text-center">
+                <p className="font-semibold text-gray-900 font-cal">{formatWeek(currentMonday)}</p>
+                {weekOffset !== 0 && (
+                  <button
+                    onClick={() => setWeekOffset(0)}
+                    className="text-xs text-pink-600 font-medium hover:text-pink-700"
+                  >
+                    ← This week
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => setWeekOffset(prev => prev + 1)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
 
-            <button
-              onClick={() => setWeekOffset(prev => prev + 1)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            {/* Export buttons */}
+            {report.length > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                <button
+                  onClick={handleExportCSV}
+                  disabled={exporting === 'csv'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {exporting === 'csv' ? 'Exporting...' : 'Download CSV'}
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exporting === 'pdf'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors disabled:opacity-50 hover:shadow-md"
+                  style={{ background: '#FF1F7D' }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  {exporting === 'pdf' ? 'Generating...' : 'Download PDF'}
+                </button>
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -254,7 +327,7 @@ export default function ReportsPage() {
                 )}
               </div>
 
-              {/* Cost trend chart (RPT-04) */}
+              {/* Cost trend chart */}
               {trendData && trendData.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
                   <h2 className="font-semibold text-gray-900 font-cal mb-4">Cost Trend (8 weeks)</h2>

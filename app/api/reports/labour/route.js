@@ -40,6 +40,13 @@ export async function GET(request) {
 
     if (staffError) throw staffError
 
+    // Get team name
+    const { data: team } = await supabase
+      .from('Teams')
+      .select('name')
+      .eq('id', teamId)
+      .single()
+
     // Get approved rotas covering this week
     const { data: rotas, error: rotasError } = await supabase
       .from('Rotas')
@@ -161,7 +168,7 @@ export async function GET(request) {
       overtime_count: report.filter(s => s.overtime_status === 'over').length
     }
 
-    return NextResponse.json({ report, summary })
+    return NextResponse.json({ report, summary, teamName: team?.name || 'Team' })
   } catch (error) {
     console.error('Error generating labour report:', error)
     return NextResponse.json({ error: 'Failed to generate report' }, { status: 500 })
