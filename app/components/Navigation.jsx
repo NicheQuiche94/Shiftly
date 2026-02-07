@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import Image from 'next/image'
+import NotificationBell from '@/app/components/NotificationBell'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -127,25 +128,30 @@ export default function Navigation() {
 
   return (
     <>
+      {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-pink-500 to-pink-600 flex items-center justify-between px-4 z-50">
         <NavLogo mobile />
         
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="w-10 h-10 flex items-center justify-center text-white"
-        >
-          {mobileMenuOpen ? (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell variant="desktop" />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="w-10 h-10 flex items-center justify-center text-white"
+          >
+            {mobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Mobile backdrop */}
       {mobileMenuOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -153,6 +159,7 @@ export default function Navigation() {
         />
       )}
 
+      {/* Mobile slide-out menu */}
       <div className={`lg:hidden fixed top-16 left-0 bottom-0 w-72 bg-gradient-to-b from-pink-500 to-pink-600 z-50 transform transition-transform duration-300 ease-in-out ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
@@ -201,6 +208,7 @@ export default function Navigation() {
         </div>
       </div>
 
+      {/* Desktop sidebar — no bell or UserButton here anymore */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-52 bg-gradient-to-b from-pink-500 to-pink-600 flex-col z-50 rounded-r-[2rem]">
         <div className="p-6">
           <NavLogo />
@@ -230,23 +238,6 @@ export default function Navigation() {
                 )}
               </Link>
             ))}
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-white/20">
-          <div className="flex items-center space-x-3 px-2">
-            <UserButton 
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "w-9 h-9"
-                }
-              }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-medium text-sm truncate">Account</p>
-              <p className="text-white/60 text-xs truncate">Manage profile</p>
-            </div>
           </div>
         </div>
       </nav>
