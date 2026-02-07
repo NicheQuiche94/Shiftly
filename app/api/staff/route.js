@@ -59,6 +59,7 @@ export async function POST(request) {
     role: body.role,
     contracted_hours: contractedHours,
     max_hours: maxHours,
+    hourly_rate: body.hourly_rate || 0,
     availability: body.availability
   }
 
@@ -93,9 +94,12 @@ export async function PUT(request) {
     availability: body.availability
   }
 
-  // Only include max_hours if provided
   if (body.max_hours !== undefined) {
     updateData.max_hours = body.max_hours
+  }
+
+  if (body.hourly_rate !== undefined) {
+    updateData.hourly_rate = body.hourly_rate
   }
 
   const { data, error } = await supabase
