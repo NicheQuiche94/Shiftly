@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { notifyUser, notifyTeam } from '@/lib/createNotification'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -75,7 +76,6 @@ export async function POST(request) {
       reason 
     } = body
 
-    // Validate required fields
     if (!team_id || !staff_id || !type) {
       return NextResponse.json(
         { error: 'team_id, staff_id, and type are required' }, 
@@ -83,7 +83,6 @@ export async function POST(request) {
       )
     }
 
-    // Validate type
     const validTypes = ['holiday', 'sick', 'swap', 'cover', 'availability']
     if (!validTypes.includes(type)) {
       return NextResponse.json(
@@ -92,7 +91,6 @@ export async function POST(request) {
       )
     }
 
-    // Validate direction
     const validDirections = ['incoming', 'outgoing']
     const requestDirection = direction || 'incoming'
     if (!validDirections.includes(requestDirection)) {
@@ -123,6 +121,78 @@ export async function POST(request) {
 
     if (error) throw error
 
+    // ── MSG-04: Auto-notifications ──
+    try {
+      // Get the staff member's name
+      const { data: staffMember } = await supabase
+        .from('Staff')
+        .select('name')
+        .eq('id', staff_id)
+        .single()
+
+      const staffName = staffMember?.name || 'A team member'
+
+      // Get the team's manager (owner)
+      const { data: team } = await supabase
+        .from('Teams')
+        .select('user_id')
+        .eq('id', team_id)
+        .single()
+
+      const managerUserId = team?.user_id
+
+      if (type === 'holiday' || type === 'sick') {
+        // Notify manager about time-off request
+        if (managerUserId && managerUserId !== userId) {
+          await notifyUser({
+            recipient_user_id: managerUserId,
+            team_id,
+            type: 'cover_needed',
+            title: `${staffName} requested ${type === 'holiday' ? 'time off' : 'sick leave'}`,
+            message: start_date && end_date && start_date !== end_date
+              ? `${start_date} to ${end_date}${reason ? ` — ${reason}` : ''}`
+              : `${start_date || 'Date TBC'}${reason ? ` — ${reason}` : ''}`,
+            related_id: data.id,
+            related_type: 'request',
+          })
+        }
+      } else if ((type === 'swap' || type === 'cover') && !swap_with_staff_id) {
+        // Open swap/cover — notify the whole team
+        await notifyTeam({
+          team_id,
+          type: 'swap_available',
+          title: `${staffName} posted a shift ${type === 'swap' ? 'swap' : 'for cover'}`,
+          message: reason || `${start_date || 'Shift'} is available to pick up`,
+          sender_user_id: userId,
+          related_id: data.id,
+          related_type: 'request',
+        })
+      } else if (type === 'swap' && swap_with_staff_id) {
+        // Direct swap request — notify the target person
+        const { data: targetStaff } = await supabase
+          .from('Staff')
+          .select('clerk_user_id')
+          .eq('id', swap_with_staff_id)
+          .single()
+
+        if (targetStaff?.clerk_user_id) {
+          await notifyUser({
+            recipient_user_id: targetStaff.clerk_user_id,
+            recipient_staff_id: swap_with_staff_id,
+            team_id,
+            type: 'swap_available',
+            title: `${staffName} wants to swap shifts with you`,
+            message: reason || `For ${start_date || 'an upcoming shift'}`,
+            related_id: data.id,
+            related_type: 'request',
+          })
+        }
+      }
+    } catch (notifError) {
+      // Don't fail the request if notification fails
+      console.error('Failed to send notification:', notifError)
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error creating request:', error)
@@ -148,7 +218,6 @@ export async function PUT(request) {
       )
     }
 
-    // Validate status
     const validStatuses = ['pending', 'approved', 'rejected']
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
@@ -162,7 +231,6 @@ export async function PUT(request) {
       updated_at: new Date().toISOString()
     }
 
-    // If resolving the request, add resolution info
     if (status === 'approved' || status === 'rejected') {
       updateData.resolved_at = new Date().toISOString()
       updateData.resolved_by = userId
@@ -171,6 +239,13 @@ export async function PUT(request) {
     if (manager_notes !== undefined) {
       updateData.manager_notes = manager_notes
     }
+
+    // Fetch the request before updating so we can notify
+    const { data: existingRequest } = await supabase
+      .from('requests')
+      .select('*, staff:staff_id (id, name, clerk_user_id)')
+      .eq('id', id)
+      .single()
 
     const { data, error } = await supabase
       .from('requests')
@@ -181,6 +256,31 @@ export async function PUT(request) {
       .single()
 
     if (error) throw error
+
+    // ── MSG-04: Notify employee of approval/rejection ──
+    try {
+      if (existingRequest?.staff?.clerk_user_id && (status === 'approved' || status === 'rejected')) {
+        const staffName = existingRequest.staff.name || 'Your'
+        const requestType = existingRequest.type === 'holiday' ? 'time off' 
+          : existingRequest.type === 'sick' ? 'sick leave'
+          : existingRequest.type === 'swap' ? 'swap request'
+          : existingRequest.type === 'cover' ? 'cover request'
+          : 'request'
+
+        await notifyUser({
+          recipient_user_id: existingRequest.staff.clerk_user_id,
+          recipient_staff_id: existingRequest.staff.id,
+          team_id: existingRequest.team_id,
+          type: status === 'approved' ? 'request_approved' : 'request_rejected',
+          title: `Your ${requestType} was ${status}`,
+          message: manager_notes || (status === 'approved' ? 'You\'re all set!' : 'Contact your manager for details.'),
+          related_id: id,
+          related_type: 'request',
+        })
+      }
+    } catch (notifError) {
+      console.error('Failed to send notification:', notifError)
+    }
 
     return NextResponse.json(data)
   } catch (error) {
