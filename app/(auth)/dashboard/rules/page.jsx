@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
+import PageHeader from '@/app/components/PageHeader'
 
 const AVAILABLE_RULES = [
   {
@@ -77,19 +78,16 @@ export default function RulesPage() {
       const response = await fetch('/api/rules')
       if (response.ok) {
         const data = await response.json()
-        console.log('Loaded rules from database:', data)
         
-        // Initialize rules state with database values or defaults
         const initialRules = AVAILABLE_RULES.map(ruleTemplate => {
           const existingRule = data.find(r => r.type === ruleTemplate.type)
           return {
             ...ruleTemplate,
-            enabled: existingRule?.enabled ?? false, // Default to disabled
+            enabled: existingRule?.enabled ?? false,
             value: existingRule?.value ?? ruleTemplate.defaultValue
           }
         })
         
-        console.log('Initialized rules state:', initialRules)
         setRules(initialRules)
       }
     } catch (error) {
@@ -122,7 +120,6 @@ export default function RulesPage() {
   const saveRule = async (rule) => {
     setSaving(true)
     try {
-      console.log('Saving rule:', rule)
       const response = await fetch('/api/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,9 +134,6 @@ export default function RulesPage() {
       if (!response.ok) {
         throw new Error('Failed to save rule')
       }
-      
-      const savedRule = await response.json()
-      console.log('Rule saved:', savedRule)
     } catch (error) {
       console.error('Error saving rule:', error)
       alert('Failed to save rule')
@@ -159,14 +153,10 @@ export default function RulesPage() {
   return (
     <>
       <main className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cal">
-            Scheduling Rules
-          </h1>
-          <p className="text-gray-600">
-            Configure constraints for fair and balanced scheduling
-          </p>
-        </div>
+        <PageHeader 
+          title="Scheduling Rules"
+          subtitle="Configure constraints for fair and balanced scheduling"
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {rules.map((rule) => (
@@ -198,10 +188,10 @@ export default function RulesPage() {
                 </button>
               </div>
               
-              <h3 className="text-lg font-semibold text-gray-900 mb-2 font-cal">
+              <h3 className="heading-subsection mb-2">
                 {rule.name}
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="body-small text-gray-600 mb-4">
                 {rule.description}
               </p>
               
@@ -210,7 +200,7 @@ export default function RulesPage() {
                   className="flex items-center gap-3 pt-4 border-t border-gray-200"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <label className="text-sm font-medium text-gray-700 flex-shrink-0">
+                  <label className="body-small font-medium text-gray-700 flex-shrink-0">
                     {rule.valueLabel}:
                   </label>
                   <input
@@ -230,7 +220,7 @@ export default function RulesPage() {
         {saving && (
           <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 px-4 py-3 flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm font-medium text-gray-900">Saving...</span>
+            <span className="body-small font-medium">Saving...</span>
           </div>
         )}
       </main>
