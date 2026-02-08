@@ -1,249 +1,311 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import CalendarRangePicker from './CalendarRangePicker'
+import { useState } from 'react'
 
-function formatShiftForSelect(shift) {
-  const date = new Date(shift.date).toLocaleDateString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short'
-  })
-  return `${date} - ${shift.shift_name} (${shift.start_time}-${shift.end_time})`
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate()
 }
 
-function formatDateNice(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+function getFirstDayOfMonth(year, month) {
+  return new Date(year, month, 1).getDay()
 }
 
-function countDays(start, end) {
-  if (!start) return 0
-  if (!end) return 1
-  const s = new Date(start + 'T00:00:00')
-  const e = new Date(end + 'T00:00:00')
-  return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1
-}
+export default function RequestModal({ shifts, onSubmit, onClose, isPending }) {
+  const [type, setType] = useState('holiday')
+  const [startDate, setStartDate] = useState(null)
+  const [endDate, setEndDate] = useState(null)
+  const [reason, setReason] = useState('')
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
 
-export default function RequestModal({ shifts = [], requests = [], onSubmit, onClose, isPending }) {
-  const [submitted, setSubmitted] = useState(false)
-  const [formData, setFormData] = useState({
-    type: 'holiday',
-    start_date: null,
-    end_date: null,
-    reason: '',
-    swap_shift: ''
-  })
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-  // Approved time-off for calendar indicators (TO-02)
-  const approvedTimeOff = useMemo(() => {
-    return (requests || []).filter(r => r.status === 'approved' && (r.type === 'holiday' || r.type === 'sick'))
-  }, [requests])
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth)
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-  const handleDateSelect = (start, end) => {
-    setFormData(prev => ({ ...prev, start_date: start, end_date: end }))
+  const handleDateClick = (day) => {
+    const clickedDate = new Date(currentYear, currentMonth, day)
+    clickedDate.setHours(0, 0, 0, 0)
+
+    if (clickedDate < today) return // Can't select past dates
+
+    if (type === 'sick') {
+      setStartDate(clickedDate)
+      setEndDate(clickedDate)
+      return
+    }
+
+    // Holiday range selection
+    if (!startDate || (startDate && endDate)) {
+      setStartDate(clickedDate)
+      setEndDate(null)
+    } else {
+      if (clickedDate < startDate) {
+        setStartDate(clickedDate)
+        setEndDate(null)
+      } else {
+        setEndDate(clickedDate)
+      }
+    }
+  }
+
+  const isDateInRange = (day) => {
+    if (!startDate) return false
+    const date = new Date(currentYear, currentMonth, day)
+    date.setHours(0, 0, 0, 0)
+    
+    if (!endDate) return date.getTime() === startDate.getTime()
+    return date >= startDate && date <= endDate
+  }
+
+  const isDateStart = (day) => {
+    if (!startDate) return false
+    const date = new Date(currentYear, currentMonth, day)
+    return date.getTime() === startDate.getTime()
+  }
+
+  const isDateEnd = (day) => {
+    if (!endDate) return false
+    const date = new Date(currentYear, currentMonth, day)
+    return date.getTime() === endDate.getTime()
+  }
+
+  const isPastDate = (day) => {
+    const date = new Date(currentYear, currentMonth, day)
+    date.setHours(0, 0, 0, 0)
+    return date < today
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-
-    let reason = formData.reason
-    let startDate = formData.start_date
-    let endDate = formData.end_date
-
-    if (formData.type === 'swap' && formData.swap_shift) {
-      const selectedShift = shifts.find(s => formatShiftForSelect(s) === formData.swap_shift)
-      if (selectedShift) {
-        startDate = selectedShift.date
-        endDate = selectedShift.date
-      }
-      reason = `Shift to swap: ${formData.swap_shift}${reason ? ` - ${reason}` : ''}`
-    }
+    if (!startDate) return
 
     onSubmit({
-      type: formData.type,
-      start_date: startDate,
-      end_date: endDate || startDate,
+      type,
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: (endDate || startDate).toISOString().split('T')[0],
       reason
     })
-    setSubmitted(true)
   }
 
-  const days = countDays(formData.start_date, formData.end_date)
-  const hasValidDates = formData.type === 'swap' ? !!formData.swap_shift : !!formData.start_date
+  const prevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
 
-  // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = 'unset' }
-  }, [])
+  const nextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  const getDayCount = () => {
+    if (!startDate || !endDate) return 0
+    const diff = endDate - startDate
+    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto">
-        {/* Drag handle (mobile) */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+      <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900 font-cal">Book Time Off</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <div className="px-5 pt-3 sm:pt-5 pb-5">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-xl font-bold text-gray-900 font-cal">Request Time Off</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {submitted ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#FFF0F5' }}>
-                <svg className="w-8 h-8" style={{ color: '#FF1F7D' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 font-cal mb-1">Request Submitted</h3>
-              <p className="text-sm text-gray-500 mb-6">Your manager will review this shortly</p>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Type selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all"
-                style={{ background: '#FF1F7D' }}
+                onClick={() => {
+                  setType('holiday')
+                  setStartDate(null)
+                  setEndDate(null)
+                }}
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  type === 'holiday'
+                    ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                    : 'bg-gray-50 text-gray-600 border-2 border-gray-200 hover:bg-gray-100'
+                }`}
               >
-                Done
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Holiday
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setType('sick')
+                  setStartDate(null)
+                  setEndDate(null)
+                }}
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  type === 'sick'
+                    ? 'bg-orange-100 text-orange-700 border-2 border-orange-300'
+                    : 'bg-gray-50 text-gray-600 border-2 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                Sick
               </button>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                {/* Request Type */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Type</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'holiday', label: '🌴 Holiday' },
-                      { id: 'sick', label: '🤒 Sick' },
-                      { id: 'swap', label: '🔄 Swap' }
-                    ].map((type) => (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, type: type.id, swap_shift: '', start_date: null, end_date: null })}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                          formData.type === type.id
-                            ? 'bg-pink-100 text-pink-700 border-2 border-pink-300'
-                            : 'bg-gray-100 text-gray-700 border-2 border-transparent'
-                        }`}
-                      >
-                        {type.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          </div>
 
-                {/* Calendar Range Picker — Holiday & Sick (TO-01) */}
-                {formData.type !== 'swap' && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      {formData.start_date && !formData.end_date
-                        ? 'Now tap your last day off'
-                        : 'Tap your first day off'}
-                    </label>
-                    <CalendarRangePicker
-                      startDate={formData.start_date}
-                      endDate={formData.end_date}
-                      onSelect={handleDateSelect}
-                      shifts={shifts}
-                      existingTimeOff={approvedTimeOff}
-                    />
-
-                    {/* Selection summary (TO-03) */}
-                    {formData.start_date && (
-                      <div className="mt-3 bg-pink-50 rounded-xl p-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatDateNice(formData.start_date)}
-                            {formData.end_date && formData.end_date !== formData.start_date &&
-                              ` → ${formatDateNice(formData.end_date)}`
-                            }
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {days} {days === 1 ? 'day' : 'days'} off
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, start_date: null, end_date: null }))}
-                          className="text-xs text-pink-600 font-medium hover:text-pink-700"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Shift Selector — Swap only */}
-                {formData.type === 'swap' && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Which shift do you want to swap?
-                    </label>
-                    {shifts.length === 0 ? (
-                      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">No upcoming shifts to swap</p>
-                    ) : (
-                      <select
-                        required
-                        value={formData.swap_shift}
-                        onChange={(e) => setFormData({ ...formData, swap_shift: e.target.value })}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
-                      >
-                        <option value="">Select a shift...</option>
-                        {shifts.map((shift, idx) => (
-                          <option key={idx} value={formatShiftForSelect(shift)}>
-                            {formatShiftForSelect(shift)}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
-
-                {/* Reason */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    {formData.type === 'swap' ? 'Additional notes (optional)' : 'Reason (optional)'}
-                  </label>
-                  <textarea
-                    value={formData.reason}
-                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                    rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white text-gray-900"
-                    placeholder={formData.type === 'swap' ? 'e.g., Willing to swap with anyone on Thursday' : 'Add any notes...'}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex gap-3">
+          {/* Calendar */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {type === 'sick' ? 'Select date' : 'Select date range'}
+            </label>
+            
+            <div className="border border-gray-200 rounded-lg p-3">
+              {/* Month navigation */}
+              <div className="flex items-center justify-between mb-3">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  onClick={prevMonth}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
                 >
-                  Cancel
+                  <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
+                <h3 className="font-semibold text-gray-900">
+                  {monthNames[currentMonth]} {currentYear}
+                </h3>
                 <button
-                  type="submit"
-                  disabled={isPending || !hasValidDates}
-                  className="flex-1 px-4 py-2.5 text-white rounded-lg font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-pink-500/25 transition-all"
-                  style={{ background: '#FF1F7D' }}
+                  type="button"
+                  onClick={nextMonth}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
                 >
-                  {isPending ? 'Submitting...' : 'Submit Request'}
+                  <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
-            </form>
-          )}
-        </div>
+
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                  <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: firstDay }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1
+                  const inRange = isDateInRange(day)
+                  const isStart = isDateStart(day)
+                  const isEnd = isDateEnd(day)
+                  const isPast = isPastDate(day)
+
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => handleDateClick(day)}
+                      disabled={isPast}
+                      className={`aspect-square flex items-center justify-center text-sm rounded-lg transition-all ${
+                        isPast
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : inRange
+                          ? isStart || isEnd
+                            ? 'text-white font-bold'
+                            : 'bg-pink-100 text-pink-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                      style={isStart || isEnd ? { background: '#FF1F7D' } : {}}
+                    >
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Selection summary */}
+            {startDate && (
+              <div className="mt-2 px-3 py-2 bg-pink-50 rounded-lg text-sm">
+                {type === 'sick' ? (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Selected:</span> {startDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </p>
+                ) : endDate ? (
+                  <p className="text-gray-700">
+                    <span className="font-medium">{getDayCount()} day{getDayCount() > 1 ? 's' : ''}:</span>{' '}
+                    {startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                  </p>
+                ) : (
+                  <p className="text-gray-500">
+                    Click an end date
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Note (optional)
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={type === 'holiday' ? 'e.g., Family vacation' : 'e.g., Flu symptoms'}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white text-gray-900"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!startDate || isPending}
+              className="flex-1 px-4 py-3 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all disabled:opacity-50"
+              style={{ background: '#FF1F7D' }}
+            >
+              {isPending ? 'Submitting...' : 'Submit Request'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

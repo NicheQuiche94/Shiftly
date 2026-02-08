@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import OnboardingTour from '../../../components/OnboardingTour'
+import AnnouncementComposer from '@/app/components/AnnouncementComposer'
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser()

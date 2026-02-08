@@ -18,13 +18,30 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '30')
     const unreadOnly = searchParams.get('unread') === 'true'
+    const type = searchParams.get('type')
+    const sent = searchParams.get('sent') === 'true'
+    const team_id = searchParams.get('team_id')
 
     let query = supabase
       .from('notifications')
       .select('*')
-      .eq('recipient_user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
+
+    // Sent mode: show notifications this user sent (for announcement history)
+    if (sent) {
+      query = query.eq('sender_user_id', userId)
+    } else {
+      query = query.eq('recipient_user_id', userId)
+    }
+
+    if (type) {
+      query = query.eq('type', type)
+    }
+
+    if (team_id) {
+      query = query.eq('team_id', team_id)
+    }
 
     if (unreadOnly) {
       query = query.eq('read', false)
@@ -33,7 +50,7 @@ export async function GET(request) {
     const { data, error } = await query
     if (error) throw error
 
-    // Also get unread count
+    // Unread count (always for recipient)
     const { count, error: countError } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })

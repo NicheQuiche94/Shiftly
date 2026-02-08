@@ -8,23 +8,25 @@ function formatDay(dateStr) {
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-export default function SwapFlowModal({ shift, onSubmit, onClose, isPending }) {
-  const [mode, setMode] = useState('open') // 'open' or 'specific'
+export default function SwapFlowModal({ shift, shifts, onSubmit, onClose, isPending }) {
+  const [step, setStep] = useState(shift ? 'mode' : 'select-shift')
+  const [selectedShift, setSelectedShift] = useState(shift || null)
+  const [mode, setMode] = useState('open')
   const [swapOptions, setSwapOptions] = useState(null)
   const [loading, setLoading] = useState(false)
   const [selectedColleague, setSelectedColleague] = useState(null)
   const [reason, setReason] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  // Fetch swap options only when switching to specific mode
+  // Fetch swap options when mode is specific and we have a shift
   useEffect(() => {
-    if (mode !== 'specific' || !shift?.date) return
-    if (swapOptions) return // Already loaded
+    if (mode !== 'specific' || !selectedShift?.date) return
+    if (swapOptions) return
 
     setLoading(true)
     const fetchOptions = async () => {
       try {
-        const res = await fetch(`/api/employee/swap-options?date=${shift.date}`)
+        const res = await fetch(`/api/employee/swap-options?date=${selectedShift.date}`)
         if (!res.ok) throw new Error()
         const data = await res.json()
         setSwapOptions(data)
@@ -36,33 +38,37 @@ export default function SwapFlowModal({ shift, onSubmit, onClose, isPending }) {
       }
     }
     fetchOptions()
-  }, [mode, shift?.date, swapOptions])
+  }, [mode, selectedShift?.date, swapOptions])
 
-  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = 'unset' }
   }, [])
 
-  // Close on escape
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
+  const handleShiftSelect = (shift) => {
+    setSelectedShift(shift)
+    setStep('mode')
+  }
+
   const handleSubmit = () => {
+    if (!selectedShift) return
     if (mode === 'specific' && !selectedColleague) return
 
     const data = {
       type: 'swap',
-      start_date: shift.date,
-      end_date: shift.date,
-      shift_id: shift.rota_id || null,
+      start_date: selectedShift.date,
+      end_date: selectedShift.date,
+      shift_id: selectedShift.rota_id || null,
       swap_with_staff_id: mode === 'specific' ? selectedColleague.staff_id : null,
       reason: mode === 'open'
-        ? `Open swap: ${shift.shift_name} (${shift.start_time}–${shift.end_time})${reason ? ` — ${reason}` : ''}`
-        : `Swap ${shift.shift_name} (${shift.start_time}–${shift.end_time}) with ${selectedColleague.staff_name}${selectedColleague.shift_name ? ` on ${selectedColleague.shift_name} (${selectedColleague.start_time}–${selectedColleague.end_time})` : ' (not scheduled)'}${reason ? ` — ${reason}` : ''}`
+        ? `Open swap: ${selectedShift.shift_name} (${selectedShift.start_time}–${selectedShift.end_time})${reason ? ` — ${reason}` : ''}`
+        : `Swap ${selectedShift.shift_name} (${selectedShift.start_time}–${selectedShift.end_time}) with ${selectedColleague.staff_name}${selectedColleague.shift_name ? ` on ${selectedColleague.shift_name} (${selectedColleague.start_time}–${selectedColleague.end_time})` : ' (not scheduled)'}${reason ? ` — ${reason}` : ''}`
     }
 
     onSubmit(data)
@@ -78,7 +84,6 @@ export default function SwapFlowModal({ shift, onSubmit, onClose, isPending }) {
           className="pointer-events-auto bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-xl animate-slide-up sm:animate-none max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 sm:hidden">
             <div className="w-10 h-1 bg-gray-300 rounded-full" />
           </div>
@@ -118,13 +123,42 @@ export default function SwapFlowModal({ shift, onSubmit, onClose, isPending }) {
                   Done
                 </button>
               </div>
+            ) : step === 'select-shift' ? (
+              <>
+                <p className="text-sm text-gray-600 mb-3">Which shift do you want to swap?</p>
+                
+                {shifts && shifts.length > 0 ? (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {shifts.map((s, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleShiftSelect(s)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-gray-200 hover:border-pink-300 hover:bg-pink-50 transition-all text-left"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{s.shift_name}</p>
+                          <p className="text-sm text-gray-600">{formatDay(s.date)}</p>
+                          <p className="text-sm text-gray-500">{s.start_time} – {s.end_time}</p>
+                        </div>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No upcoming shifts to swap</p>
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 {/* Your shift summary */}
                 <div className="bg-pink-50 rounded-xl p-3 mb-4">
                   <p className="text-xs text-gray-500 mb-1">Your shift</p>
-                  <p className="font-medium text-gray-900">{shift.shift_name}</p>
-                  <p className="text-sm text-gray-600">{formatDay(shift.date)} · {shift.start_time} – {shift.end_time}</p>
+                  <p className="font-medium text-gray-900">{selectedShift?.shift_name}</p>
+                  <p className="text-sm text-gray-600">{formatDay(selectedShift?.date)} · {selectedShift?.start_time} – {selectedShift?.end_time}</p>
                 </div>
 
                 {/* Mode toggle */}
