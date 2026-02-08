@@ -1,138 +1,81 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import TeamSelector from '@/app/components/TeamSelector'
-import { generatePayrollPDF } from '@/lib/generatePayrollPDF'
 import PageHeader from '@/app/components/PageHeader'
-import SectionHeader from '@/app/components/SectionHeader'
 import Button from '@/app/components/Button'
 import Badge from '@/app/components/Badge'
-
-function getMonday(date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function formatWeek(dateStr) {
-  const d = new Date(dateStr)
-  const end = new Date(d)
-  end.setDate(end.getDate() + 6)
-  const opts = { day: 'numeric', month: 'short' }
-  return `${d.toLocaleDateString('en-GB', opts)} – ${end.toLocaleDateString('en-GB', opts)} ${d.getFullYear()}`
-}
-
-function StatCard({ label, value, sub, accent = false }) {
-  return (
-    <div className={`rounded-xl border p-4 ${accent ? 'bg-pink-50 border-pink-200' : 'bg-white border-gray-200'}`}>
-      <p className="caption mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${accent ? 'text-pink-600' : 'text-gray-900'} font-cal`}>{value}</p>
-      {sub && <p className="caption mt-0.5">{sub}</p>}
-    </div>
-  )
-}
-
-function OvertimeBadge({ status }) {
-  const variantMap = {
-    under: 'warning',
-    met: 'success',
-    over: 'error'
-  }
-  const labels = {
-    under: 'Under',
-    met: 'Met',
-    over: 'Over'
-  }
-  return <Badge variant={variantMap[status]} size="sm">{labels[status]}</Badge>
-}
-
-function MiniBar({ hours, contracted, maxWidth = 120 }) {
-  if (!contracted || contracted === 0) return null
-  const pct = Math.min((hours / contracted) * 100, 150)
-  const isOver = hours > contracted
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="bg-gray-100 rounded-full h-2 overflow-hidden" style={{ width: maxWidth }}>
-        <div
-          className={`h-full rounded-full transition-all ${isOver ? 'bg-red-400' : 'bg-pink-400'}`}
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
-      <span className="caption">{Math.round(pct)}%</span>
-    </div>
-  )
-}
+import CostTrendChart from '@/app/components/CostTrendChart'
 
 export default function ReportsPage() {
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [weekOffset, setWeekOffset] = useState(0)
-  const [filterStaff, setFilterStaff] = useState('all')
+  const [report, setReport] = useState([])
+  const [summary, setSummary] = useState({})
+  const [isLoading, setIsLoading] = useState(false)
   const [exporting, setExporting] = useState(null)
   const [showStaffBreakdown, setShowStaffBreakdown] = useState(false)
+  const [filterStaff, setFilterStaff] = useState('all')
 
   const currentMonday = useMemo(() => {
-    const monday = getMonday(new Date())
-    const d = new Date(monday)
-    d.setDate(d.getDate() + weekOffset * 7)
-    return d.toISOString().split('T')[0]
+    const today = new Date()
+    const dayOfWeek = today.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const monday = new Date(today)
+    monday.setDate(today.getDate() + diff + (weekOffset * 7))
+    monday.setHours(0, 0, 0, 0)
+    return monday
   }, [weekOffset])
 
-  const weekEndStr = useMemo(() => {
-    const d = new Date(currentMonday)
-    d.setDate(d.getDate() + 6)
-    return d.toISOString().split('T')[0]
-  }, [currentMonday])
+  const loadReport = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const startDate = currentMonday.toISOString().split('T')[0]
+      const res = await fetch(`/api/reports/labour?start_date=${startDate}&team_id=${selectedTeamId}`)
+      if (!res.ok) throw new Error('Failed to load report')
+      const data = await res.json()
+      setReport(data.report || [])
+      setSummary(data.summary || {})
+    } catch (error) {
+      console.error('Error loading report:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentMonday, selectedTeamId])
 
-  const { data: labourData, isLoading } = useQuery({
-    queryKey: ['labour-report', selectedTeamId, currentMonday],
-    queryFn: async () => {
-      const res = await fetch(`/api/reports/labour?start_date=${currentMonday}&team_id=${selectedTeamId}`)
-      if (!res.ok) throw new Error()
-      return res.json()
-    },
-    enabled: !!selectedTeamId
-  })
+  useEffect(() => {
+    if (selectedTeamId) {
+      loadReport()
+    }
+  }, [selectedTeamId, loadReport])
 
-  const { data: trendData } = useQuery({
-    queryKey: ['labour-trend', selectedTeamId],
-    queryFn: async () => {
-      const res = await fetch(`/api/reports/trend?team_id=${selectedTeamId}&weeks=8`)
-      if (!res.ok) throw new Error()
-      return res.json()
-    },
-    enabled: !!selectedTeamId
-  })
-
-  const report = labourData?.report || []
-  const summary = labourData?.summary || {}
-
-  const filteredReport = filterStaff === 'all'
-    ? report
-    : report.filter(s => s.staff_id === parseInt(filterStaff))
-
-  const maxTrendCost = trendData ? Math.max(...trendData.map(w => w.total_cost), 1) : 1
+  const formatWeekRange = (monday) => {
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    const startMonth = monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    const endMonth = sunday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    const year = sunday.getFullYear()
+    return `${startMonth} – ${endMonth} ${year}`
+  }
 
   const handleExportCSV = async () => {
     setExporting('csv')
     try {
-      const res = await fetch(`/api/reports/export-csv?start_date=${currentMonday}&team_id=${selectedTeamId}`)
-      if (!res.ok) throw new Error()
+      const startDate = currentMonday.toISOString().split('T')[0]
+      const res = await fetch(`/api/reports/export-csv?start_date=${startDate}&team_id=${selectedTeamId}`)
+      if (!res.ok) throw new Error('Export failed')
+      
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `payroll-${currentMonday}.csv`
+      a.download = `labour-report-${startDate}.csv`
       document.body.appendChild(a)
       a.click()
+      window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('CSV export failed:', err)
+    } catch (error) {
+      console.error('Export error:', error)
       alert('Failed to export CSV')
     } finally {
       setExporting(null)
@@ -142,41 +85,52 @@ export default function ReportsPage() {
   const handleExportPDF = async () => {
     setExporting('pdf')
     try {
-      await generatePayrollPDF(report, summary, labourData?.teamName || 'Team', currentMonday, weekEndStr)
-    } catch (err) {
-      console.error('PDF export failed:', err)
+      const startDate = currentMonday.toISOString().split('T')[0]
+      const res = await fetch(`/api/reports/export-pdf?start_date=${startDate}&team_id=${selectedTeamId}`)
+      if (!res.ok) throw new Error('Export failed')
+      
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `labour-report-${startDate}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Export error:', error)
       alert('Failed to export PDF')
     } finally {
       setExporting(null)
     }
   }
 
+  const filteredReport = useMemo(() => {
+    if (filterStaff === 'all') return report
+    return report.filter(s => s.staff_id === parseInt(filterStaff))
+  }, [report, filterStaff])
+
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+    <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
       <PageHeader 
         title="Reports"
         subtitle="Labour costs, hours, and overtime at a glance"
         backLink={{ href: '/dashboard', label: 'Back to Dashboard' }}
       />
 
+      {/* Team Selector */}
       <div className="mb-6">
-        <TeamSelector selectedTeamId={selectedTeamId} onTeamChange={setSelectedTeamId} />
+        <TeamSelector 
+          selectedTeamId={selectedTeamId}
+          onTeamChange={setSelectedTeamId}
+        />
       </div>
 
-      {!selectedTeamId ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <p className="body-text font-medium mb-1">Select a team to view reports</p>
-          <p className="body-small">Choose a team from the dropdown above</p>
-        </div>
-      ) : (
-        <>
-          {/* Week navigation + export buttons */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+      {selectedTeamId && (
+        <div className="space-y-4">
+          {/* Week Navigator Card */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setWeekOffset(prev => prev - 1)}
@@ -188,14 +142,15 @@ export default function ReportsPage() {
               </button>
 
               <div className="text-center">
-                <p className="heading-subsection font-cal">{formatWeek(currentMonday)}</p>
+                <div className="heading-subsection">
+                  {formatWeekRange(currentMonday)}
+                </div>
                 {weekOffset !== 0 && (
                   <button
                     onClick={() => setWeekOffset(0)}
-                    className="caption font-medium hover:text-pink-700"
-                    style={{ color: '#FF1F7D' }}
+                    className="caption text-pink-600 hover:text-pink-700 transition-colors mt-1"
                   >
-                    ← This week
+                    ← Back to this week
                   </button>
                 )}
               </div>
@@ -313,10 +268,21 @@ export default function ReportsPage() {
                               </div>
                               <div className="text-right">
                                 <div className="flex items-center gap-2">
-                                  <OvertimeBadge status={s.overtime_status} />
-                                  {s.wtd_status !== 'normal' && (
-                                    <OvertimeBadge status={s.wtd_status === 'over' ? 'over' : 'under'} />
-                                  )}
+                                  {/* Combined status badge - prioritize most serious */}
+                                  {s.wtd_status === 'over' ? (
+                                    <Badge variant="error" size="sm" title="Exceeds 48h Working Time Directive">
+                                      WTD Over
+                                    </Badge>
+                                  ) : s.overtime_status === 'over' ? (
+                                    <Badge variant="warning" size="sm" title="Exceeds contracted hours">
+                                      Over Contract
+                                    </Badge>
+                                  ) : s.overtime_status === 'met' ? (
+                                    <Badge variant="success" size="sm">
+                                      Met
+                                    </Badge>
+                                  ) : null}
+                                  
                                   <p className="body-text font-semibold">
                                     {s.hourly_rate > 0 ? `£${s.total_cost.toFixed(2)}` : `${s.scheduled_hours}h`}
                                   </p>
@@ -344,47 +310,36 @@ export default function ReportsPage() {
               </div>
 
               {/* Cost trend chart */}
-              {trendData && trendData.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-                  <SectionHeader title="Cost Trend (8 weeks)" />
-
-                  <div className="flex items-end gap-1 sm:gap-2 h-40">
-                    {trendData.map((week, i) => {
-                      const heightPct = maxTrendCost > 0 ? (week.total_cost / maxTrendCost) * 100 : 0
-                      const isCurrentWeek = week.week_start === currentMonday
-
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                          <p className="caption font-medium">
-                            {week.total_cost > 0 ? `£${week.total_cost.toFixed(0)}` : ''}
-                          </p>
-                          <div className="w-full flex items-end" style={{ height: '100px' }}>
-                            <div
-                              className={`w-full rounded-t-md transition-all ${
-                                isCurrentWeek ? 'bg-pink-400' : 'bg-gray-200'
-                              }`}
-                              style={{ height: `${Math.max(heightPct, 2)}%` }}
-                            />
-                          </div>
-                          <p className={`caption ${isCurrentWeek ? 'text-pink-600 font-semibold' : ''}`}>
-                            {week.label}
-                          </p>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {trendData.some(w => w.overtime_hours > 0) && (
-                    <p className="caption text-center mt-3">
-                      Overtime hours shown at regular rate — configure overtime multiplier in settings
-                    </p>
-                  )}
-                </div>
-              )}
+              <CostTrendChart teamId={selectedTeamId} />
             </>
           )}
-        </>
+        </div>
       )}
     </main>
+  )
+}
+
+// Helper Components
+function StatCard({ label, value, sub, accent }) {
+  return (
+    <div className={`bg-white rounded-xl border border-gray-200 p-4 ${accent ? 'bg-pink-50 border-pink-200' : ''}`}>
+      <p className="body-small text-gray-600 mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${accent ? 'text-pink-600' : 'text-gray-900'}`}>{value}</p>
+      {sub && <p className="caption mt-1">{sub}</p>}
+    </div>
+  )
+}
+
+function MiniBar({ hours, contracted }) {
+  const percentage = contracted > 0 ? Math.min((hours / contracted) * 100, 120) : 0
+  const color = percentage > 100 ? 'bg-red-500' : percentage === 100 ? 'bg-green-500' : 'bg-gray-300'
+  
+  return (
+    <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div 
+        className={`h-full ${color} transition-all`}
+        style={{ width: `${percentage}%` }}
+      />
+    </div>
   )
 }

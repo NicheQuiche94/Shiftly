@@ -30,10 +30,21 @@ export async function GET(request) {
     weekEnd.setDate(weekEnd.getDate() + 6)
     const weekEndStr = weekEnd.toISOString().split('T')[0]
 
-    // Get all staff for this team
+    // Get all staff for this team WITH optional payroll data
     const { data: staff, error: staffError } = await supabase
       .from('Staff')
-      .select('id, name, role, contracted_hours, max_hours, hourly_rate')
+      .select(`
+        id, 
+        name, 
+        role, 
+        contracted_hours, 
+        max_hours,
+        payroll_info (
+          pay_type,
+          hourly_rate,
+          annual_salary
+        )
+      `)
       .eq('user_id', userId)
       .eq('team_id', teamId)
       .order('name')
@@ -62,13 +73,29 @@ export async function GET(request) {
     // Build hours per staff member for this week
     const staffHours = {}
     staff.forEach(s => {
+      // Extract payroll data (might be array if multiple records)
+      const payrollData = Array.isArray(s.payroll_info) ? s.payroll_info[0] : s.payroll_info
+      
+      // Calculate effective hourly rate
+      let hourlyRate = 0
+      if (payrollData) {
+        if (payrollData.pay_type === 'hourly' && payrollData.hourly_rate) {
+          hourlyRate = parseFloat(payrollData.hourly_rate)
+        } else if (payrollData.pay_type === 'salary' && payrollData.annual_salary) {
+          // Convert annual salary to hourly rate (52 weeks * contracted hours)
+          const annualHours = (s.contracted_hours || 40) * 52
+          hourlyRate = parseFloat(payrollData.annual_salary) / annualHours
+        }
+      }
+
       staffHours[s.name] = {
         staff_id: s.id,
         name: s.name,
         role: s.role,
         contracted_hours: s.contracted_hours || 0,
         max_hours: s.max_hours || 0,
-        hourly_rate: parseFloat(s.hourly_rate) || 0,
+        hourly_rate: Math.round(hourlyRate * 100) / 100,
+        pay_type: payrollData?.pay_type || null,
         scheduled_hours: 0,
         shifts: []
       }

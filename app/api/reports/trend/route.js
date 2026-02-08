@@ -7,8 +7,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET - Weekly cost trend for last N weeks
-// Query: ?team_id=1&weeks=8
+// GET - Weekly cost trend for a date range
+// Query: ?team_id=1&start_date=2026-01-06&end_date=2026-03-02
 export async function GET(request) {
   try {
     const { userId } = await auth()
@@ -18,41 +18,74 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('team_id')
-    const weeks = parseInt(searchParams.get('weeks') || '8')
+    const startDate = searchParams.get('start_date')
+    const endDate = searchParams.get('end_date')
 
-    if (!teamId) {
-      return NextResponse.json({ error: 'team_id required' }, { status: 400 })
+    if (!teamId || !startDate || !endDate) {
+      return NextResponse.json({ error: 'team_id, start_date, and end_date required' }, { status: 400 })
     }
 
-    // Get staff rates
+    // Get staff with payroll data
     const { data: staff, error: staffError } = await supabase
       .from('Staff')
-      .select('name, contracted_hours, hourly_rate')
+      .select(`
+        name, 
+        contracted_hours,
+        payroll_info (
+          pay_type,
+          hourly_rate,
+          annual_salary
+        )
+      `)
       .eq('user_id', userId)
       .eq('team_id', teamId)
 
     if (staffError) throw staffError
 
+    // Build rate and contract maps
     const rateMap = {}
     const contractMap = {}
+    
     staff.forEach(s => {
-      rateMap[s.name] = parseFloat(s.hourly_rate) || 0
+      const payrollData = Array.isArray(s.payroll_info) ? s.payroll_info[0] : s.payroll_info
+      let hourlyRate = 0
+      
+      if (payrollData) {
+        if (payrollData.pay_type === 'hourly' && payrollData.hourly_rate) {
+          hourlyRate = parseFloat(payrollData.hourly_rate)
+        } else if (payrollData.pay_type === 'salary' && payrollData.annual_salary) {
+          const annualHours = (s.contracted_hours || 40) * 52
+          hourlyRate = parseFloat(payrollData.annual_salary) / annualHours
+        }
+      }
+      
+      rateMap[s.name] = hourlyRate
       contractMap[s.name] = s.contracted_hours || 0
     })
 
-    // Calculate week starts going back N weeks
-    const today = new Date()
-    const currentMonday = getMonday(today)
+    // Generate all Mondays between start and end dates
     const weekStarts = []
-    for (let i = weeks - 1; i >= 0; i--) {
-      const monday = new Date(currentMonday)
-      monday.setDate(monday.getDate() - i * 7)
-      weekStarts.push(monday.toISOString().split('T')[0])
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    // Find the Monday on or before start date
+    let currentDate = getMonday(start)
+    
+    // Generate all Mondays in range
+    while (currentDate <= end) {
+      weekStarts.push(currentDate.toISOString().split('T')[0])
+      currentDate.setDate(currentDate.getDate() + 7)
+    }
+
+    if (weekStarts.length === 0) {
+      return NextResponse.json([])
     }
 
     const earliestDate = weekStarts[0]
-    const latestEnd = new Date(weekStarts[weekStarts.length - 1])
+    const latestMonday = weekStarts[weekStarts.length - 1]
+    const latestEnd = new Date(latestMonday)
     latestEnd.setDate(latestEnd.getDate() + 6)
+    const latestDate = latestEnd.toISOString().split('T')[0]
 
     // Get all approved rotas in range
     const { data: rotas, error: rotasError } = await supabase
@@ -61,7 +94,7 @@ export async function GET(request) {
       .eq('user_id', userId)
       .eq('team_id', teamId)
       .eq('approved', true)
-      .lte('start_date', latestEnd.toISOString().split('T')[0])
+      .lte('start_date', latestDate)
       .gte('end_date', earliestDate)
 
     if (rotasError) throw rotasError
@@ -91,7 +124,7 @@ export async function GET(request) {
           const rotaStart = new Date(rota.start_date)
 
           for (const shift of scheduleArray) {
-            if (!shift.assigned_staff) continue
+            if (!shift.assigned_staff || shift.assigned_staff.length === 0) continue
 
             const weeksOffset = (shift.week - 1) * 7
             const dayOffset = dayNames.indexOf(shift.day)
@@ -101,6 +134,7 @@ export async function GET(request) {
             shiftDate.setDate(shiftDate.getDate() + weeksOffset + dayOffset)
             const shiftDateStr = shiftDate.toISOString().split('T')[0]
 
+            // Check if shift falls within this week
             if (shiftDateStr < weekStart || shiftDateStr > weekEndStr) continue
 
             const [startTime, endTime] = shift.time.split('-')
