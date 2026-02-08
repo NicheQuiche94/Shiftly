@@ -7,6 +7,10 @@ import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import OnboardingTour from '../../../components/OnboardingTour'
 import AnnouncementComposer from '@/app/components/AnnouncementComposer'
+import PageHeader from '@/app/components/PageHeader'
+import SectionHeader from '@/app/components/SectionHeader'
+import Button from '@/app/components/Button'
+import Badge from '@/app/components/Badge'
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser()
@@ -55,8 +59,6 @@ export default function DashboardPage() {
   }, [isLoaded, user, router])
 
   // STRIPE DISABLED — skip subscription check during development
-  // TODO: Re-enable before launch by restoring the subscription check:
-  //   fetch('/api/subscription') → if (!data.hasAccess) → router.replace('/checkout')
   useEffect(() => {
     if (isCheckingUserType) return
     setIsCheckingSubscription(false)
@@ -118,9 +120,6 @@ export default function DashboardPage() {
     }
   }, [rotas])
 
-  // Trial banner disabled while Stripe is disabled
-  const showTrialBanner = false
-
   const handleDeleteRota = async (rotaId, e) => {
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this rota? This cannot be undone.')) return
@@ -149,7 +148,7 @@ export default function DashboardPage() {
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading your dashboard...</p>
+          <p className="body-text">Loading your dashboard...</p>
         </div>
       </main>
     )
@@ -182,17 +181,13 @@ export default function DashboardPage() {
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       {/* Welcome Header */}
-      <div className="text-center mb-8 sm:mb-12">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2 font-cal">
-          Welcome back, {firstName}
-        </h1>
-        <p className="text-gray-500 text-sm sm:text-base">
-          Here's what's happening with your schedules
-        </p>
-      </div>
+      <PageHeader 
+        title={`Welcome back, ${firstName}`}
+        subtitle="Here's what's happening with your schedules"
+      />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-10">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-6 text-center hover:shadow-lg hover:shadow-pink-500/10 transition-all">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-pink-100 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -200,7 +195,7 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-xl sm:text-3xl font-bold text-gray-900 mb-0.5 sm:mb-1">{stats.timeSaved}h</p>
-          <p className="text-xs sm:text-sm text-gray-500">Time Saved</p>
+          <p className="caption">Time Saved</p>
         </div>
 
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-6 text-center hover:shadow-lg hover:shadow-pink-500/10 transition-all">
@@ -210,7 +205,7 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-xl sm:text-3xl font-bold text-gray-900 mb-0.5 sm:mb-1">{stats.weeksApproved}</p>
-          <p className="text-xs sm:text-sm text-gray-500">Weeks Approved</p>
+          <p className="caption">Weeks Approved</p>
         </div>
 
         <Link 
@@ -227,7 +222,7 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-xl sm:text-3xl font-bold text-gray-900 mb-0.5 sm:mb-1">{pendingRequestsCount}</p>
-          <p className="text-xs sm:text-sm text-gray-500">
+          <p className="caption">
             {pendingRequestsCount === 1 ? 'Request' : 'Requests'}
             {pendingRequestsCount > 0 && <span className="text-amber-600 ml-1">●</span>}
           </p>
@@ -238,13 +233,19 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 font-cal">Upcoming Rotas</h2>
-            <button
+            <SectionHeader title="Upcoming Rotas" />
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => router.push('/dashboard/generate')}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all whitespace-nowrap"
+              icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              }
             >
-              + New Rota
-            </button>
+              New Rota
+            </Button>
           </div>
         </div>
 
@@ -259,14 +260,14 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <p className="text-gray-900 font-medium mb-1 text-sm sm:text-base">No upcoming rotas</p>
-            <p className="text-xs sm:text-sm text-gray-500 mb-4">Create and approve a rota to see it here</p>
-            <button
+            <p className="body-text font-medium mb-1">No upcoming rotas</p>
+            <p className="body-small mb-4">Create and approve a rota to see it here</p>
+            <Button
+              variant="primary"
               onClick={() => router.push('/dashboard/generate')}
-              className="px-5 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all text-sm"
             >
               Build Your First Rota
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -285,10 +286,10 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                    <p className="body-text font-medium truncate">
                       {rota.rota_name || rota.name || 'Untitled Rota'}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-500">
+                    <p className="body-small">
                       w/c {formatWeekBeginning(rota.start_date)} · {rota.week_count || 1} week{(rota.week_count || 1) > 1 ? 's' : ''}
                     </p>
                   </div>
@@ -298,7 +299,7 @@ export default function DashboardPage() {
                   <button
                     onClick={(e) => handleDeleteRota(rota.id, e)}
                     disabled={deleteMutation.isPending && deleteMutation.variables === rota.id}
-                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    className="btn-icon p-2 text-gray-400"
                     title="Delete rota"
                   >
                     {deleteMutation.isPending && deleteMutation.variables === rota.id ? (
@@ -333,10 +334,8 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden mb-4">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 font-cal">Drafts</h2>
-              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                {draftRotas.length}
-              </span>
+              <h2 className="heading-section">Drafts</h2>
+              <Badge variant="warning">{draftRotas.length}</Badge>
             </div>
           </div>
           <div className="divide-y divide-gray-100">
@@ -355,10 +354,10 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-700 text-sm sm:text-base truncate">
+                    <p className="body-text font-medium text-gray-700 truncate">
                       {rota.rota_name || rota.name || 'Untitled Draft'}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-500">
+                    <p className="body-small">
                       w/c {formatWeekBeginning(rota.start_date)} · {rota.week_count || 1} week{(rota.week_count || 1) > 1 ? 's' : ''}
                     </p>
                   </div>
@@ -368,7 +367,7 @@ export default function DashboardPage() {
                   <button
                     onClick={(e) => handleDeleteRota(rota.id, e)}
                     disabled={deleteMutation.isPending && deleteMutation.variables === rota.id}
-                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    className="btn-icon p-2 text-gray-400"
                     title="Delete draft"
                   >
                     {deleteMutation.isPending && deleteMutation.variables === rota.id ? (
@@ -391,12 +390,12 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="mt-4 sm:mt-6 flex justify-center">
-        <button
+        <Button 
+          variant="link"
           onClick={() => router.push('/dashboard/workspace')}
-          className="text-xs sm:text-sm text-gray-500 hover:text-pink-600 transition-colors"
         >
           Manage Staff & Shifts →
-        </button>
+        </Button>
       </div>
 
       {/* Onboarding Tour */}
@@ -417,10 +416,8 @@ function PastRotasSection({ pastRotas, onRotaClick, onDelete, deleteMutation, fo
         className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 font-cal">Past Rotas</h2>
-          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-            {pastRotas.length}
-          </span>
+          <h2 className="heading-section">Past Rotas</h2>
+          <Badge variant="default">{pastRotas.length}</Badge>
         </div>
         <svg 
           className={`w-5 h-5 text-gray-400 transition-transform ${showPastRotas ? 'rotate-180' : ''}`} 
@@ -449,10 +446,10 @@ function PastRotasSection({ pastRotas, onRotaClick, onDelete, deleteMutation, fo
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-700 text-sm sm:text-base truncate">
+                  <p className="body-text font-medium text-gray-700 truncate">
                     {rota.rota_name || rota.name || 'Untitled Rota'}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-500">
+                  <p className="body-small">
                     {formatFullDate(rota.start_date)} - {formatFullDate(rota.end_date)}
                   </p>
                 </div>
@@ -462,7 +459,7 @@ function PastRotasSection({ pastRotas, onRotaClick, onDelete, deleteMutation, fo
                 <button
                   onClick={(e) => onDelete(rota.id, e)}
                   disabled={deleteMutation.isPending && deleteMutation.variables === rota.id}
-                  className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                  className="btn-icon p-2 text-gray-400"
                   title="Delete rota"
                 >
                   {deleteMutation.isPending && deleteMutation.variables === rota.id ? (

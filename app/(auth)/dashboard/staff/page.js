@@ -3,7 +3,9 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import TeamSelector from '@/app/components/TeamSelector'
-import Link from 'next/link'
+import PageHeader from '@/app/components/PageHeader'
+import Button from '@/app/components/Button'
+import Badge from '@/app/components/Badge'
 
 export default function StaffPage() {
   const [showModal, setShowModal] = useState(false)
@@ -220,18 +222,13 @@ export default function StaffPage() {
   return (
     <>
       <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
-        {/* Back to Dashboard */}
-        <Link 
-          href="/dashboard" 
-          className="inline-flex items-center text-pink-600 hover:text-pink-700 transition-colors mb-6 font-medium"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Dashboard
-        </Link>
+        <PageHeader 
+          title="Staff Members"
+          subtitle="Manage your team and their availability"
+          backLink={{ href: '/dashboard', label: 'Back to Dashboard' }}
+        />
 
-        {/* Team Selector - ALWAYS RENDER */}
+        {/* Team Selector */}
         <div className="mb-6">
           <TeamSelector 
             selectedTeamId={selectedTeamId}
@@ -239,43 +236,33 @@ export default function StaffPage() {
           />
         </div>
 
-        {/* Header */}
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cal">
-              Staff Members
-            </h1>
-            <p className="text-gray-600">
-              Manage your team and their availability
-            </p>
-          </div>
-          
-          {/* Total Hours Badge */}
+        {/* Header with Total Hours Badge */}
+        <div className="mb-8 flex items-end justify-end">
           {staff.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200/60 px-6 py-4 shadow-sm">
-              <div className="text-sm text-gray-600 mb-1">Total Contracted Hours</div>
+            <div className="bg-white rounded-xl border border-gray-200 px-6 py-4 shadow-sm">
+              <div className="body-small text-gray-600 mb-1">Total Contracted Hours</div>
               <div className="text-3xl font-bold text-gray-900">{totalHours}h</div>
-              <div className="text-xs text-gray-500 mt-1">Must match total shift hours</div>
+              <div className="caption mt-1">Must match total shift hours</div>
             </div>
           )}
         </div>
 
         {/* Add Staff Button */}
         <div className="flex justify-end mb-6">
-          <button 
+          <Button
             onClick={openAddModal}
             disabled={!selectedTeamId}
-            className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="primary"
           >
             + Add Staff Member
-          </button>
+          </Button>
         </div>
 
         {/* Staff Table */}
-        <div className="bg-white rounded-xl border border-gray-200/60 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {/* Table Header */}
-          <div className="bg-gray-50/50 border-b border-gray-200/60">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 text-sm font-semibold text-gray-700">
+          <div className="bg-gray-50/50 border-b border-gray-200">
+            <div className="grid grid-cols-12 gap-4 px-6 py-4 body-small font-semibold text-gray-700">
               <div className="col-span-3">NAME</div>
               <div className="col-span-2">EMAIL</div>
               <div className="col-span-2">ROLE</div>
@@ -286,7 +273,7 @@ export default function StaffPage() {
           </div>
 
           {/* Table Body */}
-          <div className="divide-y divide-gray-200/60">
+          <div className="divide-y divide-gray-200">
             {!selectedTeamId ? (
               <div className="px-6 py-12 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
@@ -294,8 +281,8 @@ export default function StaffPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <p className="text-gray-600 font-medium mb-1">Select a team to manage staff</p>
-                <p className="text-sm text-gray-500">Choose a team from the dropdown above</p>
+                <p className="body-text font-medium mb-1">Select a team to manage staff</p>
+                <p className="body-small">Choose a team from the dropdown above</p>
               </div>
             ) : loading ? (
               <div className="px-6 py-12 text-center">
@@ -308,8 +295,8 @@ export default function StaffPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <p className="text-gray-600 font-medium mb-1">No staff members yet</p>
-                <p className="text-sm text-gray-500">Add your first team member to get started</p>
+                <p className="body-text font-medium mb-1">No staff members yet</p>
+                <p className="body-small">Add your first team member to get started</p>
               </div>
             ) : (
               staff.map((member) => (
@@ -320,41 +307,41 @@ export default function StaffPage() {
                       <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold">
                         {member.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="font-medium text-gray-900">{member.name}</span>
+                      <span className="body-text font-medium">{member.name}</span>
                     </div>
                   </div>
 
                   {/* Email */}
                   <div className="col-span-2 flex items-center">
-                    <span className="text-sm text-gray-600">{member.email}</span>
+                    <span className="body-small text-gray-600">{member.email}</span>
                   </div>
 
                   {/* Role */}
                   <div className="col-span-2 flex items-center">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                    <Badge variant="default" size="sm">
                       {member.role}
-                    </span>
+                    </Badge>
                   </div>
 
                   {/* Availability */}
                   <div className="col-span-2 flex items-center">
-                    <span className="text-sm text-gray-600">
+                    <span className="body-small text-gray-600">
                       {getAvailabilityDisplay(member.availability)}
                     </span>
                   </div>
 
                   {/* Hours */}
                   <div className="col-span-2 flex items-center">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
+                    <Badge variant="info" size="sm">
                       {member.contracted_hours}h/week
-                    </span>
+                    </Badge>
                   </div>
 
                   {/* Actions */}
                   <div className="col-span-1 flex items-center justify-end space-x-2">
                     <button 
                       onClick={() => openEditModal(member)}
-                      className="text-gray-600 hover:text-pink-600 transition-colors"
+                      className="btn-icon text-gray-600 hover:text-pink-600 transition-colors"
                       title="Edit"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -363,7 +350,7 @@ export default function StaffPage() {
                     </button>
                     <button 
                       onClick={() => handleDelete(member.id)}
-                      className="text-gray-600 hover:text-red-600 transition-colors"
+                      className="btn-icon text-gray-600 hover:text-red-600 transition-colors"
                       title="Delete"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -383,7 +370,7 @@ export default function StaffPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 font-cal">
+              <h2 className="heading-page">
                 {editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}
               </h2>
               <button 
@@ -403,7 +390,7 @@ export default function StaffPage() {
               <div className="space-y-5">
                 {/* Name */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Full Name</label>
+                  <label className="block body-text font-semibold mb-2">Full Name</label>
                   <input
                     type="text"
                     required
@@ -416,7 +403,7 @@ export default function StaffPage() {
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Email Address</label>
+                  <label className="block body-text font-semibold mb-2">Email Address</label>
                   <input
                     type="email"
                     required
@@ -429,7 +416,7 @@ export default function StaffPage() {
 
                 {/* Role */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Role</label>
+                  <label className="block body-text font-semibold mb-2">Role</label>
                   <input
                     type="text"
                     required
@@ -442,7 +429,7 @@ export default function StaffPage() {
 
                 {/* Contracted Hours */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Contracted Hours per Week</label>
+                  <label className="block body-text font-semibold mb-2">Contracted Hours per Week</label>
                   <input
                     type="number"
                     required
@@ -458,12 +445,12 @@ export default function StaffPage() {
                 {/* Availability */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-semibold text-gray-900">Weekly Availability</label>
+                    <label className="block body-text font-semibold">Weekly Availability</label>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={selectAllDays}
-                        className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                        className="caption font-medium text-pink-600 hover:text-pink-700 transition-colors"
                       >
                         Select All
                       </button>
@@ -471,7 +458,7 @@ export default function StaffPage() {
                       <button
                         type="button"
                         onClick={deselectAllDays}
-                        className="text-xs font-medium text-gray-600 hover:text-gray-700 transition-colors"
+                        className="caption font-medium text-gray-600 hover:text-gray-700 transition-colors"
                       >
                         Clear
                       </button>
@@ -485,7 +472,7 @@ export default function StaffPage() {
                           key={day}
                           type="button"
                           onClick={() => toggleAvailability(day)}
-                          className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                          className={`px-4 py-3 rounded-lg body-small font-medium transition-all ${
                             availability[day]
                               ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -496,7 +483,7 @@ export default function StaffPage() {
                       )
                     })}
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="caption mt-2">
                     Select the days this person is available to work
                   </p>
                 </div>
@@ -504,22 +491,24 @@ export default function StaffPage() {
 
               {/* Actions */}
               <div className="mt-8 flex gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => {
                     setShowModal(false)
                     setEditingStaff(null)
                   }}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                  variant="primary"
+                  className="flex-1"
                 >
                   {editingStaff ? 'Update Staff Member' : 'Add Staff Member'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

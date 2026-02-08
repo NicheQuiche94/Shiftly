@@ -397,17 +397,60 @@ export default function EmployeeDashboard() {
                   <div className="px-4 py-3 border-b border-gray-100">
                     <h2 className="font-semibold text-gray-900 font-cal text-sm sm:text-base">Announcements</h2>
                   </div>
-                  <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                    {announcements.map((announcement) => (
-                      <div key={announcement.id} className="px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <svg className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FF1F7D' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                          </svg>
+                  <div className="max-h-[500px] overflow-y-auto">
+                    {announcements.map((announcement, index) => (
+                      <div 
+                        key={announcement.id} 
+                        className={`px-4 py-4 hover:bg-gray-50/50 transition-colors ${
+                          index !== announcements.length - 1 ? 'border-b border-gray-100' : ''
+                        }`}
+                      >
+                        <div className="flex gap-3">
+                          {/* Icon Circle */}
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                              </svg>
+                            </div>
+                          </div>
+                          
+                          {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900">{announcement.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {new Date(announcement.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <span className="text-sm font-semibold text-gray-900">Team Announcement</span>
+                              <span className="text-xs text-gray-500 flex-shrink-0">
+                                {(() => {
+                                  const date = new Date(announcement.created_at)
+                                  const now = new Date()
+                                  const diffMs = now - date
+                                  const diffMins = Math.floor(diffMs / 60000)
+                                  const diffHours = Math.floor(diffMs / 3600000)
+                                  const diffDays = Math.floor(diffMs / 86400000)
+
+                                  if (diffMins < 1) return 'Just now'
+                                  if (diffMins < 60) return `${diffMins}m ago`
+                                  if (diffHours < 24) return `${diffHours}h ago`
+                                  if (diffDays < 7) return `${diffDays}d ago`
+                                  
+                                  return date.toLocaleDateString('en-GB', { 
+                                    day: 'numeric', 
+                                    month: 'short'
+                                  })
+                                })()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                              {announcement.message}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-2">
+                              {new Date(announcement.created_at).toLocaleDateString('en-GB', { 
+                                weekday: 'short',
+                                day: 'numeric', 
+                                month: 'short', 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
                             </p>
                           </div>
                         </div>

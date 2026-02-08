@@ -3,7 +3,9 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import TeamSelector from '@/app/components/TeamSelector'
-import Link from 'next/link'
+import PageHeader from '@/app/components/PageHeader'
+import Button from '@/app/components/Button'
+import Badge from '@/app/components/Badge'
 
 export default function ShiftsPage() {
   const [showModal, setShowModal] = useState(false)
@@ -46,7 +48,6 @@ export default function ShiftsPage() {
     }
   }
 
-  // Calculate total weekly hours needed
   const calculateTotalHours = () => {
     let totalHours = 0
     
@@ -56,7 +57,6 @@ export default function ShiftsPage() {
       
       let minutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
       
-      // Handle overnight shifts
       if (minutes < 0) {
         minutes += 24 * 60
       }
@@ -68,7 +68,6 @@ export default function ShiftsPage() {
     return totalHours.toFixed(1)
   }
 
-  // Group shifts by name, time, and staff requirements
   const groupedShifts = () => {
     const groups = {}
     
@@ -92,7 +91,6 @@ export default function ShiftsPage() {
     return Object.values(groups)
   }
 
-  // Format days in a condensed way
   const formatDays = (shifts) => {
     const days = shifts.map(s => s.day_of_week)
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -372,18 +370,13 @@ export default function ShiftsPage() {
   return (
     <>
       <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
-        {/* Back to Dashboard */}
-        <Link 
-          href="/dashboard" 
-          className="inline-flex items-center text-pink-600 hover:text-pink-700 transition-colors mb-6 font-medium"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Dashboard
-        </Link>
+        <PageHeader 
+          title="Shift Patterns"
+          subtitle="Define your recurring shift templates"
+          backLink={{ href: '/dashboard', label: 'Back to Dashboard' }}
+        />
 
-        {/* Team Selector - ALWAYS RENDER */}
+        {/* Team Selector */}
         <div className="mb-6">
           <TeamSelector 
             selectedTeamId={selectedTeamId}
@@ -391,23 +384,13 @@ export default function ShiftsPage() {
           />
         </div>
 
-        {/* Header */}
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2 font-cal">
-              Shift Patterns
-            </h1>
-            <p className="text-gray-600">
-              Define your recurring shift templates
-            </p>
-          </div>
-          
-          {/* Total Hours Badge */}
+        {/* Header with Total Hours Badge */}
+        <div className="mb-8 flex items-end justify-end">
           {shifts.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200/60 px-6 py-4 shadow-sm">
-              <div className="text-sm text-gray-600 mb-1">Total Hours per Week</div>
+            <div className="bg-white rounded-xl border border-gray-200 px-6 py-4 shadow-sm">
+              <div className="body-small text-gray-600 mb-1">Total Hours per Week</div>
               <div className="text-3xl font-bold text-gray-900">{totalHours}h</div>
-              <div className="text-xs text-gray-500 mt-1">Must match total staff hours</div>
+              <div className="caption mt-1">Must match total staff hours</div>
             </div>
           )}
         </div>
@@ -416,31 +399,30 @@ export default function ShiftsPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             {selectedShifts.size > 0 && (
-              <>
-                <button 
-                  onClick={handleDeleteSelected}
-                  className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  Delete Selected ({selectedShifts.size})
-                </button>
-              </>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleDeleteSelected}
+              >
+                Delete Selected ({selectedShifts.size})
+              </Button>
             )}
           </div>
           
-          <button 
+          <Button
             onClick={openAddModal}
             disabled={!selectedTeamId}
-            className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-pink-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="primary"
           >
             + Add Shift Pattern
-          </button>
+          </Button>
         </div>
 
         {/* Shifts Table */}
-        <div className="bg-white rounded-xl border border-gray-200/60 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {/* Table Header */}
-          <div className="bg-gray-50/50 border-b border-gray-200/60">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 text-sm font-semibold text-gray-700">
+          <div className="bg-gray-50/50 border-b border-gray-200">
+            <div className="grid grid-cols-12 gap-4 px-6 py-4 body-small font-semibold text-gray-700">
               <div className="col-span-1 flex items-center">
                 <input
                   type="checkbox"
@@ -459,7 +441,7 @@ export default function ShiftsPage() {
           </div>
 
           {/* Table Body */}
-          <div className="divide-y divide-gray-200/60">
+          <div className="divide-y divide-gray-200">
             {!selectedTeamId ? (
               <div className="px-6 py-12 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
@@ -467,8 +449,8 @@ export default function ShiftsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-gray-600 font-medium mb-1">Select a team to manage shifts</p>
-                <p className="text-sm text-gray-500">Choose a team from the dropdown above</p>
+                <p className="body-text font-medium mb-1">Select a team to manage shifts</p>
+                <p className="body-small">Choose a team from the dropdown above</p>
               </div>
             ) : loading ? (
               <div className="px-6 py-12 text-center">
@@ -481,8 +463,8 @@ export default function ShiftsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-gray-600 font-medium mb-1">No shift patterns yet</p>
-                <p className="text-sm text-gray-500">Create your first shift pattern to get started</p>
+                <p className="body-text font-medium mb-1">No shift patterns yet</p>
+                <p className="body-small">Create your first shift pattern to get started</p>
               </div>
             ) : (
               grouped.map((group) => (
@@ -519,7 +501,7 @@ export default function ShiftsPage() {
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
-                        <span className="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">
+                        <span className="body-text font-medium group-hover:text-pink-600 transition-colors">
                           {group.shift_name}
                         </span>
                       </button>
@@ -527,30 +509,30 @@ export default function ShiftsPage() {
 
                     {/* Days Summary */}
                     <div className="col-span-3 flex items-center">
-                      <span className="text-sm text-gray-600">
+                      <span className="body-small text-gray-600">
                         {formatDays(group.shifts)}
                       </span>
                     </div>
 
                     {/* Time */}
                     <div className="col-span-2 flex items-center">
-                      <span className="text-sm text-gray-900">
+                      <span className="body-small">
                         {group.start_time} - {group.end_time}
                       </span>
                     </div>
 
                     {/* Staff Required */}
                     <div className="col-span-2 flex items-center">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
+                      <Badge variant="info" size="sm">
                         {group.staff_required} staff
-                      </span>
+                      </Badge>
                     </div>
 
                     {/* Actions */}
                     <div className="col-span-1 flex items-center justify-end space-x-2">
                       <button 
                         onClick={() => openEditGroupModal(group)}
-                        className="text-gray-600 hover:text-pink-600 transition-colors"
+                        className="btn-icon text-gray-600 hover:text-pink-600 transition-colors"
                         title="Edit All"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -559,7 +541,7 @@ export default function ShiftsPage() {
                       </button>
                       <button 
                         onClick={() => handleDeleteGroup(group.shifts)}
-                        className="text-gray-600 hover:text-red-600 transition-colors"
+                        className="btn-icon text-gray-600 hover:text-red-600 transition-colors"
                         title="Delete All"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -571,19 +553,16 @@ export default function ShiftsPage() {
 
                   {/* Expanded Days View */}
                   {expandedGroups[group.key] && (
-                    <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200/60">
+                    <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200">
                       <div className="ml-5">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                        <p className="caption font-semibold uppercase tracking-wide mb-3">
                           Active Days
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {sortDays(group.shifts).map((shift) => (
-                            <span
-                              key={shift.id}
-                              className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700"
-                            >
+                            <Badge key={shift.id} variant="default" size="sm">
                               {shift.day_of_week}
-                            </span>
+                            </Badge>
                           ))}
                         </div>
                       </div>
@@ -601,7 +580,7 @@ export default function ShiftsPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 font-cal">
+              <h2 className="heading-page">
                 {editingShift ? 'Edit Shift' : editingGroup ? 'Edit Shift Pattern' : 'Add Shift Pattern'}
               </h2>
               <button 
@@ -622,7 +601,7 @@ export default function ShiftsPage() {
               <div className="space-y-5">
                 {/* Shift Name */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Shift Name</label>
+                  <label className="block body-text font-semibold mb-2">Shift Name</label>
                   <input
                     type="text"
                     required
@@ -636,7 +615,7 @@ export default function ShiftsPage() {
                 {/* Days of Week */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-semibold text-gray-900">
+                    <label className="block body-text font-semibold">
                       {editingShift ? 'Day of Week' : 'Days of Week'}
                     </label>
                     {!editingShift && (
@@ -644,7 +623,7 @@ export default function ShiftsPage() {
                         <button
                           type="button"
                           onClick={selectAllDays}
-                          className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                          className="caption font-medium text-pink-600 hover:text-pink-700 transition-colors"
                         >
                           Select All
                         </button>
@@ -652,7 +631,7 @@ export default function ShiftsPage() {
                         <button
                           type="button"
                           onClick={deselectAllDays}
-                          className="text-xs font-medium text-gray-600 hover:text-gray-700 transition-colors"
+                          className="caption font-medium text-gray-600 hover:text-gray-700 transition-colors"
                         >
                           Clear
                         </button>
@@ -665,7 +644,7 @@ export default function ShiftsPage() {
                         key={day}
                         type="button"
                         onClick={() => toggleDay(day)}
-                        className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-4 py-3 rounded-lg body-small font-medium transition-all ${
                           formData.day_of_week.includes(day)
                             ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -675,7 +654,7 @@ export default function ShiftsPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="caption mt-2">
                     {editingShift 
                       ? 'Select the day for this shift' 
                       : formData.day_of_week.length === 0
@@ -687,7 +666,7 @@ export default function ShiftsPage() {
                 {/* Time Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">Start Time</label>
+                    <label className="block body-text font-semibold mb-2">Start Time</label>
                     <input
                       type="time"
                       required
@@ -698,7 +677,7 @@ export default function ShiftsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">End Time</label>
+                    <label className="block body-text font-semibold mb-2">End Time</label>
                     <input
                       type="time"
                       required
@@ -711,7 +690,7 @@ export default function ShiftsPage() {
 
                 {/* Staff Required */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">Staff Required</label>
+                  <label className="block body-text font-semibold mb-2">Staff Required</label>
                   <input
                     type="number"
                     required
@@ -726,23 +705,25 @@ export default function ShiftsPage() {
 
               {/* Actions */}
               <div className="mt-8 flex gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => {
                     setShowModal(false)
                     setEditingShift(null)
                     setEditingGroup(null)
                   }}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:shadow-lg hover:shadow-pink-500/25 font-semibold transition-all"
+                  variant="primary"
+                  className="flex-1"
                 >
                   {editingShift ? 'Update Shift' : editingGroup ? 'Update Pattern' : 'Add Shift Pattern'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

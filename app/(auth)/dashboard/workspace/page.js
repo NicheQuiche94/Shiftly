@@ -5,7 +5,7 @@ import TeamSelector from '@/app/components/TeamSelector'
 import StaffSection from '@/app/components/workspace/StaffSection'
 import ShiftsSection from '@/app/components/workspace/ShiftsSection'
 import RulesSection from '@/app/components/workspace/RulesSection'
-import Link from 'next/link'
+import PageHeader from '@/app/components/PageHeader'
 
 export default function WorkspacePage() {
   const [selectedTeamId, setSelectedTeamId] = useState(null)
@@ -43,32 +43,23 @@ export default function WorkspacePage() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center text-pink-600 hover:text-pink-700 transition-colors mb-4 sm:mb-6 font-medium text-sm"
-      >
-        <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        Back to Dashboard
-      </Link>
-
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 font-cal">My Workspace</h1>
-        <p className="text-gray-600 text-sm sm:text-base">Manage your team members, shifts, and scheduling rules</p>
-      </div>
+      <PageHeader 
+        title="My Workspace"
+        subtitle="Manage your team members, shifts, and scheduling rules"
+        backLink={{ href: '/dashboard', label: 'Back to Dashboard' }}
+      />
 
       {/* Team selector + pill tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <TeamSelector selectedTeamId={selectedTeamId} onTeamChange={setSelectedTeamId} />
 
-        {/* Pill tabs matching Inbox pattern */}
+        {/* Pill tabs */}
         <div className="flex gap-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl body-small font-medium transition-all ${
                 activeTab === tab.id
                   ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
@@ -89,8 +80,8 @@ export default function WorkspacePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
           </div>
-          <p className="text-gray-900 font-medium mb-1">Select a team to get started</p>
-          <p className="text-sm text-gray-500">Choose a team from the dropdown above</p>
+          <p className="body-text font-medium mb-1">Select a team to get started</p>
+          <p className="body-small">Choose a team from the dropdown above</p>
         </div>
       ) : (
         <div>
