@@ -11,7 +11,7 @@ export default function LandingPage() {
   const [submitted, setSubmitted] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError('')
