@@ -1,8 +1,41 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import PricingSection from '@/app/components/PricingSection'
 
 export default function LandingPage() {
+  const [email, setEmail] = useState<string>('')
+  const [name, setName] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
+  const [submitted, setSubmitted] = useState<boolean>(false)
+  const [error, setError] = useState<string>('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to join waitlist')
+      }
+
+      setSubmitted(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to join waitlist')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -22,33 +55,28 @@ export default function LandingPage() {
             </Link>
             <div className="flex items-center gap-3">
               <Link 
-                href="#pricing"
+                href="#how-it-works"
                 className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-colors hidden sm:block"
               >
-                Pricing
+                How It Works
               </Link>
-              <Link 
-                href="/sign-in"
-                className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link 
-                href="/sign-up"
+              <a 
+                href="#waitlist"
                 className="px-5 py-2.5 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600 transition-all"
               >
-                Get Started
-              </Link>
+                Join Waitlist
+              </a>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero Section with Waitlist Form */}
       <section className="relative px-6 lg:px-8 py-20 lg:py-28 overflow-hidden bg-gradient-to-br from-pink-100 via-pink-50 to-white">
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <div className="inline-block mb-6 px-4 py-1.5 bg-pink-50 border border-pink-200 rounded-full">
-            <span className="text-pink-600 text-sm font-medium">Staff scheduling that's actually fair</span>
+          {/* Launch Badge */}
+          <div className="inline-block mb-6 px-4 py-2 bg-pink-500 text-white rounded-full shadow-lg">
+            <span className="text-sm font-semibold">🚀 Launching February 2026 • Limited Founder Access</span>
           </div>
           
           <h1 className="text-5xl lg:text-7xl text-gray-900 mb-6 leading-tight font-cal">
@@ -58,21 +86,73 @@ export default function LandingPage() {
           <p className="text-xl lg:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
             Stop being the rota referee. Set your rules once, and Shiftly builds fair, balanced schedules every time.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="#pricing"
-              className="inline-block px-8 py-4 bg-pink-500 text-white text-lg font-semibold rounded-xl hover:bg-pink-600 transition-all"
-            >
-              Start Free Trial
-            </Link>
-            <Link 
-              href="#how-it-works"
-              className="inline-block px-8 py-4 bg-gray-100 text-gray-900 text-lg font-semibold rounded-xl hover:bg-gray-200 transition-all"
-            >
-              See How It Works
-            </Link>
+
+          {/* Waitlist Form */}
+          <div id="waitlist" className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl p-8 border border-gray-200">
+            {!submitted ? (
+              <>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2 font-cal">Join the Waitlist</h3>
+                <p className="text-gray-600 mb-6">Be first to access Founder pricing when we launch</p>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Work email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full px-8 py-4 bg-pink-500 text-white text-lg font-semibold rounded-xl hover:bg-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Joining...' : 'Join Waitlist'}
+                  </button>
+                </form>
+
+                <p className="text-xs text-gray-500 mt-4">
+                  Only 200 Lifetime Deal spots available at launch
+                </p>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2 font-cal">You're on the list! 🎉</h3>
+                <p className="text-gray-600">
+                  We'll email you when launch spots open in February. Check your inbox for confirmation.
+                </p>
+              </div>
+            )}
           </div>
-          <p className="text-sm text-gray-500 mt-4">14-day free trial - Cancel anytime</p>
+
+          <p className="text-sm text-gray-500 mt-6">
+            Join 200+ managers already on the waitlist
+          </p>
         </div>
       </section>
 
@@ -291,11 +371,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section - Client Component */}
-      <PricingSection />
-
-      {/* Social Proof / Trust */}
-      <section className="px-6 lg:px-8 py-20 bg-white">
+      {/* Social Proof */}
+      <section className="px-6 lg:px-8 py-20 bg-gray-50">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl lg:text-4xl text-gray-900 mb-4 font-cal">
             Built for retail and hospitality
@@ -328,15 +405,15 @@ export default function LandingPage() {
             Ready to stop being the rota referee?
           </h2>
           <p className="text-xl text-pink-100 mb-10">
-            Join managers who've taken back their time
+            Join 200+ managers getting early access
           </p>
-          <Link 
-            href="#pricing"
+          <a 
+            href="#waitlist"
             className="inline-block px-8 py-4 bg-white text-pink-500 text-lg font-semibold rounded-xl hover:bg-gray-100 transition-all"
           >
-            Start Free Trial
-          </Link>
-          <p className="text-pink-200 text-sm mt-4">14-day free trial - Cancel anytime</p>
+            Join Waitlist
+          </a>
+          <p className="text-pink-200 text-sm mt-4">Only 200 Lifetime Deal spots at launch</p>
         </div>
       </section>
 
@@ -356,13 +433,13 @@ export default function LandingPage() {
               </span>
             </div>
             <div className="flex gap-6 text-sm">
-              <Link href="/sign-in" className="hover:text-white transition-colors">Sign In</Link>
-              <Link href="/sign-up" className="hover:text-white transition-colors">Get Started</Link>
-              <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
+              <a href="#waitlist" className="hover:text-white transition-colors">Join Waitlist</a>
+              <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-800 text-center text-sm">
             <p>© 2025 Shiftly. Built for retail and hospitality managers.</p>
+            <p className="mt-2 text-gray-500">Launching February 2026</p>
           </div>
         </div>
       </footer>
