@@ -39,9 +39,11 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
     contracted_hours: '',
     max_hours: '',
     hourly_rate: '',
+    annual_salary: '',
     availability: JSON.stringify(getDefaultAvailability())
   })
   const [showAvailability, setShowAvailability] = useState(false)
+  const [payType, setPayType] = useState('hourly') // 'hourly' or 'annual'
 
   // Populate form when editing
   useEffect(() => {
@@ -53,6 +55,13 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
         return !d.AM || !d.PM
       })
       setShowAvailability(hasRestrictions)
+      
+      // Determine pay type based on what's populated
+      const hasAnnualSalary = editingStaff.annual_salary && parseFloat(editingStaff.annual_salary) > 0
+      const hasHourlyRate = editingStaff.hourly_rate && parseFloat(editingStaff.hourly_rate) > 0
+      
+      setPayType(hasAnnualSalary ? 'annual' : 'hourly')
+      
       setFormData({
         name: editingStaff.name || '',
         email: editingStaff.email || '',
@@ -60,6 +69,7 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
         contracted_hours: editingStaff.contracted_hours ? editingStaff.contracted_hours.toString() : '',
         max_hours: editingStaff.max_hours ? editingStaff.max_hours.toString() : '',
         hourly_rate: editingStaff.hourly_rate ? parseFloat(editingStaff.hourly_rate).toString() : '',
+        annual_salary: editingStaff.annual_salary ? parseFloat(editingStaff.annual_salary).toString() : '',
         availability: JSON.stringify(parsedAvailability)
       })
     }
@@ -76,6 +86,11 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
       return
     }
 
+    // Only include the active pay type
+    const payData = payType === 'hourly' 
+      ? { hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : 0, annual_salary: null }
+      : { annual_salary: formData.annual_salary ? parseFloat(formData.annual_salary) : 0, hourly_rate: null }
+
     onSubmit({
       ...(editingStaff && { id: editingStaff.id }),
       name: formData.name,
@@ -83,7 +98,7 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
       role: formData.role,
       contracted_hours: contractedHours,
       max_hours: maxHours,
-      hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : 0,
+      ...payData,
       availability: formData.availability
     })
   }
@@ -189,8 +204,8 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
                 />
               </div>
 
-              {/* Hours row — 3 columns */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Hours row — 2 columns */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                     Contract
@@ -229,21 +244,66 @@ export default function StaffModal({ editingStaff, onSubmit, onClose, isSaving }
                     placeholder="40"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                    Rate
-                    <span className="font-normal text-gray-400 ml-1">£/h</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.hourly_rate}
-                    onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white"
-                    placeholder="11.44"
-                  />
+              </div>
+
+              {/* Pay Type Toggle & Input */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Pay</label>
+                
+                {/* Toggle Pills */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setPayType('hourly')}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      payType === 'hourly'
+                        ? 'bg-[#FF1F7D] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Hourly Rate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayType('annual')}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      payType === 'annual'
+                        ? 'bg-[#FF1F7D] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Annual Salary
+                  </button>
                 </div>
+
+                {/* Pay Input */}
+                {payType === 'hourly' ? (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Hourly Rate (£/h)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.hourly_rate}
+                      onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white"
+                      placeholder="11.44"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Annual Salary (£)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.annual_salary}
+                      onChange={(e) => setFormData({ ...formData, annual_salary: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white"
+                      placeholder="25000"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Availability — collapsible */}

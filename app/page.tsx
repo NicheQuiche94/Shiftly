@@ -11,7 +11,7 @@ export default function LandingPage() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError('')
@@ -30,7 +30,7 @@ export default function LandingPage() {
 
       setSubmitted(true)
     } catch (err) {
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Failed to join waitlist')
     } finally {
       setLoading(false)
     }

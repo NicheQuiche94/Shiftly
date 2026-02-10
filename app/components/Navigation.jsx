@@ -129,7 +129,7 @@ export default function Navigation() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-pink-500 to-pink-600 flex items-center justify-between px-4 z-50">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#FF1F7D] flex items-center justify-between px-4 z-50">
         <NavLogo mobile />
         
         <div className="flex items-center gap-1">
@@ -160,7 +160,7 @@ export default function Navigation() {
       )}
 
       {/* Mobile slide-out menu */}
-      <div className={`lg:hidden fixed top-16 left-0 bottom-0 w-72 bg-gradient-to-b from-pink-500 to-pink-600 z-50 transform transition-transform duration-300 ease-in-out ${
+      <div className={`lg:hidden fixed top-16 left-0 bottom-0 w-72 bg-[#FF1F7D] z-50 transform transition-transform duration-300 ease-in-out ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex-1 px-3 py-4">
@@ -173,7 +173,7 @@ export default function Navigation() {
                 className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${
                   isActive(item.path)
                     ? 'bg-white text-pink-600 shadow-lg'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                    : 'text-white/90 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <div className="flex items-center space-x-3">
@@ -209,7 +209,7 @@ export default function Navigation() {
       </div>
 
       {/* Desktop sidebar — no bell or UserButton here anymore */}
-      <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-52 bg-gradient-to-b from-pink-500 to-pink-600 flex-col z-50 rounded-r-[2rem]">
+      <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-52 bg-[#FF1F7D] flex-col z-50 rounded-r-[2rem]">
         <div className="p-6">
           <NavLogo />
         </div>
@@ -224,7 +224,7 @@ export default function Navigation() {
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                   isActive(item.path)
                     ? 'bg-white text-pink-600 shadow-lg'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                    : 'text-white/90 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <div className="flex items-center space-x-3">
