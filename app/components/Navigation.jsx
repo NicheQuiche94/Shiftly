@@ -10,6 +10,7 @@ import NotificationBell from '@/app/components/NotificationBell'
 export default function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [businessName, setBusinessName] = useState(null)
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -25,6 +26,25 @@ export default function Navigation() {
       document.body.style.overflow = 'unset'
     }
   }, [mobileMenuOpen])
+
+  // Fetch business name
+  useEffect(() => {
+    const fetchBusinessName = async () => {
+      try {
+        const response = await fetch('/api/teams')
+        if (response.ok) {
+          const teams = await response.json()
+          const defaultTeam = teams.find(t => t.is_default) || teams[0]
+          if (defaultTeam?.business_name) {
+            setBusinessName(defaultTeam.business_name)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching business name:', error)
+      }
+    }
+    fetchBusinessName()
+  }, [])
 
   const navItems = [
     { 
@@ -130,7 +150,25 @@ export default function Navigation() {
     <>
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#FF1F7D] flex items-center justify-between px-4 z-50">
-        <NavLogo mobile />
+        <div className="bg-white rounded-xl shadow-md px-4 py-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <Image 
+              src="/logo.svg" 
+              alt="Shiftly" 
+              width={28} 
+              height={28}
+              className="flex-shrink-0"
+            />
+            <div className="flex flex-col">
+              <span className="text-[#FF1F7D] font-bold text-lg leading-tight mt-0.5" style={{ fontFamily: "'Cal Sans', sans-serif" }}>
+                Shiftly
+              </span>
+              {businessName && (
+                <span className="text-gray-600 text-xs -mt-0.5">{businessName}</span>
+              )}
+            </div>
+          </Link>
+        </div>
         
         <div className="flex items-center gap-1">
           <NotificationBell variant="desktop" />
@@ -208,13 +246,37 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Desktop sidebar — no bell or UserButton here anymore */}
+      {/* Desktop sidebar */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-52 bg-[#FF1F7D] flex-col z-50 rounded-r-[2rem]">
         <div className="p-6">
-          <NavLogo />
+          <div className="bg-white rounded-2xl shadow-lg px-5 py-3 mb-4">
+            <Link href="/dashboard" className="flex items-center gap-2 justify-center">
+              <Image 
+                src="/logo.svg" 
+                alt="Shiftly" 
+                width={40} 
+                height={40}
+                className="flex-shrink-0"
+              />
+              <span 
+                className="text-[#FF1F7D] font-bold text-2xl mt-0.5"
+                style={{ fontFamily: "'Cal Sans', sans-serif" }}
+              >
+                Shiftly
+              </span>
+            </Link>
+          </div>
         </div>
 
         <div className="flex-1 px-3 py-4">
+          {/* Business Name Card */}
+          {businessName && (
+            <div className="mb-4 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/20">
+              <p className="text-white/70 text-xs font-medium uppercase tracking-wide mb-0.5">Workspace</p>
+              <p className="text-white font-medium text-sm truncate">{businessName}</p>
+            </div>
+          )}
+
           <div className="space-y-1">
             {navItems.map((item) => (
               <Link

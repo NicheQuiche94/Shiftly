@@ -222,6 +222,96 @@ body {
 }
 
 /* ============================================
+   DISABLED STATES
+   ============================================ */
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ============================================
+   LINK HOVER STATES
+   ============================================ */
+
+/* Exclude buttons and navigation links from global hover styles */
+a:not(.btn-primary):not(.btn-secondary):not([id^='nav-']):hover {
+  color: #FF1F7D;
+  text-decoration: underline;
+  text-decoration-color: #FF1F7D;
+  text-underline-offset: 2px;
+}
+
+/* ============================================
+   TABLE STYLING
+   ============================================ */
+
+table tbody tr:nth-child(even) {
+  background-color: #F9FAFB;
+}
+
+table tbody tr:hover {
+  background-color: #FFF0F7;
+}
+
+/* ============================================
+   FORM STYLING - TEXT COLOR
+   ============================================ */
+
+/* Ensure all inputs have dark text */
+input,
+textarea,
+select {
+  color: #111827; /* gray-900 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9CA3AF; /* gray-400 */
+}
+
+/* ============================================
+   FORM VALIDATION STATES
+   ============================================ */
+
+input.error,
+textarea.error,
+select.error {
+  border-color: #EF4444 !important;
+  background-color: #FEF2F2;
+}
+
+input.success,
+textarea.success,
+select.success {
+  border-color: #10B981 !important;
+  background-color: #F0FDF4;
+}
+
+input.error:focus,
+textarea.error:focus {
+  outline-color: #EF4444;
+  border-color: #EF4444;
+}
+
+input.success:focus,
+textarea.success:focus {
+  outline-color: #10B981;
+  border-color: #10B981;
+}
+
+/* ============================================
    SUCCESS ANIMATIONS
    ============================================ */
 
