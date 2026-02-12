@@ -48,6 +48,7 @@ export async function PUT(request, { params }) {
     email: body.email,
     role: body.role,
     contracted_hours: body.contracted_hours || 0,
+    max_hours: body.max_hours || body.contracted_hours || 0,
     availability: body.availability
   }
 

@@ -259,109 +259,116 @@ export default function StaffPage() {
         </div>
 
         {/* Staff Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Table Header */}
-          <div className="bg-gray-50/50 border-b border-gray-200">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 body-small font-semibold text-gray-700">
-              <div className="col-span-3">NAME</div>
-              <div className="col-span-2">EMAIL</div>
-              <div className="col-span-2">ROLE</div>
-              <div className="col-span-2">AVAILABILITY</div>
-              <div className="col-span-2">HOURS/WEEK</div>
-              <div className="col-span-1 text-right">ACTIONS</div>
-            </div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-gray-200">
-            {!selectedTeamId ? (
-              <div className="px-6 py-12 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <p className="body-text font-medium mb-1">Select a team to manage staff</p>
-                <p className="body-small">Choose a team from the dropdown above</p>
-              </div>
-            ) : loading ? (
-              <div className="px-6 py-12 text-center">
-                <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
-              </div>
-            ) : staff.length === 0 ? (
-              <div className="px-6 py-12 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <p className="body-text font-medium mb-1">No staff members yet</p>
-                <p className="body-small">Add your first team member to get started</p>
-              </div>
-            ) : (
-              staff.map((member) => (
-                <div key={member.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                  {/* Name */}
-                  <div className="col-span-3 flex items-center">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="body-text font-medium">{member.name}</span>
+        <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-200/60">
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700 sticky left-0 bg-gray-50">NAME</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">EMAIL</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">ROLE</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">AVAILABILITY</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">HOURS/WEEK</th>
+                <th className="px-6 py-4 text-right body-small font-semibold text-gray-700">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200/60">
+              {!selectedTeamId ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
                     </div>
-                  </div>
-
-                  {/* Email */}
-                  <div className="col-span-2 flex items-center">
-                    <span className="body-small text-gray-600">{member.email}</span>
-                  </div>
-
-                  {/* Role */}
-                  <div className="col-span-2 flex items-center">
-                    <Badge variant="default" size="sm">
-                      {member.role}
-                    </Badge>
-                  </div>
-
-                  {/* Availability */}
-                  <div className="col-span-2 flex items-center">
-                    <span className="body-small text-gray-600">
-                      {getAvailabilityDisplay(member.availability)}
-                    </span>
-                  </div>
-
-                  {/* Hours */}
-                  <div className="col-span-2 flex items-center">
-                    <Badge variant="info" size="sm">
-                      {member.contracted_hours}h/week
-                    </Badge>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="col-span-1 flex items-center justify-end space-x-2">
-                    <button 
-                      onClick={() => openEditModal(member)}
-                      className="btn-icon text-gray-600 hover:text-pink-600 transition-colors"
-                      title="Edit"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <p className="body-text font-medium mb-1">Select a team to manage staff</p>
+                    <p className="body-small">Choose a team from the dropdown above</p>
+                  </td>
+                </tr>
+              ) : loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
+                  </td>
+                </tr>
+              ) : staff.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(member.id)}
-                      className="btn-icon text-gray-600 hover:text-red-600 transition-colors"
-                      title="Delete"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                    </div>
+                    <p className="body-text font-medium mb-1">No staff members yet</p>
+                    <p className="body-small">Add your first team member to get started</p>
+                  </td>
+                </tr>
+              ) : (
+                staff.map((member, idx) => (
+                  <tr key={member.id} className={`hover:bg-gray-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/30' : ''}`}>
+                    {/* Name - white background */}
+                    <td className="px-6 py-4 sticky left-0 bg-white">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="body-text font-medium text-gray-900">{member.name}</span>
+                      </div>
+                    </td>
+
+                    {/* Email */}
+                    <td className="px-6 py-4">
+                      <span className="body-small text-gray-600">{member.email}</span>
+                    </td>
+
+                    {/* Role */}
+                    <td className="px-6 py-4">
+                      <Badge variant="default" size="sm">
+                        {member.role}
+                      </Badge>
+                    </td>
+
+                    {/* Availability */}
+                    <td className="px-6 py-4">
+                      <span className="body-small text-gray-600">
+                        {getAvailabilityDisplay(member.availability)}
+                      </span>
+                    </td>
+
+                    {/* Hours */}
+                    <td className="px-6 py-4">
+                      <Badge variant="info" size="sm">
+                        {member.contracted_hours}h/week
+                      </Badge>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button 
+                          onClick={() => openEditModal(member)}
+                          className="btn-icon text-gray-600 hover:text-pink-600 transition-colors"
+                          title="Edit"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(member.id)}
+                          className="btn-icon text-gray-600 hover:text-red-600 transition-colors"
+                          title="Delete"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </main>
 

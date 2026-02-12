@@ -185,9 +185,7 @@ export default function ShiftsPage() {
       if (editingShift) {
         const response = await fetch('/api/shifts', {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingShift.id,
             shift_name: formData.shift_name,
@@ -197,7 +195,6 @@ export default function ShiftsPage() {
             staff_required: parseInt(formData.staff_required)
           })
         })
-
         if (!response.ok) throw new Error('Failed to update shift')
       } else if (editingGroup) {
         const deletePromises = editingGroup.shifts.map(s => 
@@ -208,9 +205,7 @@ export default function ShiftsPage() {
         const shiftPromises = formData.day_of_week.map(day => 
           fetch('/api/shifts', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               team_id: selectedTeamId,
               shift_name: formData.shift_name,
@@ -221,17 +216,13 @@ export default function ShiftsPage() {
             })
           })
         )
-
         const responses = await Promise.all(shiftPromises)
-        const allSucceeded = responses.every(r => r.ok)
-        if (!allSucceeded) throw new Error('Failed to update some shifts')
+        if (!responses.every(r => r.ok)) throw new Error('Failed to update some shifts')
       } else {
         const shiftPromises = formData.day_of_week.map(day => 
           fetch('/api/shifts', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               team_id: selectedTeamId,
               shift_name: formData.shift_name,
@@ -242,21 +233,12 @@ export default function ShiftsPage() {
             })
           })
         )
-
         const responses = await Promise.all(shiftPromises)
-        const allSucceeded = responses.every(r => r.ok)
-        if (!allSucceeded) throw new Error('Failed to add some shifts')
+        if (!responses.every(r => r.ok)) throw new Error('Failed to add some shifts')
       }
 
       await loadShifts()
-      
-      setFormData({
-        shift_name: '',
-        day_of_week: [],
-        start_time: '',
-        end_time: '',
-        staff_required: ''
-      })
+      setFormData({ shift_name: '', day_of_week: [], start_time: '', end_time: '', staff_required: '' })
       setEditingShift(null)
       setEditingGroup(null)
       setShowModal(false)
@@ -268,14 +250,9 @@ export default function ShiftsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this shift?')) return
-    
     try {
-      const response = await fetch(`/api/shifts?id=${id}`, {
-        method: 'DELETE'
-      })
-
+      const response = await fetch(`/api/shifts?id=${id}`, { method: 'DELETE' })
       if (!response.ok) throw new Error('Failed to delete shift')
-
       await loadShifts()
     } catch (error) {
       console.error('Error deleting shift:', error)
@@ -286,17 +263,9 @@ export default function ShiftsPage() {
   const handleDeleteGroup = async (shifts) => {
     const ids = shifts.map(s => s.id)
     if (!confirm(`Are you sure you want to delete this shift pattern (${ids.length} day${ids.length > 1 ? 's' : ''})?`)) return
-    
     try {
-      const deletePromises = ids.map(id => 
-        fetch(`/api/shifts?id=${id}`, { method: 'DELETE' })
-      )
-      
-      const responses = await Promise.all(deletePromises)
-      const allSucceeded = responses.every(r => r.ok)
-      
-      if (!allSucceeded) throw new Error('Failed to delete some shifts')
-
+      const responses = await Promise.all(ids.map(id => fetch(`/api/shifts?id=${id}`, { method: 'DELETE' })))
+      if (!responses.every(r => r.ok)) throw new Error('Failed to delete some shifts')
       await loadShifts()
     } catch (error) {
       console.error('Error deleting shifts:', error)
@@ -308,19 +277,10 @@ export default function ShiftsPage() {
     const grouped = groupedShifts()
     const selectedGroups = grouped.filter(g => selectedShifts.has(g.key))
     const allShifts = selectedGroups.flatMap(g => g.shifts)
-    
     if (!confirm(`Delete ${selectedGroups.length} shift pattern(s)?`)) return
-    
     try {
-      const deletePromises = allShifts.map(s => 
-        fetch(`/api/shifts?id=${s.id}`, { method: 'DELETE' })
-      )
-      
-      const responses = await Promise.all(deletePromises)
-      const allSucceeded = responses.every(r => r.ok)
-      
-      if (!allSucceeded) throw new Error('Failed to delete some shifts')
-
+      const responses = await Promise.all(allShifts.map(s => fetch(`/api/shifts?id=${s.id}`, { method: 'DELETE' })))
+      if (!responses.every(r => r.ok)) throw new Error('Failed to delete some shifts')
       setSelectedShifts(new Set())
       await loadShifts()
     } catch (error) {
@@ -331,38 +291,18 @@ export default function ShiftsPage() {
 
   const toggleDay = (day) => {
     if (editingShift) {
-      setFormData({
-        ...formData,
-        day_of_week: [day]
-      })
+      setFormData({ ...formData, day_of_week: [day] })
     } else {
       if (formData.day_of_week.includes(day)) {
-        setFormData({
-          ...formData,
-          day_of_week: formData.day_of_week.filter(d => d !== day)
-        })
+        setFormData({ ...formData, day_of_week: formData.day_of_week.filter(d => d !== day) })
       } else {
-        setFormData({
-          ...formData,
-          day_of_week: [...formData.day_of_week, day]
-        })
+        setFormData({ ...formData, day_of_week: [...formData.day_of_week, day] })
       }
     }
   }
 
-  const selectAllDays = () => {
-    setFormData(prev => ({
-      ...prev,
-      day_of_week: daysOfWeek
-    }))
-  }
-
-  const deselectAllDays = () => {
-    setFormData(prev => ({
-      ...prev,
-      day_of_week: []
-    }))
-  }
+  const selectAllDays = () => setFormData(prev => ({ ...prev, day_of_week: daysOfWeek }))
+  const deselectAllDays = () => setFormData(prev => ({ ...prev, day_of_week: [] }))
 
   const grouped = groupedShifts()
   const totalHours = calculateTotalHours()
@@ -399,179 +339,160 @@ export default function ShiftsPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             {selectedShifts.size > 0 && (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleDeleteSelected}
-              >
+              <Button variant="danger" size="sm" onClick={handleDeleteSelected}>
                 Delete Selected ({selectedShifts.size})
               </Button>
             )}
           </div>
-          
-          <Button
-            onClick={openAddModal}
-            disabled={!selectedTeamId}
-            variant="primary"
-          >
+          <Button onClick={openAddModal} disabled={!selectedTeamId} variant="primary">
             + Add Shift Pattern
           </Button>
         </div>
 
         {/* Shifts Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Table Header */}
-          <div className="bg-gray-50/50 border-b border-gray-200">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 body-small font-semibold text-gray-700">
-              <div className="col-span-1 flex items-center">
-                <input
-                  type="checkbox"
-                  checked={selectedShifts.size === grouped.length && grouped.length > 0}
-                  onChange={toggleSelectAll}
-                  disabled={!selectedTeamId || grouped.length === 0}
-                  className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2 disabled:opacity-50"
-                />
-              </div>
-              <div className="col-span-3">SHIFT NAME</div>
-              <div className="col-span-3">DAYS</div>
-              <div className="col-span-2">TIME</div>
-              <div className="col-span-2">STAFF REQUIRED</div>
-              <div className="col-span-1 text-right">ACTIONS</div>
-            </div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-gray-200">
-            {!selectedTeamId ? (
-              <div className="px-6 py-12 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="body-text font-medium mb-1">Select a team to manage shifts</p>
-                <p className="body-small">Choose a team from the dropdown above</p>
-              </div>
-            ) : loading ? (
-              <div className="px-6 py-12 text-center">
-                <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
-              </div>
-            ) : grouped.length === 0 ? (
-              <div className="px-6 py-12 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="body-text font-medium mb-1">No shift patterns yet</p>
-                <p className="body-small">Create your first shift pattern to get started</p>
-              </div>
-            ) : (
-              grouped.map((group) => (
-                <div key={group.key}>
-                  {/* Main Row */}
-                  <div 
-                    className={`grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors ${
-                      expandedGroups[group.key] ? 'bg-gray-50/30' : ''
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <div className="col-span-1 flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedShifts.has(group.key)}
-                        onChange={() => toggleSelectShift(group.key)}
-                        className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
-                      />
+        <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-200/60">
+                <th className="px-6 py-4 text-left w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedShifts.size === grouped.length && grouped.length > 0}
+                    onChange={toggleSelectAll}
+                    disabled={!selectedTeamId || grouped.length === 0}
+                    className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2 disabled:opacity-50"
+                  />
+                </th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700 sticky left-0 bg-gray-50">SHIFT NAME</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">DAYS</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">TIME</th>
+                <th className="px-6 py-4 text-left body-small font-semibold text-gray-700">STAFF REQUIRED</th>
+                <th className="px-6 py-4 text-right body-small font-semibold text-gray-700">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200/60">
+              {!selectedTeamId ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
                     </div>
+                    <p className="body-text font-medium mb-1">Select a team to manage shifts</p>
+                    <p className="body-small">Choose a team from the dropdown above</p>
+                  </td>
+                </tr>
+              ) : loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
+                  </td>
+                </tr>
+              ) : grouped.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="body-text font-medium mb-1">No shift patterns yet</p>
+                    <p className="body-small">Create your first shift pattern to get started</p>
+                  </td>
+                </tr>
+              ) : (
+                grouped.map((group, idx) => (
+                  <React.Fragment key={group.key}>
+                    <tr className={`hover:bg-gray-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/30' : ''} ${expandedGroups[group.key] ? 'bg-gray-50/30' : ''}`}>
+                      {/* Checkbox */}
+                      <td className="px-6 py-4 w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedShifts.has(group.key)}
+                          onChange={() => toggleSelectShift(group.key)}
+                          className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
+                        />
+                      </td>
 
-                    {/* Shift Name */}
-                    <div className="col-span-3 flex items-center">
-                      <button
-                        onClick={() => toggleExpand(group.key)}
-                        className="flex items-center space-x-2 group"
-                      >
-                        <svg
-                          className={`w-4 h-4 text-gray-400 transition-transform ${
-                            expandedGroups[group.key] ? 'rotate-90' : ''
-                          }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
+                      {/* Shift Name - white background */}
+                      <td className="px-6 py-4 sticky left-0 bg-white">
+                        <button
+                          onClick={() => toggleExpand(group.key)}
+                          className="flex items-center space-x-2 group"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span className="body-text font-medium group-hover:text-pink-600 transition-colors">
-                          {group.shift_name}
-                        </span>
-                      </button>
-                    </div>
+                          <svg
+                            className={`w-4 h-4 text-gray-400 transition-transform ${expandedGroups[group.key] ? 'rotate-90' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                          <span className="body-text font-medium group-hover:text-pink-600 transition-colors">
+                            {group.shift_name}
+                          </span>
+                        </button>
+                      </td>
 
-                    {/* Days Summary */}
-                    <div className="col-span-3 flex items-center">
-                      <span className="body-small text-gray-600">
-                        {formatDays(group.shifts)}
-                      </span>
-                    </div>
+                      {/* Days */}
+                      <td className="px-6 py-4">
+                        <span className="body-small text-gray-600">{formatDays(group.shifts)}</span>
+                      </td>
 
-                    {/* Time */}
-                    <div className="col-span-2 flex items-center">
-                      <span className="body-small">
-                        {group.start_time} - {group.end_time}
-                      </span>
-                    </div>
+                      {/* Time */}
+                      <td className="px-6 py-4">
+                        <span className="body-small">{group.start_time} - {group.end_time}</span>
+                      </td>
 
-                    {/* Staff Required */}
-                    <div className="col-span-2 flex items-center">
-                      <Badge variant="info" size="sm">
-                        {group.staff_required} staff
-                      </Badge>
-                    </div>
+                      {/* Staff Required */}
+                      <td className="px-6 py-4">
+                        <Badge variant="info" size="sm">{group.staff_required} staff</Badge>
+                      </td>
 
-                    {/* Actions */}
-                    <div className="col-span-1 flex items-center justify-end space-x-2">
-                      <button 
-                        onClick={() => openEditGroupModal(group)}
-                        className="btn-icon text-gray-600 hover:text-pink-600 transition-colors"
-                        title="Edit All"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteGroup(group.shifts)}
-                        className="btn-icon text-gray-600 hover:text-red-600 transition-colors"
-                        title="Delete All"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expanded Days View */}
-                  {expandedGroups[group.key] && (
-                    <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200">
-                      <div className="ml-5">
-                        <p className="caption font-semibold uppercase tracking-wide mb-3">
-                          Active Days
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {sortDays(group.shifts).map((shift) => (
-                            <Badge key={shift.id} variant="default" size="sm">
-                              {shift.day_of_week}
-                            </Badge>
-                          ))}
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button 
+                            onClick={() => openEditGroupModal(group)}
+                            className="btn-icon text-gray-600 hover:text-pink-600 transition-colors"
+                            title="Edit All"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteGroup(group.shifts)}
+                            className="btn-icon text-gray-600 hover:text-red-600 transition-colors"
+                            title="Delete All"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Days */}
+                    {expandedGroups[group.key] && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 bg-gray-50/50 border-t border-gray-200/60">
+                          <div className="ml-12">
+                            <p className="caption font-semibold uppercase tracking-wide mb-3">Active Days</p>
+                            <div className="flex flex-wrap gap-2">
+                              {sortDays(group.shifts).map((shift) => (
+                                <Badge key={shift.id} variant="default" size="sm">{shift.day_of_week}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </main>
 
@@ -584,11 +505,7 @@ export default function ShiftsPage() {
                 {editingShift ? 'Edit Shift' : editingGroup ? 'Edit Shift Pattern' : 'Add Shift Pattern'}
               </h2>
               <button 
-                onClick={() => {
-                  setShowModal(false)
-                  setEditingShift(null)
-                  setEditingGroup(null)
-                }}
+                onClick={() => { setShowModal(false); setEditingShift(null); setEditingGroup(null) }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -599,7 +516,6 @@ export default function ShiftsPage() {
 
             <form onSubmit={handleSubmit}>
               <div className="space-y-5">
-                {/* Shift Name */}
                 <div>
                   <label className="block body-text font-semibold mb-2">Shift Name</label>
                   <input
@@ -612,7 +528,6 @@ export default function ShiftsPage() {
                   />
                 </div>
 
-                {/* Days of Week */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="block body-text font-semibold">
@@ -620,21 +535,9 @@ export default function ShiftsPage() {
                     </label>
                     {!editingShift && (
                       <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={selectAllDays}
-                          className="caption font-medium text-pink-600 hover:text-pink-700 transition-colors"
-                        >
-                          Select All
-                        </button>
+                        <button type="button" onClick={selectAllDays} className="caption font-medium text-pink-600 hover:text-pink-700 transition-colors">Select All</button>
                         <span className="text-gray-300">|</span>
-                        <button
-                          type="button"
-                          onClick={deselectAllDays}
-                          className="caption font-medium text-gray-600 hover:text-gray-700 transition-colors"
-                        >
-                          Clear
-                        </button>
+                        <button type="button" onClick={deselectAllDays} className="caption font-medium text-gray-600 hover:text-gray-700 transition-colors">Clear</button>
                       </div>
                     )}
                   </div>
@@ -663,7 +566,6 @@ export default function ShiftsPage() {
                   </p>
                 </div>
 
-                {/* Time Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block body-text font-semibold mb-2">Start Time</label>
@@ -675,7 +577,6 @@ export default function ShiftsPage() {
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900 bg-white transition-all"
                     />
                   </div>
-
                   <div>
                     <label className="block body-text font-semibold mb-2">End Time</label>
                     <input
@@ -688,7 +589,6 @@ export default function ShiftsPage() {
                   </div>
                 </div>
 
-                {/* Staff Required */}
                 <div>
                   <label className="block body-text font-semibold mb-2">Staff Required</label>
                   <input
@@ -703,25 +603,11 @@ export default function ShiftsPage() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="mt-8 flex gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setShowModal(false)
-                    setEditingShift(null)
-                    setEditingGroup(null)
-                  }}
-                  className="flex-1"
-                >
+                <Button type="button" variant="secondary" onClick={() => { setShowModal(false); setEditingShift(null); setEditingGroup(null) }} className="flex-1">
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="flex-1"
-                >
+                <Button type="submit" variant="primary" className="flex-1">
                   {editingShift ? 'Update Shift' : editingGroup ? 'Update Pattern' : 'Add Shift Pattern'}
                 </Button>
               </div>

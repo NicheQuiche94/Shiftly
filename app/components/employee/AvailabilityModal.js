@@ -4,23 +4,47 @@ import { useState, useEffect } from 'react'
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+// Generate time options in 15-min increments
+const TIME_OPTIONS = []
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 15) {
+    const hh = String(h).padStart(2, '0')
+    const mm = String(m).padStart(2, '0')
+    TIME_OPTIONS.push(`${hh}:${mm}`)
+  }
+}
+
 function parseAvailability(raw) {
   try {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
     const converted = {}
     DAYS_OF_WEEK.forEach(day => {
-      if (typeof parsed?.[day] === 'boolean') {
-        converted[day] = { AM: parsed[day], PM: parsed[day] }
-      } else if (parsed?.[day] && typeof parsed[day] === 'object') {
-        converted[day] = parsed[day]
+      const d = parsed?.[day]
+      if (!d) {
+        converted[day] = { available: true, start: null, end: null }
+      } else if ('available' in d) {
+        converted[day] = { available: d.available, start: d.start || null, end: d.end || null }
+      } else if ('AM' in d || 'PM' in d) {
+        // Legacy AM/PM format
+        if (d.AM && d.PM) {
+          converted[day] = { available: true, start: null, end: null }
+        } else if (d.AM && !d.PM) {
+          converted[day] = { available: true, start: '06:00', end: '13:00' }
+        } else if (!d.AM && d.PM) {
+          converted[day] = { available: true, start: '13:00', end: '23:00' }
+        } else {
+          converted[day] = { available: false, start: null, end: null }
+        }
+      } else if (typeof d === 'boolean') {
+        converted[day] = { available: d, start: null, end: null }
       } else {
-        converted[day] = { AM: true, PM: true }
+        converted[day] = { available: true, start: null, end: null }
       }
     })
     return converted
   } catch {
     const defaults = {}
-    DAYS_OF_WEEK.forEach(day => { defaults[day] = { AM: true, PM: true } })
+    DAYS_OF_WEEK.forEach(day => { defaults[day] = { available: true, start: null, end: null } })
     return defaults
   }
 }
@@ -32,17 +56,29 @@ export default function AvailabilityModal({ availability, onSave, onClose, isPen
     setForm(parseAvailability(availability))
   }, [availability])
 
-  const toggle = (day, period) => {
+  const toggleDayAvailable = (day) => {
     setForm(prev => ({
       ...prev,
-      [day]: { ...prev[day], [period]: !prev[day]?.[period] }
+      [day]: { available: !prev[day].available, start: null, end: null }
     }))
   }
 
-  const toggleFullDay = (day) => {
-    const current = form[day] || { AM: true, PM: true }
-    const allOn = current.AM && current.PM
-    setForm(prev => ({ ...prev, [day]: { AM: !allOn, PM: !allOn } }))
+  const toggleCustomTimes = (day) => {
+    setForm(prev => {
+      const current = prev[day]
+      if (current.start || current.end) {
+        return { ...prev, [day]: { available: true, start: null, end: null } }
+      } else {
+        return { ...prev, [day]: { available: true, start: '09:00', end: '17:00' } }
+      }
+    })
+  }
+
+  const updateTime = (day, field, value) => {
+    setForm(prev => ({
+      ...prev,
+      [day]: { ...prev[day], [field]: value }
+    }))
   }
 
   return (
@@ -58,49 +94,90 @@ export default function AvailabilityModal({ availability, onSave, onClose, isPen
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          Select when you're available to work. Tap the day to toggle all, or choose AM/PM individually.
+          Toggle each day on or off. For days you're available, you can optionally set specific hours (e.g. school run, evening classes).
         </p>
 
         <div className="space-y-2 mb-6">
           {DAYS_OF_WEEK.map((day) => {
-            const dayAvail = form[day] || { AM: true, PM: true }
-            const allOn = dayAvail.AM && dayAvail.PM
-            const allOff = !dayAvail.AM && !dayAvail.PM
+            const dayAvail = form[day] || { available: true, start: null, end: null }
+            const hasCustomTimes = dayAvail.start || dayAvail.end
 
             return (
               <div
                 key={day}
-                className={`rounded-lg border transition-all ${
-                  allOn ? 'bg-green-50 border-green-200' :
-                  allOff ? 'bg-gray-100 border-transparent' :
-                  'bg-amber-50 border-amber-200'
+                className={`rounded-xl border transition-all ${
+                  !dayAvail.available
+                    ? 'bg-gray-50 border-gray-200'
+                    : hasCustomTimes
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-green-50 border-green-200'
                 }`}
               >
+                {/* Main row */}
                 <div className="flex items-center justify-between px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => toggleFullDay(day)}
-                    className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
-                  >
-                    {day}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {['AM', 'PM'].map(period => (
-                      <button
-                        key={period}
-                        type="button"
-                        onClick={() => toggle(day, period)}
-                        className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                          dayAvail[period]
-                            ? 'bg-green-500 text-white'
-                            : 'bg-gray-200 text-gray-500'
-                        }`}
-                      >
-                        {period}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleDayAvailable(day)}
+                      className={`relative w-10 h-6 rounded-full transition-colors ${
+                        dayAvail.available ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        dayAvail.available ? 'left-[18px]' : 'left-0.5'
+                      }`} />
+                    </button>
+                    <span className={`font-medium ${dayAvail.available ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {day}
+                    </span>
                   </div>
+
+                  {dayAvail.available ? (
+                    <div className="flex items-center gap-2">
+                      {hasCustomTimes ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleCustomTimes(day)}
+                          className="text-xs font-medium text-amber-600 hover:text-amber-700"
+                        >
+                          {dayAvail.start} - {dayAvail.end}
+                          <span className="ml-1 text-gray-400">&times;</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleCustomTimes(day)}
+                          className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors px-2 py-1 rounded-lg hover:bg-pink-50"
+                        >
+                          Set hours
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Unavailable</span>
+                  )}
                 </div>
+
+                {/* Time pickers row (only when custom times active) */}
+                {dayAvail.available && hasCustomTimes && (
+                  <div className="flex items-center gap-2 px-4 pb-3">
+                    <select
+                      value={dayAvail.start || '09:00'}
+                      onChange={(e) => updateTime(day, 'start', e.target.value)}
+                      className="flex-1 text-sm border border-amber-300 rounded-lg px-2 py-2 bg-white text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    >
+                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <span className="text-sm text-gray-400">to</span>
+                    <select
+                      value={dayAvail.end || '17:00'}
+                      onChange={(e) => updateTime(day, 'end', e.target.value)}
+                      className="flex-1 text-sm border border-amber-300 rounded-lg px-2 py-2 bg-white text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    >
+                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             )
           })}

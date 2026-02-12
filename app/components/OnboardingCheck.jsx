@@ -12,54 +12,78 @@ export default function OnboardingCheck({ children }) {
   const [shouldShow, setShouldShow] = useState(false)
 
   useEffect(() => {
-    const checkOnboarding = async () => {
-      // Skip check if not loaded or already on onboarding page
-      if (!isLoaded || !user) {
-        setChecking(false)
-        setShouldShow(true) // Show immediately if not loaded yet
-        return
-      }
+    // Wait for Clerk to load — stay on spinner
+    if (!isLoaded) return
+    
+    // If no user (logged out somehow), let Clerk middleware handle it
+    if (!user) {
+      setChecking(false)
+      setShouldShow(true)
+      return
+    }
 
-      // Don't redirect if already on onboarding page
-      if (pathname === '/onboarding') {
-        setShouldShow(true)
-        setChecking(false)
-        return
-      }
+    // Don't redirect if already on onboarding page
+    if (pathname === '/onboarding') {
+      setShouldShow(true)
+      setChecking(false)
+      return
+    }
 
+    const checkAccess = async () => {
       try {
-        // Check if user has completed onboarding
+        // Step 1: Check if user is an employee — redirect before showing ANY manager UI
+        const cacheKey = `shiftly_user_type_${user.id}`
+        const cachedType = localStorage.getItem(cacheKey)
+
+        if (cachedType === 'employee') {
+          router.replace('/employee')
+          return // Stay on spinner forever — redirect will unmount us
+        }
+
+        // If no cache, check the API
+        if (!cachedType) {
+          const typeResponse = await fetch('/api/auth/user-type')
+          const typeData = await typeResponse.json()
+
+          if (typeData.type === 'employee') {
+            localStorage.setItem(cacheKey, 'employee')
+            router.replace('/employee')
+            return // Stay on spinner
+          }
+
+          // Cache as manager so we skip this check next time
+          if (typeData.type === 'manager' || typeData.type === 'new') {
+            localStorage.setItem(cacheKey, 'manager')
+          }
+        }
+
+        // Step 2: User is a manager — check onboarding status
         const response = await fetch('/api/teams')
         if (response.ok) {
           const teams = await response.json()
           const defaultTeam = teams.find(t => t.is_default) || teams[0]
-          
-          // If onboarding not completed, redirect
+
           if (!defaultTeam?.onboarding_completed) {
             router.push('/onboarding')
             return
           }
-          
-          // Onboarding complete, show content
+
           setShouldShow(true)
         } else {
-          // If API fails, show content (fail open)
           setShouldShow(true)
         }
       } catch (error) {
-        console.error('Error checking onboarding:', error)
-        // On error, show content anyway (fail open)
+        console.error('Error checking access:', error)
         setShouldShow(true)
       } finally {
         setChecking(false)
       }
     }
 
-    checkOnboarding()
+    checkAccess()
   }, [isLoaded, user, pathname, router])
 
-  // Show loading spinner while checking
-  if (checking) {
+  if (checking || !shouldShow) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -70,6 +94,5 @@ export default function OnboardingCheck({ children }) {
     )
   }
 
-  // Show content - don't wrap in extra divs that might break styling
-  return shouldShow ? <>{children}</> : null
+  return <>{children}</>
 }

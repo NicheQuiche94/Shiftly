@@ -1,15 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TeamSelector from '@/app/components/TeamSelector'
 import StaffSection from '@/app/components/workspace/StaffSection'
 import ShiftsSection from '@/app/components/workspace/ShiftsSection'
 import RulesSection from '@/app/components/workspace/RulesSection'
+import WorkspaceOnboardingBanner from '@/app/components/WorkspaceOnboardingBanner'
 import PageHeader from '@/app/components/PageHeader'
 
 export default function WorkspacePage() {
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [activeTab, setActiveTab] = useState('staff')
+  const [triggerStaffModal, setTriggerStaffModal] = useState(false)
+
+  // Listen for event from TeamSelector success screen
+  useEffect(() => {
+    const handleOpenStaffModal = () => {
+      setActiveTab('staff')
+      setTriggerStaffModal(true)
+    }
+    
+    window.addEventListener('openStaffModal', handleOpenStaffModal)
+    
+    return () => {
+      window.removeEventListener('openStaffModal', handleOpenStaffModal)
+    }
+  }, [])
+
+  // Reset trigger after StaffSection mounts
+  useEffect(() => {
+    if (triggerStaffModal) {
+      const timer = setTimeout(() => setTriggerStaffModal(false), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [triggerStaffModal])
 
   const tabs = [
     { 
@@ -49,6 +73,19 @@ export default function WorkspacePage() {
         backLink={{ href: '/dashboard', label: 'Back to Dashboard' }}
       />
 
+      {/* Onboarding Banner - shows when team setup incomplete */}
+      {selectedTeamId && (
+        <WorkspaceOnboardingBanner 
+          teamId={selectedTeamId}
+          onAddStaff={() => {
+            setActiveTab('staff')
+            setTriggerStaffModal(true)
+          }}
+          onAddShifts={() => setActiveTab('shifts')}
+          onConfigureRules={() => setActiveTab('rules')}
+        />
+      )}
+
       {/* Team selector + pill tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <TeamSelector selectedTeamId={selectedTeamId} onTeamChange={setSelectedTeamId} />
@@ -85,7 +122,7 @@ export default function WorkspacePage() {
         </div>
       ) : (
         <div>
-          {activeTab === 'staff' && <StaffSection selectedTeamId={selectedTeamId} />}
+          {activeTab === 'staff' && <StaffSection selectedTeamId={selectedTeamId} triggerAddStaff={triggerStaffModal} />}
           {activeTab === 'shifts' && <ShiftsSection selectedTeamId={selectedTeamId} />}
           {activeTab === 'rules' && <RulesSection selectedTeamId={selectedTeamId} />}
         </div>

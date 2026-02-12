@@ -62,6 +62,24 @@ export default function TeamSelector({ selectedTeamId, onTeamChange, showAddButt
 
   const handleCreateTeam = async (withImport = false) => {
     try {
+      // Validate team name for profanity
+      const badWords = [
+        'fuck', 'shit', 'ass', 'bitch', 'damn', 'crap', 'piss', 'dick', 'cock', 
+        'pussy', 'cunt', 'bastard', 'slut', 'whore', 'fag', 'retard', 'nigger', 
+        'nigga', 'chink', 'spic', 'kike', 'paki', 'wog', 'poopy', 'butthead'
+      ]
+      
+      const teamNameLower = newTeamName.toLowerCase()
+      const containsBadWord = badWords.some(word => 
+        teamNameLower.includes(word) || 
+        teamNameLower.replace(/[^a-z]/g, '').includes(word.replace(/[^a-z]/g, ''))
+      )
+      
+      if (containsBadWord) {
+        alert('Please choose a professional team name.')
+        return
+      }
+  
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

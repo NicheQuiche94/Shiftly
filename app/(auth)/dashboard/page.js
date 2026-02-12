@@ -5,7 +5,6 @@ import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import OnboardingTour from '../../../components/OnboardingTour'
 import AnnouncementComposer from '@/app/components/AnnouncementComposer'
 import PageHeader from '@/app/components/PageHeader'
 import SectionHeader from '@/app/components/SectionHeader'
@@ -398,8 +397,6 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Onboarding Tour */}
-      <OnboardingTour />
     </main>
   )
 }

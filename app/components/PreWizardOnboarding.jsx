@@ -4,17 +4,39 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+const defaultOpeningHours = () => {
+  const hours = {}
+  daysOfWeek.forEach(day => {
+    const isWeekday = !['Saturday', 'Sunday'].includes(day)
+    hours[day] = {
+      open: isWeekday,
+      start: '09',
+      startMin: '00',
+      end: '17',
+      endMin: '00'
+    }
+  })
+  return hours
+}
+
+const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const minuteOptions = ['00', '15', '30', '45']
+
 export default function PreWizardOnboarding() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [saving, setSaving] = useState(false)
+  const totalSteps = 5
   
   // Form state
   const [formData, setFormData] = useState({
     locale_id: null,
     business_name: '',
     employee_count_range: null,
-    industry: null
+    industry: null,
+    opening_hours: defaultOpeningHours()
   })
 
   // Locale options with compliance info
@@ -61,6 +83,49 @@ export default function PreWizardOnboarding() {
     setFormData({ ...formData, locale_id: localeId })
   }
 
+  const updateOpeningHours = (day, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      opening_hours: {
+        ...prev.opening_hours,
+        [day]: {
+          ...prev.opening_hours[day],
+          [field]: value
+        }
+      }
+    }))
+  }
+
+  const toggleDayOpen = (day) => {
+    setFormData(prev => ({
+      ...prev,
+      opening_hours: {
+        ...prev.opening_hours,
+        [day]: {
+          ...prev.opening_hours[day],
+          open: !prev.opening_hours[day].open
+        }
+      }
+    }))
+  }
+
+  // Copy first open day's hours to all other open days
+  const applyToAllOpen = () => {
+    const firstOpenDay = daysOfWeek.find(d => formData.opening_hours[d].open)
+    if (!firstOpenDay) return
+    const source = formData.opening_hours[firstOpenDay]
+    
+    setFormData(prev => {
+      const updated = { ...prev.opening_hours }
+      daysOfWeek.forEach(day => {
+        if (updated[day].open) {
+          updated[day] = { ...updated[day], start: source.start, startMin: source.startMin, end: source.end, endMin: source.endMin }
+        }
+      })
+      return { ...prev, opening_hours: updated }
+    })
+  }
+
   const handleNext = () => {
     setCurrentStep(currentStep + 1)
   }
@@ -79,7 +144,6 @@ export default function PreWizardOnboarding() {
       })
 
       if (response.ok) {
-        // Redirect to main dashboard
         router.push('/dashboard')
       } else {
         alert('Failed to save onboarding data')
@@ -98,8 +162,27 @@ export default function PreWizardOnboarding() {
       case 2: return formData.business_name.trim().length > 0
       case 3: return formData.employee_count_range !== null
       case 4: return formData.industry !== null
+      case 5: {
+        // At least one day must be open
+        return daysOfWeek.some(d => formData.opening_hours[d].open)
+      }
       default: return false
     }
+  }
+
+  // Summary of open days for step 5
+  const openDaysSummary = () => {
+    const openDays = daysOfWeek.filter(d => formData.opening_hours[d].open)
+    if (openDays.length === 7) return 'Open every day'
+    if (openDays.length === 0) return 'No days selected'
+    if (openDays.length === 5 && !formData.opening_hours.Saturday.open && !formData.opening_hours.Sunday.open) {
+      return 'Mon – Fri'
+    }
+    if (openDays.length === 6) {
+      const closedDay = daysOfWeek.find(d => !formData.opening_hours[d].open)
+      return `Every day except ${closedDay}`
+    }
+    return openDays.map(d => d.slice(0, 3)).join(', ')
   }
 
   return (
@@ -124,13 +207,13 @@ export default function PreWizardOnboarding() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">Step {currentStep} of 4</span>
-            <span className="text-sm text-gray-500">{Math.round((currentStep / 4) * 100)}%</span>
+            <span className="text-sm font-medium text-gray-600">Step {currentStep} of {totalSteps}</span>
+            <span className="text-sm text-gray-500">{Math.round((currentStep / totalSteps) * 100)}%</span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-pink-500 to-pink-600 transition-all duration-500 ease-out"
-              style={{ width: `${(currentStep / 4) * 100}%` }}
+              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
             />
           </div>
         </div>
@@ -294,6 +377,113 @@ export default function PreWizardOnboarding() {
             </div>
           )}
 
+          {/* Step 5: Opening Hours */}
+          {currentStep === 5 && (
+            <div className="flex-1 flex flex-col animate-fade-in">
+              <div className="mb-6">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 font-cal">
+                  What are your opening hours? 🕐
+                </h1>
+                <p className="text-lg text-gray-600">
+                  We'll use this to generate your shift patterns. You can always adjust later.
+                </p>
+              </div>
+
+              {/* Apply to all button */}
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-gray-500">{openDaysSummary()}</p>
+                <button
+                  type="button"
+                  onClick={applyToAllOpen}
+                  className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                >
+                  Apply first day to all
+                </button>
+              </div>
+
+              {/* Days grid */}
+              <div className="space-y-2 flex-1">
+                {daysOfWeek.map((day) => {
+                  const dayData = formData.opening_hours[day]
+                  return (
+                    <div
+                      key={day}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        dayData.open ? 'bg-white border border-gray-200' : 'bg-gray-50 border border-gray-100'
+                      }`}
+                    >
+                      {/* Day name + toggle */}
+                      <button
+                        onClick={() => toggleDayOpen(day)}
+                        className="flex items-center gap-2 w-24 flex-shrink-0"
+                      >
+                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-all ${
+                          dayData.open ? 'bg-pink-500' : 'bg-gray-300'
+                        }`}>
+                          {dayData.open && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className={`text-sm font-medium ${dayData.open ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {day.slice(0, 3)}
+                        </span>
+                      </button>
+
+                      {/* Time selectors or Closed label */}
+                      {dayData.open ? (
+                        <div className="flex items-center gap-1.5 flex-1">
+                          {/* Start time */}
+                          <select
+                            value={dayData.start}
+                            onChange={(e) => updateOpeningHours(day, 'start', e.target.value)}
+                            className="w-16 px-1.5 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white text-center focus:ring-2 focus:ring-pink-500 focus:border-transparent appearance-none"
+                          >
+                            {hourOptions.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                          <span className="text-gray-400 font-bold text-xs">:</span>
+                          <select
+                            value={dayData.startMin}
+                            onChange={(e) => updateOpeningHours(day, 'startMin', e.target.value)}
+                            className="w-14 px-1.5 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white text-center focus:ring-2 focus:ring-pink-500 focus:border-transparent appearance-none"
+                          >
+                            {minuteOptions.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+
+                          <span className="text-gray-400 mx-1">→</span>
+
+                          {/* End time */}
+                          <select
+                            value={dayData.end}
+                            onChange={(e) => updateOpeningHours(day, 'end', e.target.value)}
+                            className="w-16 px-1.5 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white text-center focus:ring-2 focus:ring-pink-500 focus:border-transparent appearance-none"
+                          >
+                            {hourOptions.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                          <span className="text-gray-400 font-bold text-xs">:</span>
+                          <select
+                            value={dayData.endMin}
+                            onChange={(e) => updateOpeningHours(day, 'endMin', e.target.value)}
+                            className="w-14 px-1.5 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white text-center focus:ring-2 focus:ring-pink-500 focus:border-transparent appearance-none"
+                          >
+                            {minuteOptions.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic flex-1">Closed</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="text-xs text-gray-400 mt-3">
+                Don&apos;t worry about staff prep or close-down time — you can fine-tune shift patterns in your workspace.
+              </p>
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
             <button
@@ -304,7 +494,7 @@ export default function PreWizardOnboarding() {
               ← Back
             </button>
 
-            {currentStep < 4 ? (
+            {currentStep < totalSteps ? (
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}

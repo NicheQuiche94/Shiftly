@@ -48,7 +48,7 @@ export default function StaffSection({ selectedTeamId }) {
 
   const updateStaff = useMutation({
     mutationFn: async (data) => {
-      const res = await fetch('/api/staff', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      const res = await fetch(`/api/staff/${data.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
       if (!res.ok) throw new Error('Failed to update staff')
       return res.json()
     },

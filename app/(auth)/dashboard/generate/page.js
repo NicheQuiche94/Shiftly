@@ -9,6 +9,8 @@ import RotaActions from '@/app/components/rota/RotaActions'
 import SavedRotasList from '@/app/components/rota/SavedRotasList'
 import SaveApproveModal from '@/app/components/rota/SaveApproveModal'
 import ShiftEditModal from '@/app/components/ShiftEditModal'
+import AddShiftModal from '@/app/components/AddShiftModal'
+import UncoveredShiftsPanel from '@/app/components/rota/UncoveredShiftsPanel'
 import RulesComplianceSection from '@/app/components/rota/RulesComplianceSection'
 import RotaAlerts from '@/app/components/rota/RotaAlerts'
 import RotaScheduleGrid from '@/app/components/rota/RotaScheduleGrid'
@@ -35,10 +37,16 @@ function GenerateRotaContent() {
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [showAllTeams, setShowAllTeams] = useState(false)
   const [allStaff, setAllStaff] = useState([])
+  const [shiftPatterns, setShiftPatterns] = useState([])
   
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingShift, setEditingShift] = useState(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  
+  // Add Shift Modal state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addShiftDay, setAddShiftDay] = useState(null)
+  const [addShiftWeek, setAddShiftWeek] = useState(null)
   
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
@@ -90,6 +98,7 @@ function GenerateRotaContent() {
   useEffect(() => {
     if (selectedTeamId) {
       loadStaff()
+      loadShiftPatterns()
     }
   }, [selectedTeamId, showAllTeams])
 
@@ -106,6 +115,22 @@ function GenerateRotaContent() {
       }
     } catch (err) {
       console.error('Error loading staff:', err)
+    }
+  }
+
+  const loadShiftPatterns = async () => {
+    try {
+      let url = `/api/shifts?team_id=${selectedTeamId}`
+      if (showAllTeams) {
+        url = `/api/shifts`
+      }
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setShiftPatterns(data)
+      }
+    } catch (err) {
+      console.error('Error loading shift patterns:', err)
     }
   }
 
@@ -303,6 +328,14 @@ function GenerateRotaContent() {
     }
   }
 
+  // Generate a default rota name from the date range
+  const generateRotaName = () => {
+    const endDate = new Date(startDate.getTime() + (weekCount * 7 - 1) * 24 * 60 * 60 * 1000)
+    const start = startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    const end = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    return `${start} – ${end}`
+  }
+
   const handleShiftClick = (staffName, day, shiftName, time, week) => {
     setEditingShift({
       staffName,
@@ -312,6 +345,53 @@ function GenerateRotaContent() {
       week
     })
     setShowEditModal(true)
+  }
+
+  const handleEmptyCellClick = (staffName, day, weekNum) => {
+    setAddShiftDay(day)
+    setAddShiftWeek(weekNum)
+    setShowAddModal(true)
+  }
+
+  const handleAddShift = ({ day, week, shiftName, time, staffName }) => {
+    if (!rota || !rota.schedule) return
+
+    // Check if this shift pattern already exists in the schedule for this day/week
+    const existingShiftIndex = rota.schedule.findIndex(s =>
+      s.day === day &&
+      s.shift_name === shiftName &&
+      (s.week || 1) === week
+    )
+
+    let updatedSchedule
+
+    if (existingShiftIndex >= 0) {
+      // Add staff to existing shift entry
+      updatedSchedule = rota.schedule.map((shift, idx) => {
+        if (idx === existingShiftIndex) {
+          const currentStaff = shift.assigned_staff || []
+          if (!currentStaff.includes(staffName)) {
+            return { ...shift, assigned_staff: [...currentStaff, staffName] }
+          }
+        }
+        return shift
+      })
+    } else {
+      // Create new shift entry
+      updatedSchedule = [
+        ...rota.schedule,
+        {
+          day,
+          shift_name: shiftName,
+          time,
+          assigned_staff: [staffName],
+          week
+        }
+      ]
+    }
+
+    setRota({ ...rota, schedule: updatedSchedule })
+    setHasUnsavedChanges(true)
   }
 
   const handleReassign = (shiftData, newStaffName) => {
@@ -383,6 +463,20 @@ function GenerateRotaContent() {
     setHasUnsavedChanges(true)
   }
 
+  // Uncovered shifts: open add modal pre-filled for that shift
+  const handleAddFromUncovered = (uncoveredShift) => {
+    setAddShiftDay(uncoveredShift.day)
+    setAddShiftWeek(uncoveredShift.weekNum)
+    setShowAddModal(true)
+  }
+
+  const handlePostToPickupBoard = async (uncoveredShift) => {
+    // TODO: Post to employee pickup board via notifications API
+    alert(`Posted ${uncoveredShift.shiftName} on ${uncoveredShift.day} (Week ${uncoveredShift.weekNum}) to the pickup board. Employees will be notified.`)
+  }
+
+  // --- Staff helpers ---
+
   const getUniqueStaff = () => {
     if (!rota || !rota.schedule) return []
     const staffSet = new Set()
@@ -441,6 +535,8 @@ function GenerateRotaContent() {
       shift.assigned_staff?.includes(staffName)
     )
   }
+
+  // --- Loading states ---
 
   if (initialLoading) {
     return (
@@ -524,8 +620,14 @@ function GenerateRotaContent() {
           showSavedRotas={showSavedRotas}
           setShowSavedRotas={setShowSavedRotas}
           rota={rota}
-          onSave={() => setShowSaveModal(true)}
-          onApprove={() => setShowApproveModal(true)}
+          onSave={() => {
+            if (!rotaName) setRotaName(generateRotaName())
+            setShowSaveModal(true)
+          }}
+          onApprove={() => {
+            if (!rotaName) setRotaName(generateRotaName())
+            setShowApproveModal(true)
+          }}
           onPrint={handlePrint}
         />
 
@@ -538,68 +640,81 @@ function GenerateRotaContent() {
         )}
 
         {rota && rota.schedule && rota.schedule.length > 0 && (
-          <div id="printable-rota" className="bg-white rounded-xl border border-gray-200/60 overflow-hidden">
-            <div className="hidden print:block p-6 border-b border-gray-200">
-              <h1 className="heading-page mb-2">Staff Rota</h1>
-              <p className="body-text">{formatDate(startDate)} - {formatDate(new Date(startDate.getTime() + (weekCount * 7 - 1) * 24 * 60 * 60 * 1000))}</p>
-            </div>
+          <>
+            <div id="printable-rota" className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+              <div className="hidden print:block p-6 border-b border-gray-200">
+                <h1 className="heading-page mb-2">Staff Rota</h1>
+                <p className="body-text">{formatDate(startDate)} - {formatDate(new Date(startDate.getTime() + (weekCount * 7 - 1) * 24 * 60 * 60 * 1000))}</p>
+              </div>
 
-            {rota && rota.rule_compliance && rota.rule_compliance.length > 0 && (
-              <RulesComplianceSection rules={rota.rule_compliance} />
-            )}
+              {rota && rota.rule_compliance && rota.rule_compliance.length > 0 && (
+                <RulesComplianceSection rules={rota.rule_compliance} />
+              )}
 
-            <div className="border-b border-gray-200/60 bg-gray-50/50 no-print">
-              <div className="flex">
-                <button
-                  onClick={() => setActiveTab('schedule')}
-                  className={`px-4 sm:px-6 py-3 body-text font-medium transition-colors ${
-                    activeTab === 'schedule'
-                      ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Schedule
-                </button>
-                <button
-                  onClick={() => setActiveTab('hours')}
-                  className={`px-4 sm:px-6 py-3 body-text font-medium transition-colors ${
-                    activeTab === 'hours'
-                      ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Hours
-                </button>
+              <div className="border-b border-gray-200/60 bg-gray-50/50 no-print">
+                <div className="flex">
+                  <button
+                    onClick={() => setActiveTab('schedule')}
+                    className={`px-4 sm:px-6 py-3 body-text font-medium transition-colors ${
+                      activeTab === 'schedule'
+                        ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Schedule
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('hours')}
+                    className={`px-4 sm:px-6 py-3 body-text font-medium transition-colors ${
+                      activeTab === 'hours'
+                        ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Hours
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-6">
+                {activeTab === 'schedule' && (
+                  <RotaScheduleGrid
+                    rota={rota}
+                    weekCount={weekCount}
+                    startDate={startDate}
+                    uniqueStaff={uniqueStaff}
+                    getStaffTeam={getStaffTeam}
+                    getTeamColor={getTeamColor}
+                    getStaffColor={getStaffColor}
+                    getStaffShiftsForDay={getStaffShiftsForDay}
+                    getDateForDay={getDateForDay}
+                    getShortDay={getShortDay}
+                    handleShiftClick={handleShiftClick}
+                    handleEmptyCellClick={handleEmptyCellClick}
+                  />
+                )}
+
+                {activeTab === 'hours' && rota.hours_report && (
+                  <RotaHoursTable
+                    rota={rota}
+                    weekCount={weekCount}
+                    startDate={startDate}
+                    getTeamColor={getTeamColor}
+                    allStaff={allStaff}
+                  />
+                )}
               </div>
             </div>
 
-            <div className="p-4 sm:p-6">
-              {activeTab === 'schedule' && (
-                <RotaScheduleGrid
-                  rota={rota}
-                  weekCount={weekCount}
-                  startDate={startDate}
-                  uniqueStaff={uniqueStaff}
-                  getStaffTeam={getStaffTeam}
-                  getTeamColor={getTeamColor}
-                  getStaffColor={getStaffColor}
-                  getStaffShiftsForDay={getStaffShiftsForDay}
-                  getDateForDay={getDateForDay}
-                  getShortDay={getShortDay}
-                  handleShiftClick={handleShiftClick}
-                />
-              )}
-
-              {activeTab === 'hours' && rota.hours_report && (
-                <RotaHoursTable
-                  rota={rota}
-                  weekCount={weekCount}
-                  startDate={startDate}
-                  getTeamColor={getTeamColor}
-                />
-              )}
-            </div>
-          </div>
+            {/* Uncovered Shifts Panel - below the rota grid */}
+            <UncoveredShiftsPanel
+              rota={rota}
+              shiftPatterns={shiftPatterns}
+              weekCount={weekCount}
+              onAddShiftToRota={handleAddFromUncovered}
+              onPostToPickupBoard={handlePostToPickupBoard}
+            />
+          </>
         )}
 
         {rota && rota.summary && (
@@ -611,6 +726,7 @@ function GenerateRotaContent() {
         )}
       </main>
 
+      {/* Edit existing shift modal */}
       <ShiftEditModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -620,6 +736,18 @@ function GenerateRotaContent() {
         onRemove={handleRemove}
         onSwap={handleSwap}
         rota={rota}
+      />
+
+      {/* Add new shift modal */}
+      <AddShiftModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        day={addShiftDay}
+        weekNum={addShiftWeek}
+        shiftPatterns={shiftPatterns}
+        allStaff={allStaff}
+        rota={rota}
+        onAddShift={handleAddShift}
       />
 
       <SaveApproveModal

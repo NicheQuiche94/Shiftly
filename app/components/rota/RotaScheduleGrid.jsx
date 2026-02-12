@@ -11,7 +11,8 @@ export default function RotaScheduleGrid({
   getStaffShiftsForDay,
   getDateForDay,
   getShortDay,
-  handleShiftClick
+  handleShiftClick,
+  handleEmptyCellClick
 }) {
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -94,30 +95,40 @@ export default function RotaScheduleGrid({
                                     >
                                       <div className="min-h-[40px] sm:min-h-[50px] flex flex-col gap-1">
                                         {shifts.length > 0 ? (
-                                          shifts.map((shift, idx) => {
-                                            return (
-                                              <button
-                                                key={idx}
-                                                onClick={() => handleShiftClick(
-                                                  staffName, 
-                                                  day, 
-                                                  shift.shift_name, 
-                                                  shift.time,
-                                                  weekNum
-                                                )}
-                                                className={`w-full px-1.5 sm:px-2 py-1 sm:py-1.5 ${colorClass} rounded text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
-                                              >
-                                                <span className="text-white font-medium text-[10px] sm:text-xs block truncate">
-                                                  {shift.shift_name}
-                                                </span>
-                                                <span className="text-white/80 text-[9px] sm:text-[10px] block">
-                                                  {shift.time}
-                                                </span>
-                                              </button>
-                                            )
-                                          })
+                                          shifts.map((shift, idx) => (
+                                            <button
+                                              key={idx}
+                                              onClick={() => handleShiftClick(
+                                                staffName, 
+                                                day, 
+                                                shift.shift_name, 
+                                                shift.time,
+                                                weekNum
+                                              )}
+                                              className={`w-full px-1.5 sm:px-2 py-1 sm:py-1.5 ${colorClass} rounded text-center shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer print:shadow-none print:hover:scale-100`}
+                                            >
+                                              <span className="text-white font-medium text-[10px] sm:text-xs block truncate">
+                                                {shift.shift_name}
+                                              </span>
+                                              <span className="text-white/80 text-[9px] sm:text-[10px] block">
+                                                {shift.time}
+                                              </span>
+                                            </button>
+                                          ))
                                         ) : (
-                                          <span className="caption text-center block py-3">-</span>
+                                          <button
+                                            onClick={() => handleEmptyCellClick && handleEmptyCellClick(staffName, day, weekNum)}
+                                            className="w-full h-full min-h-[40px] sm:min-h-[50px] flex items-center justify-center rounded border-2 border-dashed border-transparent hover:border-pink-300 hover:bg-pink-50/50 transition-all group cursor-pointer print:border-none print:hover:bg-transparent"
+                                          >
+                                            <svg 
+                                              className="w-4 h-4 text-gray-300 group-hover:text-pink-400 transition-colors print:hidden" 
+                                              fill="none" 
+                                              viewBox="0 0 24 24" 
+                                              stroke="currentColor"
+                                            >
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                          </button>
                                         )}
                                       </div>
                                     </td>
