@@ -403,7 +403,7 @@ export default function LandingPage() {
             </RevealSection>
             <RevealSection delay={0.15}>
               <div className="rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-                <Image src="/screenshots/rota.png" alt="Generated rota schedule" width={800} height={500} className="w-full h-auto" />
+                <Image src="/screenshots/rota-grid.png" alt="Generated rota schedule" width={800} height={500} className="w-full h-auto" />
               </div>
             </RevealSection>
           </div>
@@ -479,26 +479,14 @@ export default function LandingPage() {
           {/* Feature 4: Employee App + Inbox side by side */}
           <div id="employee-app" className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <RevealSection delay={0.15} className="order-2 lg:order-1">
-              <div className="flex gap-6 items-start justify-center">
-                {/* Phone mockup placeholder for employee app */}
-                <div className="w-[220px] flex-shrink-0">
-                  <div className="bg-gray-900 rounded-[2rem] p-2 shadow-2xl">
-                    <div className="bg-white rounded-[1.5rem] overflow-hidden aspect-[9/19.5] flex items-center justify-center">
-                      <div className="text-center px-4">
-                        <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                          <svg className="w-6 h-6 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <p className="text-xs font-bold text-gray-900 font-cal">Employee App</p>
-                        <p className="text-[10px] text-gray-400 mt-1">Screenshot coming soon</p>
-                      </div>
+              <div className="flex justify-center">
+                {/* Phone mockup with employee app screenshot */}
+                <div className="w-[260px]">
+                  <div className="bg-gray-900 rounded-[2.5rem] p-2.5 shadow-2xl">
+                    <div className="bg-white rounded-[2rem] overflow-hidden">
+                      <Image src="/screenshots/employee.png" alt="Employee app showing upcoming shifts" width={390} height={844} className="w-full h-auto" />
                     </div>
                   </div>
-                </div>
-                {/* Inbox screenshot */}
-                <div id="inbox" className="rounded-2xl shadow-xl overflow-hidden border border-gray-200 flex-1">
-                  <Image src="/screenshots/inbox.png" alt="Team inbox" width={500} height={400} className="w-full h-auto" />
                 </div>
               </div>
             </RevealSection>
@@ -506,17 +494,17 @@ export default function LandingPage() {
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-pink-50 border border-pink-100 rounded-full text-xs font-semibold text-pink-600 mb-5">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                  Staff Experience
+                  Employee App
                 </div>
                 <h3 className="text-2xl lg:text-4xl text-gray-900 mb-4 font-cal tracking-tight">
-                  Staff see their rota. You send updates instantly.
+                  Your staff's rota, right in their pocket
                 </h3>
                 <p className="text-gray-500 mb-6 leading-relaxed">
-                  Staff install Shiftly as an app on their phone to view shifts, submit availability,
-                  and request time off. Managers broadcast announcements and handle requests from one inbox.
+                  Staff install Shiftly on their phone to view upcoming shifts, submit availability,
+                  and request time off. No app store download needed. Works on any phone as a web app.
                 </p>
                 <div className="space-y-3">
-                  {['Employee app works on any phone (PWA)', 'Team announcements and alerts', 'Availability and time-off requests'].map((item, i) => (
+                  {['View shifts and upcoming schedule', 'Submit availability and time-off requests', 'Receive announcements and alerts', 'Works on any phone (PWA, no download)'].map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
