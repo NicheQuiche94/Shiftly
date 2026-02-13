@@ -52,29 +52,44 @@ class ShiftlyScheduler:
             
             model.Add(total_minutes <= max_hours * 60)
         
-        # Availability constraint (handles both old boolean and new AM/PM format)
+        # Availability constraint (handles legacy boolean, AM/PM, and new time-window format)
         for shift_idx, shift in enumerate(self.shifts):
             shift_day = shift['day'].lower()
             shift_start = self._parse_time(shift['start_time'])
-            is_morning = shift_start < 12 * 60  # Before noon = AM shift
+            shift_end = self._parse_time(shift['end_time'])
+            if shift_end <= shift_start:
+                shift_end += 1440
+            is_morning = shift_start < 12 * 60  # Before noon = AM shift (for legacy format)
             
             for staff_idx, staff in enumerate(self.staff):
                 availability = staff.get('availability', {})
                 day_availability = availability.get(shift_day, True)
                 
-                # Handle different availability formats
+                is_available = True
+                
                 if isinstance(day_availability, dict):
-                    # New format: { 'AM': True, 'PM': False }
-                    if is_morning:
-                        is_available = day_availability.get('AM', True)
+                    if 'available' in day_availability:
+                        # New time-window format: { available: bool, start: "HH:MM", end: "HH:MM" }
+                        if not day_availability.get('available', True):
+                            is_available = False
+                        elif day_availability.get('start') and day_availability.get('end'):
+                            # Staff has specific availability window - shift must fit within it
+                            avail_start = self._parse_time(day_availability['start'])
+                            avail_end = self._parse_time(day_availability['end'])
+                            if avail_end <= avail_start:
+                                avail_end += 1440
+                            # Block if shift starts before availability or ends after
+                            if shift_start < avail_start or shift_end > avail_end:
+                                is_available = False
                     else:
-                        is_available = day_availability.get('PM', True)
+                        # Legacy AM/PM format: { AM: bool, PM: bool }
+                        if is_morning:
+                            is_available = day_availability.get('AM', True)
+                        else:
+                            is_available = day_availability.get('PM', True)
                 elif isinstance(day_availability, bool):
                     # Old format: True/False for whole day
                     is_available = day_availability
-                else:
-                    # Default to available if format is unknown
-                    is_available = True
                 
                 if not is_available:
                     model.Add(schedule[shift_idx][staff_idx] == 0)
@@ -163,14 +178,7 @@ class ShiftlyScheduler:
             if contracted == 0:
                 continue
             
-            availability = staff.get('availability', {})
-            available_days = []
-            for day, avail in availability.items():
-                if isinstance(avail, dict):
-                    if avail.get('AM', False) or avail.get('PM', False):
-                        available_days.append(day)
-                elif avail:
-                    available_days.append(day)
+            available_days = self._get_available_days(staff)
             
             max_possible = 0
             days_counted = set()
@@ -764,19 +772,30 @@ class ShiftlyScheduler:
             durations_list = [f"{int(d) if d == int(d) else d}h" for d in sorted_durations]
             return f"shift lengths are {', '.join(durations_list)} which can't combine to exactly {int(contracted)}h"
         
-        availability = staff.get('availability', {})
-        available_days = []
-        for day, avail in availability.items():
-            if isinstance(avail, dict):
-                if avail.get('AM', False) or avail.get('PM', False):
-                    available_days.append(day)
-            elif avail:
-                available_days.append(day)
+        available_days = self._get_available_days(staff)
         
         if len(available_days) < 4:
             return f"only available {len(available_days)} days per week"
         
         return f"closest match with current rules and availability"
+    
+    def _get_available_days(self, staff):
+        """Extract available days from any availability format (legacy or new)."""
+        availability = staff.get('availability', {})
+        available_days = []
+        for day, avail in availability.items():
+            if isinstance(avail, dict):
+                if 'available' in avail:
+                    # New format
+                    if avail.get('available', True):
+                        available_days.append(day)
+                elif avail.get('AM', False) or avail.get('PM', False):
+                    # Legacy AM/PM format
+                    available_days.append(day)
+            elif avail:
+                # Boolean format
+                available_days.append(day)
+        return available_days
     
     def _can_build_hours(self, target, durations, max_shifts=7, tolerance=0.5):
         possible = {0}

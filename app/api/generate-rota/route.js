@@ -345,6 +345,7 @@ export async function POST(request) {
             team_name: teamName,
             team_id: teamId,
             contracted: staff.contracted_hours,
+            max_hours: staff.max_hours || staff.contracted_hours || 48,
             assigned: avgWeekly,
             weekly_hours: weeklyHours,
             status: Math.abs(avgWeekly - staff.contracted_hours) <= 0.5 ? 'Met' : 'Unmet'

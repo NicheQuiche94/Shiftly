@@ -10,16 +10,19 @@ const supabase = createClient(
 export async function GET() {
   try {
     const { userId } = await auth()
-    
+    console.log('[Subscription API] Clerk userId:', userId)
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: subscription } = await supabase
+    const { data: subscription, error: queryError } = await supabase
       .from('Subscriptions')
       .select('*')
       .eq('user_id', userId)
       .single()
+
+    console.log('[Subscription API] Query result:', { subscription, queryError })
 
     if (!subscription) {
       return NextResponse.json({

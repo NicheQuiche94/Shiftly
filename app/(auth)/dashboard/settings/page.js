@@ -9,24 +9,79 @@ export default function SettingsPage() {
   const [subscription, setSubscription] = useState(null)
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
+  
+  // Locale state
+  const [locales, setLocales] = useState([])
+  const [currentLocale, setCurrentLocale] = useState(null)
+  const [localeLoading, setLocaleLoading] = useState(false)
+  const [localeSaving, setLocaleSaving] = useState(false)
 
   useEffect(() => {
-    const fetchSubscription = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/subscription')
-        const data = await response.json()
-        setSubscription(data)
+        // Fetch subscription
+        const subResponse = await fetch('/api/subscription')
+        const subData = await subResponse.json()
+        setSubscription(subData)
+
+        // Fetch available locales
+        const localesResponse = await fetch('/api/locales')
+        if (localesResponse.ok) {
+          const localesData = await localesResponse.json()
+          setLocales(localesData)
+        }
+
+        // Fetch current team's locale
+        const teamResponse = await fetch('/api/teams')
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json()
+          const defaultTeam = teamData.find(t => t.is_default) || teamData[0]
+          if (defaultTeam?.locale_id) {
+            const localeDetailResponse = await fetch(`/api/locales/${defaultTeam.locale_id}`)
+            if (localeDetailResponse.ok) {
+              const localeDetail = await localeDetailResponse.json()
+              setCurrentLocale(localeDetail)
+            }
+          }
+        }
       } catch (error) {
-        console.error('Error fetching subscription:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
 
     if (isLoaded) {
-      fetchSubscription()
+      fetchData()
     }
   }, [isLoaded])
+
+  const handleLocaleChange = async (localeId) => {
+    setLocaleSaving(true)
+    try {
+      const response = await fetch('/api/teams/locale', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale_id: localeId })
+      })
+
+      if (response.ok) {
+        // Refresh current locale
+        const localeDetailResponse = await fetch(`/api/locales/${localeId}`)
+        if (localeDetailResponse.ok) {
+          const localeDetail = await localeDetailResponse.json()
+          setCurrentLocale(localeDetail)
+        }
+      } else {
+        alert('Failed to update locale')
+      }
+    } catch (error) {
+      console.error('Error updating locale:', error)
+      alert('Failed to update locale')
+    } finally {
+      setLocaleSaving(false)
+    }
+  }
 
   const handleManageBilling = async () => {
     setPortalLoading(true)
@@ -56,6 +111,11 @@ export default function SettingsPage() {
       month: 'long',
       year: 'numeric'
     })
+  }
+
+  const getCountryFlag = (countryCode) => {
+    // Flags removed - don't render properly in all environments
+    return ''
   }
 
   if (loading) {
@@ -132,6 +192,128 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-500">{userEmail}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Region & Locale Section */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 font-cal">Region & Locale</h2>
+          <p className="text-sm text-gray-500 mt-1">Set your location to apply local compliance rules and formatting</p>
+        </div>
+        <div className="p-6 space-y-6">
+          {/* Country Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+            <select
+              value={currentLocale?.id || ''}
+              onChange={(e) => handleLocaleChange(parseInt(e.target.value))}
+              disabled={localeSaving}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {locales.map((locale) => (
+                <option key={locale.id} value={locale.id}>
+                  {locale.country_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Current Locale Details */}
+          {currentLocale && (
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <h3 className="font-medium text-gray-900 text-sm">Formatting Preferences</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">Currency</p>
+                  <p className="text-sm font-medium text-gray-900">{currentLocale.currency_symbol} {currentLocale.currency_code}</p>
+                </div>
+                
+                <div>
+                  <p className="text-xs text-gray-500">Date Format</p>
+                  <p className="text-sm font-medium text-gray-900">{currentLocale.date_format}</p>
+                </div>
+                
+                <div>
+                  <p className="text-xs text-gray-500">Time Format</p>
+                  <p className="text-sm font-medium text-gray-900">{currentLocale.time_format}</p>
+                </div>
+                
+                <div>
+                  <p className="text-xs text-gray-500">Week Starts</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {currentLocale.first_day_of_week === 0 ? 'Sunday' : 'Monday'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Compliance Badges */}
+              {(currentLocale.show_wtd_badge || currentLocale.show_flsa_badge) && (
+                <div className="pt-3 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 mb-2">Compliance</p>
+                  <div className="flex gap-2">
+                    {currentLocale.show_wtd_badge && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        WTD Compliant
+                      </span>
+                    )}
+                    {currentLocale.show_flsa_badge && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        FLSA Compliant
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Working Rules */}
+              <div className="pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-500 mb-2">Working Time Rules</p>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {currentLocale.max_weekly_hours && (
+                    <div>
+                      <span className="text-gray-500">Max Weekly Hours:</span>
+                      <span className="ml-1 font-medium text-gray-900">{currentLocale.max_weekly_hours}h</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-gray-500">Overtime After:</span>
+                    <span className="ml-1 font-medium text-gray-900">{currentLocale.overtime_threshold}h</span>
+                  </div>
+                  {currentLocale.min_rest_hours && (
+                    <div>
+                      <span className="text-gray-500">Min Rest:</span>
+                      <span className="ml-1 font-medium text-gray-900">{currentLocale.min_rest_hours}h</span>
+                    </div>
+                  )}
+                  {currentLocale.min_days_off_per_week && (
+                    <div>
+                      <span className="text-gray-500">Min Days Off:</span>
+                      <span className="ml-1 font-medium text-gray-900">{currentLocale.min_days_off_per_week}/week</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-gray-500">Annual Leave:</span>
+                    <span className="ml-1 font-medium text-gray-900">{currentLocale.annual_leave_days} days</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {localeSaving && (
+            <div className="flex items-center justify-center py-2">
+              <div className="w-5 h-5 border-2 border-gray-200 border-t-pink-500 rounded-full animate-spin mr-2"></div>
+              <span className="text-sm text-gray-600">Updating locale...</span>
+            </div>
+          )}
         </div>
       </div>
 

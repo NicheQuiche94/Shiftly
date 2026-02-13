@@ -34,8 +34,6 @@ export async function POST(request) {
     }
     // Handle image files (photo of rota)
     else if (fileName.match(/\.(png|jpg|jpeg)$/)) {
-      // For now, return a message that OCR is coming soon
-      // In future, integrate with Google Vision or AWS Textract
       return NextResponse.json({ 
         error: 'Photo parsing coming soon! Please use Excel or CSV for now.',
         staff: [],
@@ -57,6 +55,44 @@ export async function POST(request) {
   }
 }
 
+// Smart fuzzy column matching
+function fuzzyMatch(header, patterns) {
+  const h = header.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return patterns.some(pattern => {
+    const p = pattern.toLowerCase().replace(/[^a-z0-9]/g, '')
+    return h.includes(p) || p.includes(h)
+  })
+}
+
+function detectColumnType(header) {
+  const h = header.toLowerCase()
+  
+  if (fuzzyMatch(h, ['name', 'staff', 'employee', 'worker', 'person'])) return 'name'
+  if (fuzzyMatch(h, ['email', 'mail', 'contact'])) return 'email'
+  if (fuzzyMatch(h, ['role', 'position', 'job', 'title'])) return 'role'
+  if (fuzzyMatch(h, ['contract', 'weekly', 'hours', 'contracted'])) return 'contracted_hours'
+  if (fuzzyMatch(h, ['max', 'maximum', 'available'])) return 'max_hours'
+  if (fuzzyMatch(h, ['hourly', 'rate', 'wage', 'pay', 'salary per hour'])) return 'hourly_rate'
+  if (fuzzyMatch(h, ['annual', 'salary', 'yearly'])) return 'annual_salary'
+  
+  // Day detection
+  if (fuzzyMatch(h, ['mon', 'monday'])) return 'day_mon'
+  if (fuzzyMatch(h, ['tue', 'tuesday'])) return 'day_tue'
+  if (fuzzyMatch(h, ['wed', 'wednesday'])) return 'day_wed'
+  if (fuzzyMatch(h, ['thu', 'thursday'])) return 'day_thu'
+  if (fuzzyMatch(h, ['fri', 'friday'])) return 'day_fri'
+  if (fuzzyMatch(h, ['sat', 'saturday'])) return 'day_sat'
+  if (fuzzyMatch(h, ['sun', 'sunday'])) return 'day_sun'
+  
+  // Shift detection
+  if (fuzzyMatch(h, ['shift', 'time'])) return 'shift_name'
+  if (fuzzyMatch(h, ['start', 'begin', 'from'])) return 'start_time'
+  if (fuzzyMatch(h, ['end', 'finish', 'to', 'until'])) return 'end_time'
+  if (fuzzyMatch(h, ['required', 'needed', 'count'])) return 'staff_required'
+  
+  return null
+}
+
 function parseCSV(csvContent) {
   const lines = csvContent.split('\n').map(line => line.trim()).filter(line => line)
   
@@ -64,65 +100,131 @@ function parseCSV(csvContent) {
     return { staff: [], shifts: [] }
   }
 
-  // Try to detect the CSV structure
-  const header = lines[0].toLowerCase()
+  const headers = parseCSVLine(lines[0])
+  const columnTypes = headers.map(h => detectColumnType(h))
+  
+  console.log('Detected columns:', columnTypes)
+  
   const staff = []
   const shifts = []
-
-  // Check if this looks like a staff list
-  if (header.includes('name') || header.includes('staff') || header.includes('employee')) {
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-    const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('staff') || h.includes('employee'))
-    const hoursIdx = headers.findIndex(h => h.includes('hour') || h.includes('contract'))
-    const emailIdx = headers.findIndex(h => h.includes('email'))
-
+  
+  // Check if this is a rota-style CSV (has day columns)
+  const hasDayColumns = columnTypes.some(type => type?.startsWith('day_'))
+  
+  if (hasDayColumns) {
+    // ROTA-STYLE PARSING (staff in rows, days in columns)
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i])
-      if (values.length > nameIdx && values[nameIdx]) {
+      
+      const nameIdx = columnTypes.indexOf('name')
+      const emailIdx = columnTypes.indexOf('email')
+      const roleIdx = columnTypes.indexOf('role')
+      
+      if (nameIdx >= 0 && values[nameIdx]?.trim()) {
+        const staffMember = {
+          name: values[nameIdx].trim(),
+          email: emailIdx >= 0 ? values[emailIdx]?.trim() || '' : '',
+          role: roleIdx >= 0 ? values[roleIdx]?.trim() || '' : '',
+          contracted_hours: 0, // Will calculate from shifts
+          max_hours: 0,
+          availability: {}
+        }
+        
+        // Extract shifts from day columns
+        const dayShifts = []
+        columnTypes.forEach((type, idx) => {
+          if (type?.startsWith('day_')) {
+            const dayName = type.replace('day_', '')
+            const cellValue = values[idx]?.trim()
+            
+            if (cellValue && cellValue !== 'OFF' && cellValue !== '-') {
+              // Parse shift time (e.g., "9-1", "9-5", "2-10")
+              const match = cellValue.match(/(\d{1,2}):?(\d{2})?-(\d{1,2}):?(\d{2})?/)
+              if (match) {
+                const startH = match[1]
+                const startM = match[2] || '00'
+                const endH = match[3]
+                const endM = match[4] || '00'
+                
+                dayShifts.push({
+                  day: dayName,
+                  start: `${startH.padStart(2, '0')}:${startM}`,
+                  end: `${endH.padStart(2, '0')}:${endM}`,
+                  original: cellValue
+                })
+              }
+            }
+          }
+        })
+        
+        staffMember.shifts = dayShifts
+        staff.push(staffMember)
+        
+        // Extract unique shift patterns
+        dayShifts.forEach(shift => {
+          const shiftName = `${shift.start}-${shift.end}`
+          if (!shifts.find(s => s.name === shiftName)) {
+            shifts.push({
+              name: shiftName,
+              start_time: shift.start,
+              end_time: shift.end,
+              staff_required: 1,
+              days_of_week: [shift.day]
+            })
+          }
+        })
+      }
+    }
+  } else {
+    // STAFF LIST PARSING (simple rows of staff data)
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCSVLine(lines[i])
+      
+      const nameIdx = columnTypes.indexOf('name')
+      const emailIdx = columnTypes.indexOf('email')
+      const roleIdx = columnTypes.indexOf('role')
+      const contractedIdx = columnTypes.indexOf('contracted_hours')
+      const maxIdx = columnTypes.indexOf('max_hours')
+      const hourlyIdx = columnTypes.indexOf('hourly_rate')
+      const annualIdx = columnTypes.indexOf('annual_salary')
+      
+      if (nameIdx >= 0 && values[nameIdx]?.trim()) {
         staff.push({
           name: values[nameIdx].trim(),
-          contracted_hours: hoursIdx >= 0 ? parseInt(values[hoursIdx]) || 0 : 0,
-          email: emailIdx >= 0 ? values[emailIdx]?.trim() : '',
-          availability: [true, true, true, true, true, true, true]
+          email: emailIdx >= 0 ? values[emailIdx]?.trim() || '' : '',
+          role: roleIdx >= 0 ? values[roleIdx]?.trim() || '' : '',
+          contracted_hours: contractedIdx >= 0 ? parseFloat(values[contractedIdx]) || 0 : 0,
+          max_hours: maxIdx >= 0 ? parseFloat(values[maxIdx]) || 0 : 0,
+          hourly_rate: hourlyIdx >= 0 ? parseFloat(values[hourlyIdx]) || 0 : 0,
+          annual_salary: annualIdx >= 0 ? parseFloat(values[annualIdx]) || 0 : 0
         })
       }
     }
-  }
-
-  // Check if this looks like a shift pattern
-  if (header.includes('shift') || header.includes('time') || header.includes('start')) {
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-    const nameIdx = headers.findIndex(h => h.includes('shift') || h.includes('name'))
-    const startIdx = headers.findIndex(h => h.includes('start'))
-    const endIdx = headers.findIndex(h => h.includes('end'))
-    const staffReqIdx = headers.findIndex(h => h.includes('staff') || h.includes('required') || h.includes('count'))
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i])
-      if (values.length > 0 && values[nameIdx >= 0 ? nameIdx : 0]) {
-        shifts.push({
-          name: values[nameIdx >= 0 ? nameIdx : 0]?.trim() || `Shift ${i}`,
-          start_time: startIdx >= 0 ? formatTime(values[startIdx]) : '09:00',
-          end_time: endIdx >= 0 ? formatTime(values[endIdx]) : '17:00',
-          staff_required: staffReqIdx >= 0 ? parseInt(values[staffReqIdx]) || 1 : 1,
-          days_of_week: [true, true, true, true, true, false, false]
-        })
-      }
-    }
-  }
-
-  // If we couldn't detect structure, try to extract names from first column
-  if (staff.length === 0 && shifts.length === 0) {
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i])
-      if (values[0] && values[0].trim()) {
-        // Assume it's a staff member
-        staff.push({
-          name: values[0].trim(),
-          contracted_hours: values[1] ? parseInt(values[1]) || 0 : 0,
-          email: '',
-          availability: [true, true, true, true, true, true, true]
-        })
+    
+    // Check for shift columns
+    const shiftIdx = columnTypes.indexOf('shift_name')
+    const startIdx = columnTypes.indexOf('start_time')
+    const endIdx = columnTypes.indexOf('end_time')
+    const reqIdx = columnTypes.indexOf('staff_required')
+    
+    if (shiftIdx >= 0 || startIdx >= 0) {
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i])
+        
+        const shiftName = shiftIdx >= 0 ? values[shiftIdx]?.trim() : `Shift ${i}`
+        const startTime = startIdx >= 0 ? formatTime(values[startIdx]) : '09:00'
+        const endTime = endIdx >= 0 ? formatTime(values[endIdx]) : '17:00'
+        const required = reqIdx >= 0 ? parseInt(values[reqIdx]) || 1 : 1
+        
+        if (shiftName) {
+          shifts.push({
+            name: shiftName,
+            start_time: startTime,
+            end_time: endTime,
+            staff_required: required,
+            days_of_week: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+          })
+        }
       }
     }
   }
@@ -151,14 +253,12 @@ function parseCSVLine(line) {
 }
 
 async function parseExcel(buffer) {
-  // Dynamic import for xlsx library
   const XLSX = await import('xlsx')
   
   const workbook = XLSX.read(buffer, { type: 'buffer' })
   const staff = []
   const shifts = []
 
-  // Process first sheet
   const sheetName = workbook.SheetNames[0]
   const sheet = workbook.Sheets[sheetName]
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1 })
@@ -167,62 +267,90 @@ async function parseExcel(buffer) {
     return { staff, shifts }
   }
 
-  // Get headers from first row
-  const headers = (data[0] || []).map(h => String(h || '').toLowerCase())
-
-  // Try to find column indices
-  const nameIdx = headers.findIndex(h => 
-    h.includes('name') || h.includes('staff') || h.includes('employee')
-  )
-  const hoursIdx = headers.findIndex(h => 
-    h.includes('hour') || h.includes('contract')
-  )
-  const emailIdx = headers.findIndex(h => h.includes('email'))
-  const shiftIdx = headers.findIndex(h => h.includes('shift'))
-  const startIdx = headers.findIndex(h => h.includes('start'))
-  const endIdx = headers.findIndex(h => h.includes('end'))
-
-  // Extract data rows
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i]
-    if (!row || row.length === 0) continue
-
-    // If we have name column, treat as staff
-    if (nameIdx >= 0 && row[nameIdx]) {
-      const name = String(row[nameIdx]).trim()
-      if (name && !staff.find(s => s.name === name)) {
-        staff.push({
-          name,
-          contracted_hours: hoursIdx >= 0 ? parseInt(row[hoursIdx]) || 0 : 0,
+  const headers = (data[0] || []).map(h => String(h || ''))
+  const columnTypes = headers.map(h => detectColumnType(h))
+  
+  console.log('Excel detected columns:', columnTypes)
+  
+  const hasDayColumns = columnTypes.some(type => type?.startsWith('day_'))
+  
+  if (hasDayColumns) {
+    // ROTA-STYLE
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i]
+      if (!row || row.length === 0) continue
+      
+      const nameIdx = columnTypes.indexOf('name')
+      const emailIdx = columnTypes.indexOf('email')
+      const roleIdx = columnTypes.indexOf('role')
+      
+      if (nameIdx >= 0 && row[nameIdx]) {
+        const staffMember = {
+          name: String(row[nameIdx]).trim(),
           email: emailIdx >= 0 ? String(row[emailIdx] || '').trim() : '',
-          availability: [true, true, true, true, true, true, true]
+          role: roleIdx >= 0 ? String(row[roleIdx] || '').trim() : '',
+          contracted_hours: 0,
+          max_hours: 0,
+          shifts: []
+        }
+        
+        columnTypes.forEach((type, idx) => {
+          if (type?.startsWith('day_')) {
+            const dayName = type.replace('day_', '')
+            const cellValue = String(row[idx] || '').trim()
+            
+            if (cellValue && cellValue !== 'OFF' && cellValue !== '-') {
+              const match = cellValue.match(/(\d{1,2}):?(\d{2})?-(\d{1,2}):?(\d{2})?/)
+              if (match) {
+                staffMember.shifts.push({
+                  day: dayName,
+                  start: `${match[1].padStart(2, '0')}:${match[2] || '00'}`,
+                  end: `${match[3].padStart(2, '0')}:${match[4] || '00'}`
+                })
+              }
+            }
+          }
+        })
+        
+        staff.push(staffMember)
+        
+        staffMember.shifts.forEach(shift => {
+          const shiftName = `${shift.start}-${shift.end}`
+          if (!shifts.find(s => s.name === shiftName)) {
+            shifts.push({
+              name: shiftName,
+              start_time: shift.start,
+              end_time: shift.end,
+              staff_required: 1,
+              days_of_week: [shift.day]
+            })
+          }
         })
       }
     }
-
-    // If we have shift column, treat as shifts
-    if (shiftIdx >= 0 && row[shiftIdx]) {
-      const shiftName = String(row[shiftIdx]).trim()
-      if (shiftName && !shifts.find(s => s.name === shiftName)) {
-        shifts.push({
-          name: shiftName,
-          start_time: startIdx >= 0 ? formatTime(row[startIdx]) : '09:00',
-          end_time: endIdx >= 0 ? formatTime(row[endIdx]) : '17:00',
-          staff_required: 1,
-          days_of_week: [true, true, true, true, true, false, false]
-        })
-      }
-    }
-
-    // Fallback: use first column as names if no headers detected
-    if (nameIdx < 0 && shiftIdx < 0 && row[0]) {
-      const value = String(row[0]).trim()
-      if (value && !staff.find(s => s.name === value)) {
+  } else {
+    // STAFF LIST
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i]
+      if (!row || row.length === 0) continue
+      
+      const nameIdx = columnTypes.indexOf('name')
+      const emailIdx = columnTypes.indexOf('email')
+      const roleIdx = columnTypes.indexOf('role')
+      const contractedIdx = columnTypes.indexOf('contracted_hours')
+      const maxIdx = columnTypes.indexOf('max_hours')
+      const hourlyIdx = columnTypes.indexOf('hourly_rate')
+      const annualIdx = columnTypes.indexOf('annual_salary')
+      
+      if (nameIdx >= 0 && row[nameIdx]) {
         staff.push({
-          name: value,
-          contracted_hours: row[1] ? parseInt(row[1]) || 0 : 0,
-          email: '',
-          availability: [true, true, true, true, true, true, true]
+          name: String(row[nameIdx]).trim(),
+          email: emailIdx >= 0 ? String(row[emailIdx] || '').trim() : '',
+          role: roleIdx >= 0 ? String(row[roleIdx] || '').trim() : '',
+          contracted_hours: contractedIdx >= 0 ? parseFloat(row[contractedIdx]) || 0 : 0,
+          max_hours: maxIdx >= 0 ? parseFloat(row[maxIdx]) || 0 : 0,
+          hourly_rate: hourlyIdx >= 0 ? parseFloat(row[hourlyIdx]) || 0 : 0,
+          annual_salary: annualIdx >= 0 ? parseFloat(row[annualIdx]) || 0 : 0
         })
       }
     }
@@ -234,14 +362,12 @@ async function parseExcel(buffer) {
 function formatTime(value) {
   if (!value) return '09:00'
   
-  // If it's already in HH:MM format
   const strValue = String(value)
   if (strValue.match(/^\d{1,2}:\d{2}$/)) {
     const [hours, mins] = strValue.split(':')
     return `${hours.padStart(2, '0')}:${mins}`
   }
 
-  // If it's a decimal (Excel time format)
   if (typeof value === 'number' && value < 1) {
     const totalMinutes = Math.round(value * 24 * 60)
     const hours = Math.floor(totalMinutes / 60)
@@ -249,7 +375,6 @@ function formatTime(value) {
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
   }
 
-  // Try to extract time from string like "9:00 AM"
   const match = strValue.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i)
   if (match) {
     let hours = parseInt(match[1])

@@ -1,7 +1,51 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+const DEFAULT_SHIFT_LENGTH = 8 * 60
+
+function generateShiftPatterns(openingHours) {
+  const patterns = []
+  const orderedDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  for (const day of orderedDays) {
+    const data = openingHours[day]
+    if (!data || !data.open) continue
+    const startMins = parseInt(data.start) * 60 + parseInt(data.startMin || '0')
+    let endMins = parseInt(data.end) * 60 + parseInt(data.endMin || '0')
+    if (endMins <= startMins) endMins += 24 * 60
+    const totalWindowMins = endMins - startMins
+    const shiftMins = Math.min(DEFAULT_SHIFT_LENGTH, totalWindowMins)
+
+    if (totalWindowMins <= shiftMins) {
+      patterns.push({ day, name: 'Full Day', start: fmtMins(startMins), end: fmtMins(endMins) })
+    } else {
+      const numShifts = Math.ceil(totalWindowMins / shiftMins)
+      const spacing = (totalWindowMins - shiftMins) / (numShifts - 1)
+      const namesByCount = {
+        2: ['Opening', 'Closing'],
+        3: ['Opening', 'Mid', 'Closing'],
+        4: ['Opening', 'Morning', 'Afternoon', 'Closing'],
+        5: ['Opening', 'Morning', 'Mid', 'Afternoon', 'Closing']
+      }
+      const names = namesByCount[numShifts] || Array.from({ length: numShifts }, (_, i) => {
+        if (i === 0) return 'Opening'
+        if (i === numShifts - 1) return 'Closing'
+        return `Shift ${i + 1}`
+      })
+      for (let i = 0; i < numShifts; i++) {
+        const s = Math.round(startMins + (i * spacing))
+        patterns.push({ day, name: names[i], start: fmtMins(s), end: fmtMins(s + shiftMins) })
+      }
+    }
+  }
+  return patterns
+}
+
+function fmtMins(mins) {
+  const n = ((mins % (24 * 60)) + 24 * 60) % (24 * 60)
+  return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`
+}
 
 export default function ShiftsSection({ selectedTeamId }) {
   const queryClient = useQueryClient()
@@ -10,6 +54,8 @@ export default function ShiftsSection({ selectedTeamId }) {
   const [editingGroup, setEditingGroup] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [selectedShifts, setSelectedShifts] = useState(new Set())
+  const [templateDismissed, setTemplateDismissed] = useState(false)
+  const [generatingFromTemplate, setGeneratingFromTemplate] = useState(false)
   const [formData, setFormData] = useState({
     shift_name: '',
     day_of_week: [],
@@ -51,6 +97,17 @@ export default function ShiftsSection({ selectedTeamId }) {
     enabled: !!selectedTeamId
   })
 
+  // Fetch team data to check for opening_hours
+  const { data: teamData } = useQuery({
+    queryKey: ['team-detail', selectedTeamId],
+    queryFn: async () => {
+      const response = await fetch(`/api/teams/${selectedTeamId}`)
+      if (!response.ok) throw new Error('Failed to load team')
+      return response.json()
+    },
+    enabled: !!selectedTeamId
+  })
+
   // Add shift mutation
   const addShiftMutation = useMutation({
     mutationFn: async (shiftData) => {
@@ -78,6 +135,37 @@ export default function ShiftsSection({ selectedTeamId }) {
       queryClient.invalidateQueries({ queryKey: ['shifts', selectedTeamId] })
     }
   })
+
+  // Generate shifts from opening hours template
+  const handleGenerateFromTemplate = async () => {
+    if (!teamData?.opening_hours) return
+    setGeneratingFromTemplate(true)
+    try {
+      const patterns = generateShiftPatterns(teamData.opening_hours)
+      await Promise.all(
+        patterns.map(p =>
+          fetch('/api/shifts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              team_id: selectedTeamId,
+              shift_name: p.name,
+              day_of_week: p.day,
+              start_time: p.start,
+              end_time: p.end,
+              staff_required: 1
+            })
+          })
+        )
+      )
+      queryClient.invalidateQueries({ queryKey: ['shifts', selectedTeamId] })
+    } catch (error) {
+      console.error('Error generating shifts:', error)
+      alert('Failed to generate shifts. Please try again.')
+    } finally {
+      setGeneratingFromTemplate(false)
+    }
+  }
 
   // Calculate hours (memoized)
   const { shiftHours, staffHours, hoursMatch, hoursDiff } = useMemo(() => {
@@ -327,6 +415,28 @@ export default function ShiftsSection({ selectedTeamId }) {
   }
 
   const loading = shiftsLoading
+  const showTemplatePrompt = !loading && shifts.length === 0 && !templateDismissed && teamData?.opening_hours
+
+  // Opening hours summary for the template prompt
+  const openingHoursSummary = useMemo(() => {
+    if (!teamData?.opening_hours) return null
+    const hours = teamData.opening_hours
+    const openDays = daysOfWeek.filter(d => hours[d]?.open)
+    if (openDays.length === 0) return null
+    const first = hours[openDays[0]]
+    const allSame = openDays.every(d =>
+      hours[d].start === first.start && hours[d].startMin === first.startMin &&
+      hours[d].end === first.end && hours[d].endMin === first.endMin
+    )
+    if (allSame) {
+      const dayLabel = openDays.length === 7 ? 'Every day' :
+        (openDays.length === 5 && !hours.Saturday?.open && !hours.Sunday?.open) ? 'Mon\u2013Fri' :
+        `${openDays.length} days`
+      return `${dayLabel}, ${first.start}:${first.startMin || '00'} \u2013 ${first.end}:${first.endMin || '00'}`
+    }
+    return `${openDays.length} days with varying hours`
+  }, [teamData])
+
 
   return (
     <div>
@@ -385,6 +495,61 @@ export default function ShiftsSection({ selectedTeamId }) {
         )}
       </div>
 
+      {/* Opening Hours Template Prompt */}
+      {showTemplatePrompt && (
+        <div className="bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-200 rounded-2xl p-5 mb-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-pink-100 rounded-full -mr-12 -mt-12 opacity-50" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                <svg className="w-5 h-5 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 font-cal">Generate shifts from your opening hours?</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  You entered <strong>{openingHoursSummary}</strong> during setup. Want us to create shift patterns from these?
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Staff required defaults to 1 per shift &mdash; you can edit everything afterwards.
+                </p>
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    onClick={handleGenerateFromTemplate}
+                    disabled={generatingFromTemplate}
+                    className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-semibold hover:bg-pink-600 hover:shadow-lg hover:shadow-pink-500/25 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {generatingFromTemplate ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>Yes, generate shifts &#10024;</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setTemplateDismissed(true)}
+                    className="px-4 py-2 text-gray-600 text-sm font-medium hover:text-gray-800 transition-colors"
+                  >
+                    No thanks, I&apos;ll add manually
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setTemplateDismissed(true)}
+              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Actions Bar */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center">
@@ -407,29 +572,153 @@ export default function ShiftsSection({ selectedTeamId }) {
       </div>
 
       {/* Shifts List */}
-      <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
-        {/* Desktop Table Header - Hidden on mobile */}
-        <div className="hidden md:block bg-gray-50/50 border-b border-gray-200/60">
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wide">
-            <div className="col-span-1 flex items-center">
-              <input
-                type="checkbox"
-                checked={selectedShifts.size === grouped.length && grouped.length > 0}
-                onChange={toggleSelectAll}
-                disabled={grouped.length === 0}
-                className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2 disabled:opacity-50"
-              />
-            </div>
-            <div className="col-span-3">Shift Name</div>
-            <div className="col-span-3">Days</div>
-            <div className="col-span-2">Time</div>
-            <div className="col-span-2">Staff Required</div>
-            <div className="col-span-1 text-right">Actions</div>
-          </div>
+      <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+        {/* Desktop Table - Hidden on mobile */}
+        <div className="hidden md:block">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-200/60">
+                <th className="px-6 py-3 text-left w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedShifts.size === grouped.length && grouped.length > 0}
+                    onChange={toggleSelectAll}
+                    disabled={grouped.length === 0}
+                    className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2 disabled:opacity-50"
+                  />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide sticky left-0 bg-gray-50">Shift Name</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Days</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Time</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">Staff Required</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wide">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200/60">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
+                  </td>
+                </tr>
+              ) : grouped.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-full mb-4">
+                      <svg className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-600 font-medium mb-1">No shift patterns yet</p>
+                    <p className="text-sm text-gray-500">Create your first shift pattern to get started</p>
+                  </td>
+                </tr>
+              ) : (
+                grouped.map((group, idx) => (
+                  <React.Fragment key={group.key}>
+                    <tr className={`hover:bg-gray-50/50 transition-colors ${
+                      expandedGroups[group.key] ? 'bg-gray-50/30' : idx % 2 === 1 ? 'bg-gray-50/30' : ''
+                    }`}>
+                      {/* Checkbox */}
+                      <td className="px-6 py-4 w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedShifts.has(group.key)}
+                          onChange={() => toggleSelectShift(group.key)}
+                          className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
+                        />
+                      </td>
+                      {/* Shift Name - white bg */}
+                      <td className="px-6 py-4 sticky left-0 bg-white">
+                        <button
+                          onClick={() => toggleExpand(group.key)}
+                          className="flex items-center space-x-2 group"
+                        >
+                          <svg
+                            className={`w-4 h-4 text-gray-400 transition-transform ${
+                              expandedGroups[group.key] ? 'rotate-90' : ''
+                            }`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                          <span className="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">
+                            {group.shift_name}
+                          </span>
+                        </button>
+                      </td>
+                      {/* Days */}
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">{formatDays(group.shifts)}</span>
+                      </td>
+                      {/* Time */}
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-900">{group.start_time} - {group.end_time}</span>
+                      </td>
+                      {/* Staff Required */}
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
+                          {group.staff_required} staff
+                        </span>
+                      </td>
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button 
+                            onClick={() => openEditGroupModal(group)}
+                            className="text-gray-600 hover:text-pink-600 transition-colors"
+                            title="Edit"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteGroup(group.shifts)}
+                            className="text-gray-600 hover:text-red-600 transition-colors"
+                            title="Delete"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Days View */}
+                    {expandedGroups[group.key] && (
+                      <tr key={`${group.key}-expanded`}>
+                        <td colSpan={6} className="px-6 py-4 bg-gray-50/50 border-t border-gray-200/60">
+                          <div className="ml-12">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                              Active Days
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {sortDays(group.shifts).map((shift) => (
+                                <span
+                                  key={shift.id}
+                                  className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700"
+                                >
+                                  {shift.day_of_week}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
-        {/* Content */}
-        <div className="divide-y divide-gray-200/60">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200/60">
           {loading ? (
             <div className="px-6 py-12 text-center">
               <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
@@ -446,107 +735,19 @@ export default function ShiftsSection({ selectedTeamId }) {
             </div>
           ) : (
             grouped.map((group) => (
-              <div key={group.key}>
-                {/* Mobile Card View */}
-                <div className="md:hidden p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedShifts.has(group.key)}
-                        onChange={() => toggleSelectShift(group.key)}
-                        className="w-4 h-4 mt-1 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
-                      />
-                      <div>
-                        <button
-                          onClick={() => toggleExpand(group.key)}
-                          className="flex items-center space-x-1.5 group"
-                        >
-                          <svg
-                            className={`w-4 h-4 text-gray-400 transition-transform ${
-                              expandedGroups[group.key] ? 'rotate-90' : ''
-                            }`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                          <span className="font-medium text-gray-900 group-hover:text-pink-600">
-                            {group.shift_name}
-                          </span>
-                        </button>
-                        <div className="flex flex-wrap items-center gap-2 mt-2 ml-5">
-                          <span className="text-sm text-gray-600">
-                            {group.start_time} - {group.end_time}
-                          </span>
-                          <span className="text-gray-300">•</span>
-                          <span className="text-sm text-gray-600">{formatDays(group.shifts)}</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
-                            {group.staff_required} staff
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <button 
-                        onClick={() => openEditGroupModal(group)}
-                        className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteGroup(group.shifts)}
-                        className="p-2 text-gray-600 hover:text-red-600 transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Expanded Days - Mobile */}
-                  {expandedGroups[group.key] && (
-                    <div className="mt-3 ml-7 pl-5 border-l-2 border-gray-200">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                        Active Days
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {sortDays(group.shifts).map((shift) => (
-                          <span
-                            key={shift.id}
-                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700"
-                          >
-                            {shift.day_of_week.slice(0, 3)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Desktop Table Row */}
-                <div className="hidden md:block">
-                  <div 
-                    className={`grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors ${
-                      expandedGroups[group.key] ? 'bg-gray-50/30' : ''
-                    }`}
-                  >
-                    <div className="col-span-1 flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedShifts.has(group.key)}
-                        onChange={() => toggleSelectShift(group.key)}
-                        className="w-4 h-4 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
-                      />
-                    </div>
-                    <div className="col-span-3 flex items-center">
+              <div key={group.key} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedShifts.has(group.key)}
+                      onChange={() => toggleSelectShift(group.key)}
+                      className="w-4 h-4 mt-1 text-pink-600 bg-white border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
+                    />
+                    <div>
                       <button
                         onClick={() => toggleExpand(group.key)}
-                        className="flex items-center space-x-2 group"
+                        className="flex items-center space-x-1.5 group"
                       >
                         <svg
                           className={`w-4 h-4 text-gray-400 transition-transform ${
@@ -558,69 +759,60 @@ export default function ShiftsSection({ selectedTeamId }) {
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
-                        <span className="font-medium text-gray-900 group-hover:text-pink-600 transition-colors">
+                        <span className="font-medium text-gray-900 group-hover:text-pink-600">
                           {group.shift_name}
                         </span>
                       </button>
-                    </div>
-                    <div className="col-span-3 flex items-center">
-                      <span className="text-sm text-gray-600">
-                        {formatDays(group.shifts)}
-                      </span>
-                    </div>
-                    <div className="col-span-2 flex items-center">
-                      <span className="text-sm text-gray-900">
-                        {group.start_time} - {group.end_time}
-                      </span>
-                    </div>
-                    <div className="col-span-2 flex items-center">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
-                        {group.staff_required} staff
-                      </span>
-                    </div>
-                    <div className="col-span-1 flex items-center justify-end space-x-2">
-                      <button 
-                        onClick={() => openEditGroupModal(group)}
-                        className="text-gray-600 hover:text-pink-600 transition-colors"
-                        title="Edit"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteGroup(group.shifts)}
-                        className="text-gray-600 hover:text-red-600 transition-colors"
-                        title="Delete"
-                      >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expanded Days View - Desktop */}
-                  {expandedGroups[group.key] && (
-                    <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200/60">
-                      <div className="ml-5">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                          Active Days
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {sortDays(group.shifts).map((shift) => (
-                            <span
-                              key={shift.id}
-                              className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700"
-                            >
-                              {shift.day_of_week}
-                            </span>
-                          ))}
-                        </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 ml-5">
+                        <span className="text-sm text-gray-600">
+                          {group.start_time} - {group.end_time}
+                        </span>
+                        <span className="text-gray-300">&bull;</span>
+                        <span className="text-sm text-gray-600">{formatDays(group.shifts)}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700">
+                          {group.staff_required} staff
+                        </span>
                       </div>
                     </div>
-                  )}
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <button 
+                      onClick={() => openEditGroupModal(group)}
+                      className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteGroup(group.shifts)}
+                      className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
+                
+                {/* Expanded Days - Mobile */}
+                {expandedGroups[group.key] && (
+                  <div className="mt-3 ml-7 pl-5 border-l-2 border-gray-200">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      Active Days
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {sortDays(group.shifts).map((shift) => (
+                        <span
+                          key={shift.id}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                        >
+                          {shift.day_of_week.slice(0, 3)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}

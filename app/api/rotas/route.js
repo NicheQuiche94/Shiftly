@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { notifyTeam } from '@/lib/createNotification'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,6 @@ export async function GET() {
 
     if (error) throw error
 
-    // Map database fields to frontend expected format
     const rotas = data.map(rota => ({
       id: rota.id,
       name: rota.rota_name,
@@ -68,7 +68,6 @@ export async function POST(request) {
       }, { status: 400 })
     }
 
-    // Insert into database with correct field names
     const { data, error } = await supabase
       .from('Rotas')
       .insert([{
@@ -89,7 +88,29 @@ export async function POST(request) {
       throw error
     }
 
-    // Return with mapped field names
+    // ── MSG-04: Notify team when rota is published (approved) ──
+    if (approved && team_id) {
+      try {
+        const weekStart = start_date 
+          ? new Date(start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+          : ''
+
+        await notifyTeam({
+          team_id,
+          type: 'rota_published',
+          title: 'New rota published',
+          message: weekStart 
+            ? `Your schedule for w/c ${weekStart} is ready — check your shifts`
+            : `${name} has been published — check your shifts`,
+          sender_user_id: userId,
+          related_id: data.id,
+          related_type: 'rota',
+        })
+      } catch (notifError) {
+        console.error('Failed to send rota notification:', notifError)
+      }
+    }
+
     return NextResponse.json({
       id: data.id,
       name: data.rota_name,
