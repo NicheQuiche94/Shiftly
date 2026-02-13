@@ -91,8 +91,8 @@ export async function POST(request) {
       })
     }
 
-    // Get user's default team
-    const { data: teams, error: teamsError } = await supabase
+    // Get user's default team, or create one if it doesn't exist
+    let { data: teams, error: teamsError } = await supabase
       .from('Teams')
       .select('id, is_default')
       .eq('user_id', userId)
@@ -101,14 +101,26 @@ export async function POST(request) {
 
     if (teamsError) throw teamsError
 
-    if (!teams || teams.length === 0) {
-      return new Response(JSON.stringify({ error: 'No team found' }), { 
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
+    let teamId
 
-    const teamId = teams[0].id
+    if (!teams || teams.length === 0) {
+      // Create team for new user
+      const { data: newTeam, error: createError } = await supabase
+        .from('Teams')
+        .insert({
+          user_id: userId,
+          team_name: business_name || 'Main Team',
+          is_default: true,
+          created_at: new Date().toISOString()
+        })
+        .select('id')
+        .single()
+
+      if (createError) throw createError
+      teamId = newTeam.id
+    } else {
+      teamId = teams[0].id
+    }
 
     // Update team with onboarding data
     const { error: updateError } = await supabase

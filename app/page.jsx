@@ -174,8 +174,8 @@ export default function LandingPage() {
 
               <div className="w-px h-6 bg-gray-200 mx-2" />
 
-              <Link href="/sign-in" className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm">
-                Sign In
+              <Link href="/sign-in" className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm border border-dashed border-gray-300 rounded-lg">
+                User Test
               </Link>
               <button
                 onClick={() => scrollTo('waitlist')}
@@ -203,7 +203,6 @@ export default function LandingPage() {
               <button onClick={() => scrollTo('features')} className="block w-full text-left px-4 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-50">Features</button>
               <button onClick={() => scrollTo('pricing')} className="block w-full text-left px-4 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-50">Pricing</button>
               <button onClick={() => scrollTo('how-it-works')} className="block w-full text-left px-4 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-50">How It Works</button>
-              <Link href="/sign-in" className="block px-4 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-50">Sign In</Link>
               <button onClick={() => scrollTo('waitlist')} className="block w-full text-left px-4 py-2.5 font-medium rounded-lg text-white" style={{ background: '#FF1F7D' }}>Join Waitlist</button>
             </div>
           )}

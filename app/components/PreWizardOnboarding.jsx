@@ -45,7 +45,7 @@ export default function PreWizardOnboarding() {
   const [localesLoading, setLocalesLoading] = useState(true)
 
   // Fetch locales on mount
-  useState(() => {
+  useEffect(() => {
     const fetchLocales = async () => {
       try {
         const response = await fetch('/api/locales')
