@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -146,7 +146,8 @@ export default function PreWizardOnboarding() {
       if (response.ok) {
         router.push('/dashboard')
       } else {
-        alert('Failed to save onboarding data')
+        const data = await response.json()
+        alert(data.error || 'Failed to save onboarding data')
       }
     } catch (error) {
       console.error('Error saving onboarding:', error)
@@ -163,20 +164,18 @@ export default function PreWizardOnboarding() {
       case 3: return formData.employee_count_range !== null
       case 4: return formData.industry !== null
       case 5: {
-        // At least one day must be open
         return daysOfWeek.some(d => formData.opening_hours[d].open)
       }
       default: return false
     }
   }
 
-  // Summary of open days for step 5
   const openDaysSummary = () => {
     const openDays = daysOfWeek.filter(d => formData.opening_hours[d].open)
     if (openDays.length === 7) return 'Open every day'
     if (openDays.length === 0) return 'No days selected'
     if (openDays.length === 5 && !formData.opening_hours.Saturday.open && !formData.opening_hours.Sunday.open) {
-      return 'Mon – Fri'
+      return 'Mon to Fri'
     }
     if (openDays.length === 6) {
       const closedDay = daysOfWeek.find(d => !formData.opening_hours[d].open)
@@ -225,7 +224,7 @@ export default function PreWizardOnboarding() {
             <div className="flex-1 flex flex-col animate-fade-in">
               <div className="mb-8">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 font-cal">
-                  Where is your business based? 🌍
+                  Where is your business based?
                 </h1>
                 <p className="text-lg text-gray-600">
                   We'll apply the right compliance rules and formatting for your region.
@@ -276,13 +275,13 @@ export default function PreWizardOnboarding() {
                       <p className="text-sm font-medium text-blue-900 mb-1">Your compliance settings</p>
                       <div className="text-xs text-blue-700 space-y-0.5">
                         {selectedLocale.max_weekly_hours && (
-                          <div>• Max {selectedLocale.max_weekly_hours} hours per week</div>
+                          <div>Max {selectedLocale.max_weekly_hours} hours per week</div>
                         )}
                         {selectedLocale.min_rest_hours && (
-                          <div>• Min {selectedLocale.min_rest_hours} hours rest between shifts</div>
+                          <div>Min {selectedLocale.min_rest_hours} hours rest between shifts</div>
                         )}
-                        <div>• {selectedLocale.annual_leave_days} days annual leave</div>
-                        <div>• Currency: {selectedLocale.currency_code}</div>
+                        <div>{selectedLocale.annual_leave_days} days annual leave</div>
+                        <div>Currency: {selectedLocale.currency_code}</div>
                       </div>
                     </div>
                   </div>
@@ -296,7 +295,7 @@ export default function PreWizardOnboarding() {
             <div className="flex-1 flex flex-col animate-fade-in">
               <div className="mb-8">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 font-cal">
-                  What's your business name? 🏢
+                  What's your business name?
                 </h1>
                 <p className="text-lg text-gray-600">
                   This will appear throughout your workspace.
@@ -321,7 +320,7 @@ export default function PreWizardOnboarding() {
             <div className="flex-1 flex flex-col animate-fade-in">
               <div className="mb-8">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 font-cal">
-                  How many employees do you have? 👥
+                  How many employees do you have?
                 </h1>
                 <p className="text-lg text-gray-600">
                   This helps us understand your team size.
@@ -351,7 +350,7 @@ export default function PreWizardOnboarding() {
             <div className="flex-1 flex flex-col animate-fade-in">
               <div className="mb-8">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 font-cal">
-                  What industry are you in? 🎯
+                  What industry are you in?
                 </h1>
                 <p className="text-lg text-gray-600">
                   We'll customize your experience based on your industry.
@@ -382,7 +381,7 @@ export default function PreWizardOnboarding() {
             <div className="flex-1 flex flex-col animate-fade-in">
               <div className="mb-6">
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 font-cal">
-                  What are your opening hours? 🕐
+                  What are your opening hours?
                 </h1>
                 <p className="text-lg text-gray-600">
                   We'll use this to generate your shift patterns. You can always adjust later.
@@ -434,7 +433,6 @@ export default function PreWizardOnboarding() {
                       {/* Time selectors or Closed label */}
                       {dayData.open ? (
                         <div className="flex items-center gap-1.5 flex-1">
-                          {/* Start time */}
                           <select
                             value={dayData.start}
                             onChange={(e) => updateOpeningHours(day, 'start', e.target.value)}
@@ -451,9 +449,8 @@ export default function PreWizardOnboarding() {
                             {minuteOptions.map(m => <option key={m} value={m}>{m}</option>)}
                           </select>
 
-                          <span className="text-gray-400 mx-1">→</span>
+                          <span className="text-gray-400 mx-1">to</span>
 
-                          {/* End time */}
                           <select
                             value={dayData.end}
                             onChange={(e) => updateOpeningHours(day, 'end', e.target.value)}
@@ -479,7 +476,7 @@ export default function PreWizardOnboarding() {
               </div>
 
               <p className="text-xs text-gray-400 mt-3">
-                Don&apos;t worry about staff prep or close-down time — you can fine-tune shift patterns in your workspace.
+                Don&apos;t worry about staff prep or close-down time. You can fine-tune shift patterns in your workspace.
               </p>
             </div>
           )}
@@ -491,7 +488,7 @@ export default function PreWizardOnboarding() {
               disabled={currentStep === 1}
               className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium disabled:opacity-0 disabled:cursor-default transition-all"
             >
-              ← Back
+              Back
             </button>
 
             {currentStep < totalSteps ? (
@@ -500,7 +497,7 @@ export default function PreWizardOnboarding() {
                 disabled={!canProceed()}
                 className="px-8 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                Continue →
+                Continue
               </button>
             ) : (
               <button
@@ -514,7 +511,7 @@ export default function PreWizardOnboarding() {
                     Saving...
                   </>
                 ) : (
-                  'Get Started →'
+                  'Get Started'
                 )}
               </button>
             )}
