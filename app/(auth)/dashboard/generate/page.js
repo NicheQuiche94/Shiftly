@@ -242,22 +242,26 @@ function GenerateRotaContent() {
       }
 
       if (approved) {
-        const settingsResponse = await fetch('/api/user-settings')
-        if (settingsResponse.ok) {
-          const settings = await settingsResponse.json()
-          
-          await fetch('/api/user-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              total_rotas_generated: (settings?.total_rotas_generated || 0) + 1
+        try {
+          const settingsResponse = await fetch('/api/user-settings')
+          if (settingsResponse.ok) {
+            const settings = await settingsResponse.json()
+            
+            await fetch('/api/user-settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                total_rotas_generated: (settings?.total_rotas_generated || 0) + 1
+              })
             })
-          })
 
-          if (settings?.manual_rota_time) {
-            setTimeSaved(settings.manual_rota_time)
-            setTimeout(() => setTimeSaved(null), 5000)
+            if (settings?.manual_rota_time) {
+              setTimeSaved(settings.manual_rota_time)
+              setTimeout(() => setTimeSaved(null), 5000)
+            }
           }
+        } catch (statsErr) {
+          console.error('Non-critical: failed to update stats', statsErr)
         }
       }
 
