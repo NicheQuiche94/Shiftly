@@ -7,7 +7,7 @@ export default function SignInPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <SignIn 
         routing="hash"
-        afterSignInUrl="/dashboard"
+        forceRedirectUrl="/dashboard"
         appearance={{
           elements: {
             formButtonPrimary: 'bg-pink-600 hover:bg-pink-700 text-sm normal-case',
