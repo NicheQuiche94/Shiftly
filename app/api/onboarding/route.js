@@ -8,33 +8,23 @@ const supabase = createClient(
 
 function generateShiftPatterns(openingHours) {
   const patterns = []
-  const DEFAULT_SHIFT_LENGTH = 8 * 60 // 8 hours in minutes
+  const DEFAULT_SHIFT_LENGTH = 8 * 60
 
   for (const [day, data] of Object.entries(openingHours)) {
     if (!data.open) continue
 
     const startMins = parseInt(data.start) * 60 + parseInt(data.startMin || '0')
     let endMins = parseInt(data.end) * 60 + parseInt(data.endMin || '0')
-
-    // Handle overnight (e.g. 18:00 - 02:00)
     if (endMins <= startMins) endMins += 24 * 60
 
     const totalWindowMins = endMins - startMins
     const shiftMins = Math.min(DEFAULT_SHIFT_LENGTH, totalWindowMins)
 
     if (totalWindowMins <= shiftMins) {
-      // Single shift covers the whole day
-      patterns.push({
-        day,
-        name: 'Full Day',
-        start: formatMins(startMins),
-        end: formatMins(endMins)
-      })
+      patterns.push({ day, name: 'Full Day', start: formatMins(startMins), end: formatMins(endMins) })
     } else {
-      // Multiple overlapping shifts
       const numShifts = Math.ceil(totalWindowMins / shiftMins)
       const spacing = (totalWindowMins - shiftMins) / (numShifts - 1)
-
       const namesByCount = {
         2: ['Opening', 'Closing'],
         3: ['Opening', 'Mid', 'Closing'],
@@ -50,13 +40,7 @@ function generateShiftPatterns(openingHours) {
       for (let i = 0; i < numShifts; i++) {
         const shiftStart = Math.round(startMins + (i * spacing))
         const shiftEnd = shiftStart + shiftMins
-
-        patterns.push({
-          day,
-          name: names[i],
-          start: formatMins(shiftStart),
-          end: formatMins(shiftEnd)
-        })
+        patterns.push({ day, name: names[i], start: formatMins(shiftStart), end: formatMins(shiftEnd) })
       }
     }
   }
@@ -81,9 +65,8 @@ export async function POST(request) {
       })
     }
 
-    const { locale_id, business_name, employee_count_range, industry, opening_hours } = await request.json()
+    const { locale_id, business_name, employee_count_range, industry, opening_hours, skip_shift_generation } = await request.json()
 
-    // Validate required fields
     if (!locale_id || !business_name || !employee_count_range || !industry) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { 
         status: 400,
@@ -104,7 +87,6 @@ export async function POST(request) {
     let teamId
 
     if (!teams || teams.length === 0) {
-      // Create team for new user
       const { data: newTeam, error: createError } = await supabase
         .from('Teams')
         .insert({
@@ -139,12 +121,11 @@ export async function POST(request) {
 
     if (updateError) throw updateError
 
-    // Generate shift patterns from opening hours
-    if (opening_hours) {
+    // Only auto-generate shifts if the new wizard isn't handling it
+    if (opening_hours && !skip_shift_generation) {
       const patterns = generateShiftPatterns(opening_hours)
 
       if (patterns.length > 0) {
-        // Check if shifts already exist for this team (avoid duplicates on re-submit)
         const { data: existingShifts } = await supabase
           .from('Shifts')
           .select('id')
@@ -167,13 +148,12 @@ export async function POST(request) {
 
           if (shiftsError) {
             console.error('Error generating shifts:', shiftsError)
-            // Don't fail the whole onboarding - shifts can be added manually
           }
         }
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, team_id: teamId }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     })

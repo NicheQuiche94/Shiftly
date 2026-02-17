@@ -6,8 +6,8 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 const TOUR_STEPS = [
   {
     id: 'welcome',
-    title: 'Welcome to Shiftly! 👋',
-    content: "Let's take a quick tour of your new scheduling command centre. This will only take a couple of minutes, and you can retake it anytime from the Help Centre.",
+    title: 'Welcome to Shiftly!',
+    content: "Your workspace is all set up with the shifts and team you just entered. Let's take a quick tour so you know where everything is. This will only take a minute.",
     position: 'center',
     target: null,
     page: null,
@@ -15,8 +15,8 @@ const TOUR_STEPS = [
   {
     id: 'workspace',
     title: 'Your Workspace',
-    content: "This is where you manage everything: your team, shift patterns, and scheduling rules. We've already started setting things up based on your earlier answers.",
-    tip: "The setup checklist at the top tracks your progress. Complete each step to unlock your first rota.",
+    content: "Here are the shifts and staff you set up during onboarding. If you ever need to add recurring shift patterns, adjust your team, or change scheduling rules, this is where you do it.",
+    tip: "Shifts come first — they're the constant. Your staff are scheduled around them.",
     position: 'right',
     target: 'nav-workspace',
     page: '/dashboard/workspace',
@@ -24,7 +24,7 @@ const TOUR_STEPS = [
   {
     id: 'rota-builder',
     title: 'Rota Builder',
-    content: "This is where the magic happens. Pick your team, choose your dates, and generate a fair, balanced rota in seconds. All your rules are applied automatically.",
+    content: "This is where you generate your rota. Pick your team, choose your dates, and get a fair, balanced schedule in seconds. All your rules are applied automatically.",
     position: 'right',
     target: 'nav-generate',
     page: '/dashboard/generate',
@@ -32,8 +32,8 @@ const TOUR_STEPS = [
   {
     id: 'rota-edit',
     title: 'Edit Shifts Manually',
-    content: "Need to make changes? Click any empty cell to add a shift, or click an existing shift to edit, reassign, or remove it. You have full control after generation.",
-    tip: "The rota builder is flexible. Generate based on your workspace informastion and then fine-tune by hand if needed!.",
+    content: "Need to make changes? Click any empty cell to add a one-off shift, or click an existing shift to edit, reassign, or remove it. You have full control after generation.",
+    tip: "One-off shifts are added here in the rota. Recurring patterns live in your Workspace.",
     position: 'center',
     target: null,
     page: '/dashboard/generate',
@@ -41,8 +41,8 @@ const TOUR_STEPS = [
   {
     id: 'rota-approve',
     title: 'Save & Approve',
-    content: "When you're happy with your rota, save it as a draft or approve it to make it final. Approved rotas are pushed straight to your employees' app so they can see their shifts instantly.",
-    tip: "Employees get notified as soon as you approve, no more WhatsApp groups or printed sheets.",
+    content: "When you're happy with your rota, save it as a draft or approve it to make it final. Approved rotas are pushed straight to your employees so they can see their shifts instantly.",
+    tip: "No more WhatsApp groups or printed sheets. Employees get notified as soon as you approve.",
     position: 'center',
     target: null,
     page: '/dashboard/generate',
@@ -50,8 +50,7 @@ const TOUR_STEPS = [
   {
     id: 'inbox',
     title: 'Your Inbox',
-    content: "All your staff requests, announcements, and alerts in one place. When staff request time off or shift swaps, they'll appear here for your approval.",
-    tip: "You can also send announcements to your whole team or individual groups from here.",
+    content: "All your staff requests and alerts in one place. When staff request time off or shift swaps, they'll appear here for your approval.",
     position: 'right',
     target: 'nav-requests',
     page: '/dashboard/requests',
@@ -67,7 +66,8 @@ const TOUR_STEPS = [
   {
     id: 'payroll',
     title: 'Payroll',
-    content: "Export payroll-ready data for your team. Pay information is password-protected to keep sensitive salary data secure. Only you can access it.",
+    content: "Export payroll-ready data for your team. Pay information is password-protected to keep sensitive salary data secure.",
+    tip: "To use payroll and cost reports, you'll need to add pay rates for each staff member in the Payroll section.",
     position: 'right',
     target: 'nav-payroll',
     page: null,
@@ -75,15 +75,15 @@ const TOUR_STEPS = [
   {
     id: 'help',
     title: 'Help Centre',
-    content: "Got questions? Find answers to common questions here, and you can retake this tour anytime. We're always adding more guides as the product grows.",
+    content: "Got questions? Find answers here, and you can retake this tour anytime.",
     position: 'right',
     target: 'nav-help',
     page: '/dashboard/help',
   },
   {
     id: 'pwa',
-    title: 'Install the App 📱',
-    content: "Add Shiftly to your home screen for instant access, no app store needed. Share this tip with your team so they can check their shifts on the go.",
+    title: 'Install the App',
+    content: "Add Shiftly to your home screen for instant access — no app store needed. Share this tip with your team so they can check their shifts on the go.",
     position: 'center',
     target: null,
     page: null,
@@ -143,12 +143,10 @@ export default function OnboardingTour({ onComplete }) {
 
   useEffect(() => {
     if (!isVisible) return
-    // Delay slightly to allow page to render after navigation
     const timer = setTimeout(updateTargetRect, 300)
     return () => clearTimeout(timer)
   }, [currentStep, pathname, isVisible, updateTargetRect])
 
-  // Handle window resize
   useEffect(() => {
     if (!isVisible) return
     window.addEventListener('resize', updateTargetRect)
@@ -185,7 +183,6 @@ export default function OnboardingTour({ onComplete }) {
   const completeTour = () => {
     localStorage.setItem('shiftly_tour_complete', 'true')
     setIsVisible(false)
-    // Navigate back to dashboard
     if (pathname !== '/dashboard') {
       router.push('/dashboard')
     }
@@ -220,11 +217,9 @@ export default function OnboardingTour({ onComplete }) {
       }
     }
 
-    // Position to the right of the nav item
     const top = targetRect.top + targetRect.height / 2
     const left = targetRect.right + 24
 
-    // Clamp to viewport
     return {
       top: `${Math.max(200, Math.min(top, window.innerHeight - 200))}px`,
       left: `${left}px`,
@@ -232,10 +227,38 @@ export default function OnboardingTour({ onComplete }) {
     }
   }
 
+  // Get the sidebar width to create a cutout (desktop only)
+  const sidebarWidth = 208 // w-52 = 13rem = 208px
+
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] transition-opacity duration-300" />
+      {/* Backdrop - covers main content area only, NOT the sidebar */}
+      {/* Left overlay: only covers sidebar when we DON'T have a nav target */}
+      {!targetRect && (
+        <div 
+          className="fixed top-0 left-0 bottom-0 bg-black/40 z-[100] transition-opacity duration-300"
+          style={{ width: `${sidebarWidth}px` }}
+        />
+      )}
+      {/* Sidebar overlay with cutout when we DO have a nav target */}
+      {targetRect && (
+        <>
+          {/* Above target */}
+          <div 
+            className="hidden lg:block fixed top-0 left-0 bg-black/40 z-[100]"
+            style={{ width: `${sidebarWidth}px`, height: `${targetRect.top - 6}px` }}
+          />
+          {/* Below target */}
+          <div 
+            className="hidden lg:block fixed bottom-0 left-0 bg-black/40 z-[100]"
+            style={{ width: `${sidebarWidth}px`, top: `${targetRect.bottom + 6}px` }}
+          />
+        </>
+      )}
+      {/* Main content overlay - always full opacity, no blur */}
+      <div 
+        className="fixed top-0 right-0 bottom-0 bg-black/40 z-[100] transition-opacity duration-300 lg:left-[208px] left-0"
+      />
 
       {/* Highlight target element */}
       {targetRect && !navigating && (
@@ -306,7 +329,7 @@ export default function OnboardingTour({ onComplete }) {
                   ) : (
                     <div className="text-sm text-gray-600 bg-gray-50 rounded-2xl p-4">
                       <p className="font-semibold text-gray-700 mb-2">To install:</p>
-                      <p className="mb-1"><strong>iPhone/iPad:</strong> Tap Share → Add to Home Screen</p>
+                      <p className="mb-1"><strong>iPhone/iPad:</strong> Tap Share then Add to Home Screen</p>
                       <p><strong>Android/Desktop:</strong> Look for the install icon in your browser's address bar</p>
                     </div>
                   )}
@@ -344,7 +367,7 @@ export default function OnboardingTour({ onComplete }) {
                   className="flex-1 px-6 py-2.5 text-sm font-semibold text-white rounded-2xl transition-all hover:shadow-lg hover:shadow-pink-500/25"
                   style={{ background: '#FF1F7D' }}
                 >
-                  {isLastStep ? 'Get Started →' : 'Next →'}
+                  {isLastStep ? 'Get Started' : 'Next'}
                 </button>
               </div>
             </div>
@@ -373,7 +396,6 @@ export default function OnboardingTour({ onComplete }) {
   )
 }
 
-// Helper to reset tour (for testing or Help Centre retake button)
 export function resetTour() {
   localStorage.removeItem('shiftly_tour_complete')
 }
