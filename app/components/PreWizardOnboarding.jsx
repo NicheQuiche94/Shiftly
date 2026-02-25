@@ -46,8 +46,8 @@ export default function PreWizardOnboarding() {
 
   // Step 5
   const [templates, setTemplates] = useState({
-    Weekday: { name: 'Weekday', shifts: [] },
-    Weekend: { name: 'Weekend', shifts: [] },
+    Weekday: { name: 'Weekday', shifts: [], openTime: 8, closeTime: 18, openBuffer: 30, closeBuffer: 30 },
+    Weekend: { name: 'Weekend', shifts: [], openTime: 8, closeTime: 18, openBuffer: 30, closeBuffer: 30 },
   })
   const [activeTemplate, setActiveTemplate] = useState('Weekday')
 
@@ -75,8 +75,8 @@ export default function PreWizardOnboarding() {
       const t = templates[activeTemplate]
       if (t && t.shifts.length === 0) {
         const dl = shiftLengths.includes(8) ? 8 : shiftLengths[0]
-        const opS = hours.openTime - hours.openBuffer / 60
-        const opE = hours.closeTime + hours.closeBuffer / 60
+        const opS = (t.openTime ?? hours.openTime) - (t.openBuffer ?? hours.openBuffer) / 60
+        const opE = (t.closeTime ?? hours.closeTime) + (t.closeBuffer ?? hours.closeBuffer) / 60
         const shifts = []
         let pos = opS, id = 0
         while (pos < opE) {
@@ -133,10 +133,10 @@ export default function PreWizardOnboarding() {
   }
 
   // Template helpers
-  const addTemplate = (name) => { setTemplates(prev => ({ ...prev, [name]: { name, shifts: [] } })); setActiveTemplate(name) }
+  const addTemplate = (name) => { setTemplates(prev => ({ ...prev, [name]: { name, shifts: [], openTime: hours.openTime, closeTime: hours.closeTime, openBuffer: hours.openBuffer, closeBuffer: hours.closeBuffer } })); setActiveTemplate(name) }
   const duplicateTemplate = (fromName, newName) => {
     const source = templates[fromName]
-    setTemplates(prev => ({ ...prev, [newName]: { name: newName, shifts: source.shifts.map(s => ({ ...s, id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })) } }))
+    setTemplates(prev => ({ ...prev, [newName]: { name: newName, shifts: source.shifts.map(s => ({ ...s, id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })), openTime: source.openTime, closeTime: source.closeTime, openBuffer: source.openBuffer, closeBuffer: source.closeBuffer } }))
     setActiveTemplate(newName)
   }
 
@@ -162,7 +162,7 @@ export default function PreWizardOnboarding() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           locale_id: formData.locale_id, business_name: formData.business_name,
-          open_time: String(hours.openTime), close_time: String(hours.closeTime),
+          open_time: hours.openTime, close_time: hours.closeTime,
           open_buffer: hours.openBuffer, close_buffer: hours.closeBuffer,
           shift_lengths: shiftLengths, day_templates: templates, week_template: weekDays,
         })
@@ -181,7 +181,7 @@ export default function PreWizardOnboarding() {
             max_hours: parseFloat(staff.max_hours) || parseFloat(staff.contracted_hours) || 0,
             hourly_rate: parseFloat(staff.hourly_rate) || 0,
             keyholder: staff.keyholder,
-            preferred_shift_length: staff.preferred_lengths?.[0] || shiftLengths[0],
+            preferred_shift_length: staff.preferred_lengths || [shiftLengths[0]],
             availability_grid: staff.availability_grid,
           })
         })
@@ -292,7 +292,7 @@ export default function PreWizardOnboarding() {
                   setHours(prev => ({ ...prev, ...patch }))
                   setTemplates(prev => {
                     const updated = {}
-                    for (const [k, v] of Object.entries(prev)) updated[k] = { ...v, shifts: [] }
+                    for (const [k, v] of Object.entries(prev)) updated[k] = { ...v, shifts: [], ...patch }
                     return updated
                   })
                 }}
@@ -324,8 +324,10 @@ export default function PreWizardOnboarding() {
               <TimelineBuilder
                 shifts={templates[activeTemplate]?.shifts || []}
                 shiftLengths={shiftLengths}
-                openTime={hours.openTime} closeTime={hours.closeTime}
-                openBuffer={hours.openBuffer} closeBuffer={hours.closeBuffer}
+                openTime={templates[activeTemplate]?.openTime ?? hours.openTime}
+                closeTime={templates[activeTemplate]?.closeTime ?? hours.closeTime}
+                openBuffer={templates[activeTemplate]?.openBuffer ?? hours.openBuffer}
+                closeBuffer={templates[activeTemplate]?.closeBuffer ?? hours.closeBuffer}
                 onChange={(newShifts) => setTemplates(prev => ({ ...prev, [activeTemplate]: { ...prev[activeTemplate], shifts: newShifts } }))}
               />
             </div>

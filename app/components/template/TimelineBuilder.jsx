@@ -118,7 +118,7 @@ function DraggableBlock({
         </div>
       </div>
 
-      {blockH > 70 && (
+      {blockH > 48 && (
         <div className="flex items-center justify-between">
           <button
             onClick={() => onCycle()}
@@ -147,10 +147,12 @@ export default function TimelineBuilder({
   const timelineHeight = totalHours * PX_PER_HOUR
   const defaultLen = shiftLengths[0] || 8
 
-  const shiftIds = shifts.map(s => s.id).join(',')
-  const { numCols, colMap } = useMemo(() => assignColumns(shifts), [shiftIds])
+  // Recalculate columns whenever shifts move, resize, or change count
+  const shiftKey = shifts.map(s => `${s.id}:${s.start}:${s.length}`).join(',')
+  const { numCols, colMap } = useMemo(() => assignColumns(shifts), [shiftKey])
 
-  const canvasWidth = Math.max(320, numCols * 160 + 12)
+  const MIN_COL_WIDTH = 160
+  const canvasWidth = Math.max(320, numCols * MIN_COL_WIDTH + 12)
   const colWidth = (canvasWidth - 12) / numCols
 
   const handleBlockDragEnd = useCallback((idx, newStart) => {
@@ -231,7 +233,7 @@ export default function TimelineBuilder({
   return (
     <div>
       <div className="flex gap-7">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 overflow-x-auto">
           <div className="relative" style={{ marginLeft: 56 }}>
             {Array.from({ length: Math.ceil(totalHours) + 1 }, (_, i) => {
               const hr = staffWindowStart + i

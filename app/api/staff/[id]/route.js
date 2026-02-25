@@ -43,14 +43,18 @@ export async function PUT(request, { params }) {
   const { id } = await params
   const body = await request.json()
 
-  const updateData = {
-    name: body.name,
-    email: body.email,
-    role: body.role,
-    contracted_hours: body.contracted_hours || 0,
-    max_hours: body.max_hours || body.contracted_hours || 0,
-    availability: body.availability
-  }
+  // Only update fields that are explicitly provided
+  const updateData = {}
+  if (body.name !== undefined) updateData.name = body.name
+  if (body.email !== undefined) updateData.email = body.email
+  if (body.role !== undefined) updateData.role = body.role
+  if (body.contracted_hours !== undefined) updateData.contracted_hours = body.contracted_hours
+  if (body.max_hours !== undefined) updateData.max_hours = body.max_hours
+  if (body.availability !== undefined) updateData.availability = body.availability
+  if (body.hourly_rate !== undefined) updateData.hourly_rate = body.hourly_rate
+  if (body.keyholder !== undefined) updateData.keyholder = body.keyholder
+  if (body.preferred_shift_length !== undefined) updateData.preferred_shift_length = body.preferred_shift_length
+  if (body.availability_grid !== undefined) updateData.availability_grid = body.availability_grid
 
   const { data, error } = await supabase
     .from('Staff')

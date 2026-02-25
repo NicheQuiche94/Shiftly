@@ -6,6 +6,7 @@ import { formatTime } from '@/app/components/template/shift-constants'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DEFAULT_SHIFT_LENGTHS = [4, 6, 8, 10, 12]
+const BUFFER_OPTIONS = [0, 15, 30, 45, 60]
 
 function makeDefaultShift(openTime, closeTime, openBuffer, closeBuffer) {
   const staffStart = openTime - (openBuffer || 0) / 60
@@ -34,10 +35,11 @@ export default function TemplatesSection({ selectedTeamId }) {
   const [newName, setNewName] = useState('')
 
   // From team record (set during onboarding — no hardcoding)
-  const openTime = teamData?.open_time ?? 9
-  const closeTime = teamData?.close_time ?? 17
-  const openBuffer = teamData?.open_buffer ?? 0
-  const closeBuffer = teamData?.close_buffer ?? 0
+  // open_time/close_time are stored as strings in the DB; parse to numbers
+  const openTime = Number(teamData?.open_time) || 9
+  const closeTime = Number(teamData?.close_time) || 17
+  const openBuffer = Number(teamData?.open_buffer) || 0
+  const closeBuffer = Number(teamData?.close_buffer) || 0
   const shiftLengths = teamData?.shift_lengths ?? DEFAULT_SHIFT_LENGTHS
 
   // Fetch team data
@@ -53,13 +55,13 @@ export default function TemplatesSection({ selectedTeamId }) {
         const savedWT = data.week_template || {}
 
         if (Object.keys(savedDT).length === 0) {
-          const ot = data.open_time ?? 9
-          const ct = data.close_time ?? 17
-          const ob = data.open_buffer ?? 0
-          const cb = data.close_buffer ?? 0
+          const ot = Number(data.open_time) || 9
+          const ct = Number(data.close_time) || 17
+          const ob = Number(data.open_buffer) || 0
+          const cb = Number(data.close_buffer) || 0
           const defShift = makeDefaultShift(ot, ct, ob, cb)
 
-          const defaultDT = { Standard: { shifts: [defShift] } }
+          const defaultDT = { Standard: { shifts: [defShift], openTime: ot, closeTime: ct, openBuffer: ob, closeBuffer: cb } }
           const defaultWT = {}
           DAYS.forEach(d => {
             defaultWT[d] = { on: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(d), tmpl: 'Standard' }
@@ -88,14 +90,14 @@ export default function TemplatesSection({ selectedTeamId }) {
     setSaving(true)
     setSaveStatus(null)
     try {
-      const res = await fetch(`/api/teams/${selectedTeamId}`, {
+      const res = await fetch(`/api/teams/${selectedTeamId}/template`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day_templates: dayTemplates, week_template: weekTemplate }),
       })
       if (!res.ok) throw new Error('Save failed')
 
-      await fetch(`/api/teams/${selectedTeamId}/sync-shifts`, {
+      await fetch(`/api/teams/${selectedTeamId}/template/sync-shifts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day_templates: dayTemplates, week_template: weekTemplate }),
@@ -115,12 +117,16 @@ export default function TemplatesSection({ selectedTeamId }) {
     setDayTemplates(prev => ({ ...prev, [name]: { ...prev[name], shifts: newShifts } }))
   }, [])
 
+  const updateTemplateHours = useCallback((name, patch) => {
+    setDayTemplates(prev => ({ ...prev, [name]: { ...prev[name], ...patch } }))
+  }, [])
+
   const addTemplate = () => {
     let name = 'New Template'
     let i = 1
     while (dayTemplates[name]) name = `New Template ${i++}`
     const defShift = makeDefaultShift(openTime, closeTime, openBuffer, closeBuffer)
-    setDayTemplates(prev => ({ ...prev, [name]: { shifts: [defShift] } }))
+    setDayTemplates(prev => ({ ...prev, [name]: { shifts: [defShift], openTime, closeTime, openBuffer, closeBuffer } }))
     setActiveTemplate(name)
   }
 
@@ -198,19 +204,30 @@ export default function TemplatesSection({ selectedTeamId }) {
       {/* Top bar: hours context + save */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex flex-wrap gap-2">
-          <div className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
-            <span className="font-semibold text-gray-900">Open:</span> {formatTime(openTime)} – {formatTime(closeTime)}
-          </div>
-          {openBuffer > 0 && (
-            <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-              <span className="font-semibold">Prep:</span> {openBuffer}min before
-            </div>
-          )}
-          {closeBuffer > 0 && (
-            <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-              <span className="font-semibold">Close-down:</span> {closeBuffer}min after
-            </div>
-          )}
+          {(() => {
+            const activeTmpl = activeTab === 'day' && activeTemplate ? dayTemplates[activeTemplate] : null
+            const dispOpen = activeTmpl?.openTime ?? openTime
+            const dispClose = activeTmpl?.closeTime ?? closeTime
+            const dispOpenBuf = activeTmpl?.openBuffer ?? openBuffer
+            const dispCloseBuf = activeTmpl?.closeBuffer ?? closeBuffer
+            return (
+              <>
+                <div className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
+                  <span className="font-semibold text-gray-900">{activeTmpl ? activeTemplate : 'Open'}:</span> {formatTime(dispOpen)} – {formatTime(dispClose)}
+                </div>
+                {dispOpenBuf > 0 && (
+                  <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                    <span className="font-semibold">Prep:</span> {dispOpenBuf}min before
+                  </div>
+                )}
+                {dispCloseBuf > 0 && (
+                  <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                    <span className="font-semibold">Close-down:</span> {dispCloseBuf}min after
+                  </div>
+                )}
+              </>
+            )
+          })()}
           <div className="px-3 py-1.5 rounded-lg bg-pink-50 border border-pink-200 text-xs text-pink-700">
             <span className="font-semibold">Weekly:</span> {weeklyStats.totalHours}h · {weeklyStats.activeDays} days
           </div>
@@ -314,18 +331,90 @@ export default function TemplatesSection({ selectedTeamId }) {
             </button>
           </div>
 
-          {/* TimelineBuilder — exact same editor as onboarding */}
-          {activeTemplate && dayTemplates[activeTemplate] && (
-            <TimelineBuilder
-              shifts={dayTemplates[activeTemplate].shifts || []}
-              shiftLengths={shiftLengths}
-              openTime={openTime}
-              closeTime={closeTime}
-              openBuffer={openBuffer}
-              closeBuffer={closeBuffer}
-              onChange={(newShifts) => updateTemplateShifts(activeTemplate, newShifts)}
-            />
-          )}
+          {/* Per-template hours/buffer editor + TimelineBuilder */}
+          {activeTemplate && dayTemplates[activeTemplate] && (() => {
+            const tmpl = dayTemplates[activeTemplate]
+            const tmplOpenTime = tmpl.openTime ?? openTime
+            const tmplCloseTime = tmpl.closeTime ?? closeTime
+            const tmplOpenBuffer = tmpl.openBuffer ?? openBuffer
+            const tmplCloseBuffer = tmpl.closeBuffer ?? closeBuffer
+
+            const timeOptions = []
+            for (let h = 0; h < 24; h++) {
+              for (const m of [0, 15, 30, 45]) {
+                timeOptions.push(h + m / 60)
+              }
+            }
+
+            return (
+              <>
+                <div className="flex items-center gap-3 mb-4 flex-wrap p-3 rounded-xl bg-gray-50 border border-gray-200">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-500 uppercase">Opens</label>
+                    <select
+                      value={tmplOpenTime}
+                      onChange={e => updateTemplateHours(activeTemplate, { openTime: parseFloat(e.target.value) })}
+                      className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-900 bg-white"
+                    >
+                      {timeOptions.map(v => <option key={v} value={v}>{formatTime(v)}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-500 uppercase">Closes</label>
+                    <select
+                      value={tmplCloseTime}
+                      onChange={e => updateTemplateHours(activeTemplate, { closeTime: parseFloat(e.target.value) })}
+                      className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-900 bg-white"
+                    >
+                      {timeOptions.map(v => <option key={v} value={v}>{formatTime(v)}</option>)}
+                    </select>
+                  </div>
+                  <div className="w-px h-5 bg-gray-300" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-semibold text-gray-500 uppercase">Prep</span>
+                    {BUFFER_OPTIONS.map(m => (
+                      <button
+                        key={m}
+                        onClick={() => updateTemplateHours(activeTemplate, { openBuffer: m })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                          tmplOpenBuffer === m
+                            ? 'border-pink-500 bg-pink-50 text-pink-600'
+                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        {m === 0 ? '0' : `${m}m`}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-semibold text-gray-500 uppercase">Close-down</span>
+                    {BUFFER_OPTIONS.map(m => (
+                      <button
+                        key={m}
+                        onClick={() => updateTemplateHours(activeTemplate, { closeBuffer: m })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                          tmplCloseBuffer === m
+                            ? 'border-pink-500 bg-pink-50 text-pink-600'
+                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        {m === 0 ? '0' : `${m}m`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <TimelineBuilder
+                  shifts={tmpl.shifts || []}
+                  shiftLengths={shiftLengths}
+                  openTime={tmplOpenTime}
+                  closeTime={tmplCloseTime}
+                  openBuffer={tmplOpenBuffer}
+                  closeBuffer={tmplCloseBuffer}
+                  onChange={(newShifts) => updateTemplateShifts(activeTemplate, newShifts)}
+                />
+              </>
+            )
+          })()}
         </div>
       )}
 
