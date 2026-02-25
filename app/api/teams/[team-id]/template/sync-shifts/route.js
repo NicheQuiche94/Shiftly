@@ -53,6 +53,7 @@ export async function POST(request, { params }) {
       .from('Shifts')
       .delete()
       .eq('team_id', teamId)
+      .eq('user_id', userId)
 
     if (deleteError) throw deleteError
 
@@ -72,6 +73,7 @@ export async function POST(request, { params }) {
 
         shiftRows.push({
           team_id: teamId,
+          user_id: userId,
           shift_name: shiftName(shift.start, shift.length),
           day_of_week: FULL_DAYS[dayAbbr],
           start_time: startTime,

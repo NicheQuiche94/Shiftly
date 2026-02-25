@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import TimelineBuilder from '@/app/components/template/TimelineBuilder'
 import { formatTime } from '@/app/components/template/shift-constants'
 
@@ -21,6 +22,7 @@ function makeDefaultShift(openTime, closeTime, openBuffer, closeBuffer) {
 }
 
 export default function TemplatesSection({ selectedTeamId }) {
+  const queryClient = useQueryClient()
   const [teamData, setTeamData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -95,13 +97,23 @@ export default function TemplatesSection({ selectedTeamId }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day_templates: dayTemplates, week_template: weekTemplate }),
       })
-      if (!res.ok) throw new Error('Save failed')
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Save failed')
+      }
 
-      await fetch(`/api/teams/${selectedTeamId}/template/sync-shifts`, {
+      const syncRes = await fetch(`/api/teams/${selectedTeamId}/template/sync-shifts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day_templates: dayTemplates, week_template: weekTemplate }),
-      }).catch(() => {})
+      })
+      if (!syncRes.ok) {
+        const body = await syncRes.json().catch(() => ({}))
+        throw new Error(body.error || 'Sync failed')
+      }
+
+      // Invalidate parent team query so StaffShiftsSection picks up new templates
+      queryClient.invalidateQueries({ queryKey: ['team-detail', selectedTeamId] })
 
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus(null), 2000)
