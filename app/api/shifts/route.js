@@ -1,16 +1,20 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
 export async function GET(request) {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get team_id from query params
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('team_id')
 
@@ -19,7 +23,6 @@ export async function GET(request) {
       .select('*')
       .eq('user_id', userId)
 
-    // Filter by team if team_id is provided
     if (teamId) {
       query = query.eq('team_id', teamId)
     }
@@ -38,14 +41,13 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
 
-    // team_id is now required
     if (!body.team_id) {
       return NextResponse.json({ error: 'team_id is required' }, { status: 400 })
     }
@@ -60,7 +62,7 @@ export async function POST(request) {
           day_of_week: body.day_of_week,
           start_time: body.start_time,
           end_time: body.end_time,
-          staff_required: body.staff_required
+          staff_required: body.staff_required || 1
         }
       ])
       .select()
@@ -77,13 +79,17 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
     const { id, shift_name, day_of_week, start_time, end_time, staff_required } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'Shift id is required' }, { status: 400 })
+    }
 
     const { data, error } = await supabase
       .from('Shifts')
@@ -92,7 +98,8 @@ export async function PUT(request) {
         day_of_week,
         start_time,
         end_time,
-        staff_required
+        staff_required,
+        updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .eq('user_id', userId)
@@ -110,13 +117,17 @@ export async function PUT(request) {
 export async function DELETE(request) {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Shift id is required' }, { status: 400 })
+    }
 
     const { error } = await supabase
       .from('Shifts')

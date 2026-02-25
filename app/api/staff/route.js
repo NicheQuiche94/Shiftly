@@ -8,7 +8,7 @@ const supabase = createClient(
 
 export async function GET(request) {
   const { userId } = await auth()
-  
+
   if (!userId) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -37,7 +37,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const { userId } = await auth()
-  
+
   if (!userId) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -55,12 +55,16 @@ export async function POST(request) {
     user_id: userId,
     team_id: body.team_id,
     name: body.name,
-    email: body.email,
-    role: body.role,
+    email: body.email || '',
+    role: body.role || 'staff',
     contracted_hours: contractedHours,
     max_hours: maxHours,
     hourly_rate: body.hourly_rate || 0,
-    availability: body.availability
+    availability: body.availability || null,
+    // New template-based fields
+    keyholder: body.keyholder || false,
+    preferred_shift_length: body.preferred_shift_length || null,
+    availability_grid: body.availability_grid || null
   }
 
   const { data, error } = await supabase
@@ -79,12 +83,16 @@ export async function POST(request) {
 
 export async function PUT(request) {
   const { userId } = await auth()
-  
+
   if (!userId) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = await request.json()
+
+  if (!body.id) {
+    return Response.json({ error: 'id is required' }, { status: 400 })
+  }
 
   const updateData = {
     name: body.name,
@@ -94,13 +102,12 @@ export async function PUT(request) {
     availability: body.availability
   }
 
-  if (body.max_hours !== undefined) {
-    updateData.max_hours = body.max_hours
-  }
-
-  if (body.hourly_rate !== undefined) {
-    updateData.hourly_rate = body.hourly_rate
-  }
+  // Optional fields — only include if explicitly provided
+  if (body.max_hours !== undefined) updateData.max_hours = body.max_hours
+  if (body.hourly_rate !== undefined) updateData.hourly_rate = body.hourly_rate
+  if (body.keyholder !== undefined) updateData.keyholder = body.keyholder
+  if (body.preferred_shift_length !== undefined) updateData.preferred_shift_length = body.preferred_shift_length
+  if (body.availability_grid !== undefined) updateData.availability_grid = body.availability_grid
 
   const { data, error } = await supabase
     .from('Staff')
@@ -120,7 +127,7 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   const { userId } = await auth()
-  
+
   if (!userId) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }

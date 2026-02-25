@@ -1,32 +1,40 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import TeamSelector from '@/app/components/TeamSelector'
-import StaffSection from '@/app/components/workspace/StaffSection'
-import ShiftsSection from '@/app/components/workspace/ShiftsSection'
+import StaffShiftsSection from '@/app/components/workspace/StaffShiftsSection'
+import TemplatesSection from '@/app/components/workspace/TemplatesSection'
 import RulesSection from '@/app/components/workspace/RulesSection'
 import PageHeader from '@/app/components/PageHeader'
+import { getColorForLength } from '@/app/components/template/shift-constants'
 
 export default function WorkspacePage() {
   const [selectedTeamId, setSelectedTeamId] = useState(null)
-  const [activeTab, setActiveTab] = useState('shifts')
+  const [activeTab, setActiveTab] = useState('staff-shifts')
   const [triggerStaffModal, setTriggerStaffModal] = useState(false)
 
-  // Listen for event from TeamSelector success screen
+  const { data: teamData } = useQuery({
+    queryKey: ['team-detail', selectedTeamId],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${selectedTeamId}`)
+      if (!res.ok) throw new Error('Failed to load team')
+      return res.json()
+    },
+    enabled: !!selectedTeamId
+  })
+
+  const shiftLengths = teamData?.shift_lengths || [4, 6, 8, 10, 12]
+
   useEffect(() => {
     const handleOpenStaffModal = () => {
-      setActiveTab('staff')
+      setActiveTab('staff-shifts')
       setTriggerStaffModal(true)
     }
-    
     window.addEventListener('openStaffModal', handleOpenStaffModal)
-    
-    return () => {
-      window.removeEventListener('openStaffModal', handleOpenStaffModal)
-    }
+    return () => window.removeEventListener('openStaffModal', handleOpenStaffModal)
   }, [])
 
-  // Reset trigger after StaffSection mounts
   useEffect(() => {
     if (triggerStaffModal) {
       const timer = setTimeout(() => setTriggerStaffModal(false), 100)
@@ -35,83 +43,110 @@ export default function WorkspacePage() {
   }, [triggerStaffModal])
 
   const tabs = [
-    { 
-      id: 'shifts', 
-      label: 'Shifts',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    { 
-      id: 'staff', 
-      label: 'Staff',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    { 
-      id: 'rules', 
-      label: 'Rules',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    }
+    { id: 'staff-shifts', label: 'Staff & Shifts', description: 'Manage coverage balance',
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
+    { id: 'templates', label: 'Templates', description: 'Day & week patterns',
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg> },
+    { id: 'rules', label: 'Rules', description: 'Scheduling constraints',
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
   ]
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
-      <PageHeader 
+    <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <PageHeader
         title="My Workspace"
-        subtitle="Manage your shift patterns, team members, and scheduling rules"
+        subtitle="Manage your team, shift patterns, and scheduling rules"
         backLink={{ href: '/dashboard', label: 'Back to Dashboard' }}
       />
 
-      {/* Team selector + pill tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <TeamSelector selectedTeamId={selectedTeamId} onTeamChange={setSelectedTeamId} />
-
-        {/* Pill tabs */}
-        <div className="flex gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl body-small font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
       {!selectedTeamId ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
+        <div className="mt-6">
+          <TeamSelector selectedTeamId={selectedTeamId} onTeamChange={setSelectedTeamId} />
+          <div className="mt-8 bg-white rounded-2xl border border-gray-200 p-12 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-700 font-semibold font-cal mb-1">Select a team to get started</p>
+            <p className="text-sm text-gray-500">Choose a team from the dropdown above</p>
           </div>
-          <p className="body-text font-medium mb-1">Select a team to get started</p>
-          <p className="body-small">Choose a team from the dropdown above</p>
         </div>
       ) : (
-        <div>
-          {activeTab === 'shifts' && <ShiftsSection selectedTeamId={selectedTeamId} />}
-          {activeTab === 'staff' && <StaffSection selectedTeamId={selectedTeamId} triggerAddStaff={triggerStaffModal} />}
-          {activeTab === 'rules' && <RulesSection selectedTeamId={selectedTeamId} />}
-        </div>
+        <>
+          <div className="mt-6 mb-6">
+            <TeamSelector selectedTeamId={selectedTeamId} onTeamChange={setSelectedTeamId} />
+          </div>
+
+          <div className="flex gap-6">
+            {/* Left sidebar */}
+            <div className="w-56 flex-shrink-0">
+              <div className="sticky top-6">
+                <nav className="flex flex-col gap-1">
+                  {tabs.map((tab) => {
+                    const isActive = activeTab === tab.id
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
+                          isActive
+                            ? 'text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                        style={isActive ? { background: '#FF1F7D' } : {}}
+                      >
+                        <span className={isActive ? 'text-white' : 'text-gray-400'}>{tab.icon}</span>
+                        <div>
+                          <span className={`text-sm font-semibold block ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+                          <span className={`text-[11px] block mt-0.5 ${isActive ? 'text-white/70' : 'text-gray-400'}`}>{tab.description}</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </nav>
+
+                {shiftLengths.length > 0 && (
+                  <div className="mt-5 p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">Shift lengths</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[...shiftLengths].sort((a, b) => a - b).map((len) => {
+                        const c = getColorForLength(len, shiftLengths)
+                        return (
+                          <span key={len} className="px-2 py-1 rounded-md text-[11px] font-bold border" style={{ background: c.bg, borderColor: `${c.border}40`, color: c.text }}>
+                            {len}h
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Main content */}
+            <div className="flex-1 min-w-0">
+              {activeTab === 'staff-shifts' && (
+                <StaffShiftsSection
+                  selectedTeamId={selectedTeamId}
+                  shiftLengths={shiftLengths}
+                  triggerAddStaff={triggerStaffModal}
+                  teamData={teamData}
+                />
+              )}
+              {activeTab === 'templates' && (
+                <TemplatesSection
+                  selectedTeamId={selectedTeamId}
+                  shiftLengths={shiftLengths}
+                  teamData={teamData}
+                />
+              )}
+              {activeTab === 'rules' && (
+                <RulesSection selectedTeamId={selectedTeamId} />
+              )}
+            </div>
+          </div>
+        </>
       )}
     </main>
   )
