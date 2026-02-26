@@ -117,81 +117,72 @@ export async function POST(request) {
       const FULL_DAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
       const formattedStaff = staffData.map(s => {
-        let availability = s.availability || {}
+        let availability = {}
 
-        if (typeof availability === 'string') {
-          try {
-            availability = JSON.parse(availability)
-          } catch (e) {
-            availability = {}
-          }
-        }
+        // Prefer availability_grid (shift-based matrix from workspace/employee app)
+        const grid = s.availability_grid
+        if (grid && typeof grid === 'object' && Object.keys(grid).length > 0) {
+          // availability_grid uses keys "dayIndex-slotIndex" (0=Mon..6=Sun)
+          // Convert to { monday: { AM: true, PM: true }, ... }
+          DAY_ABBRS.forEach((abbr, di) => {
+            const dayConfig = weekTemplateData[abbr]
+            if (!dayConfig?.on) return
+            const tmpl = dayTemplatesData[dayConfig.tmpl]
+            if (!tmpl?.shifts?.length) return
 
-        if (Array.isArray(availability)) {
-          const availabilityObj = {}
-          availability.forEach(day => {
-            if (typeof day === 'string') {
-              availabilityObj[day.toLowerCase()] = { AM: true, PM: true }
-            }
+            let am = false, pm = false
+            tmpl.shifts.forEach((shift, si) => {
+              const key = `${di}-${si}`
+              const isAvail = grid[key] !== undefined ? grid[key] : true
+              if (isAvail) {
+                if (shift.start < 12) am = true
+                if (shift.start + shift.length > 12) pm = true
+              }
+            })
+            availability[FULL_DAY_NAMES[di]] = { AM: am, PM: pm }
           })
-          availability = availabilityObj
         }
 
-        if (typeof availability === 'object' && availability !== null && !Array.isArray(availability)) {
-          const normalizedAvailability = {}
-          Object.keys(availability).forEach(key => {
-            const val = availability[key]
-            if (typeof val === 'boolean') {
-              normalizedAvailability[key.toLowerCase()] = { AM: val, PM: val }
-            } else if (typeof val === 'object' && val !== null) {
-              normalizedAvailability[key.toLowerCase()] = val
-            } else {
-              normalizedAvailability[key.toLowerCase()] = { AM: true, PM: true }
-            }
-          })
-          availability = normalizedAvailability
-        }
-
-        if (typeof availability !== 'object' || availability === null || Array.isArray(availability)) {
-          availability = {}
-        }
-
-        // If old availability field is empty, convert availability_grid to scheduler format
+        // Fall back to legacy availability field if grid produced nothing
         if (Object.keys(availability).length === 0) {
-          const grid = s.availability_grid
-          if (grid && typeof grid === 'object' && Object.keys(grid).length > 0) {
-            // availability_grid uses keys "dayIndex-slotIndex" (0=Mon..6=Sun)
-            // Convert to { monday: { AM: true, PM: true }, ... }
-            DAY_ABBRS.forEach((abbr, di) => {
-              const dayConfig = weekTemplateData[abbr]
-              if (!dayConfig?.on) return
-              const tmpl = dayTemplatesData[dayConfig.tmpl]
-              if (!tmpl?.shifts?.length) return
+          let legacy = s.availability || {}
 
-              let am = false, pm = false
-              tmpl.shifts.forEach((shift, si) => {
-                const key = `${di}-${si}`
-                const isAvail = grid[key] !== undefined ? grid[key] : true
-                if (isAvail) {
-                  if (shift.start < 12) am = true
-                  if (shift.start + shift.length > 12) pm = true
-                }
-              })
-              availability[FULL_DAY_NAMES[di]] = { AM: am, PM: pm }
+          if (typeof legacy === 'string') {
+            try { legacy = JSON.parse(legacy) } catch { legacy = {} }
+          }
+
+          if (Array.isArray(legacy)) {
+            const obj = {}
+            legacy.forEach(day => {
+              if (typeof day === 'string') obj[day.toLowerCase()] = { AM: true, PM: true }
+            })
+            legacy = obj
+          }
+
+          if (typeof legacy === 'object' && legacy !== null && !Array.isArray(legacy)) {
+            Object.keys(legacy).forEach(key => {
+              const val = legacy[key]
+              if (typeof val === 'boolean') {
+                availability[key.toLowerCase()] = { AM: val, PM: val }
+              } else if (typeof val === 'object' && val !== null) {
+                availability[key.toLowerCase()] = val
+              } else {
+                availability[key.toLowerCase()] = { AM: true, PM: true }
+              }
             })
           }
+        }
 
-          // If still empty (no grid data either), default to fully available
-          if (Object.keys(availability).length === 0) {
-            availability = {
-              monday: { AM: true, PM: true },
-              tuesday: { AM: true, PM: true },
-              wednesday: { AM: true, PM: true },
-              thursday: { AM: true, PM: true },
-              friday: { AM: true, PM: true },
-              saturday: { AM: true, PM: true },
-              sunday: { AM: true, PM: true }
-            }
+        // Default to fully available if no data at all
+        if (Object.keys(availability).length === 0) {
+          availability = {
+            monday: { AM: true, PM: true },
+            tuesday: { AM: true, PM: true },
+            wednesday: { AM: true, PM: true },
+            thursday: { AM: true, PM: true },
+            friday: { AM: true, PM: true },
+            saturday: { AM: true, PM: true },
+            sunday: { AM: true, PM: true }
           }
         }
 

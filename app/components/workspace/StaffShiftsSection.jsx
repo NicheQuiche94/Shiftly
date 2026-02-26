@@ -305,9 +305,14 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
     const member = isNew ? null : staff.find(s => s.id === id)
 
     return (
-      <div key={id} className="p-4 rounded-xl border-2 border-pink-300 bg-white shadow-sm">
-        {/* Row 1: Inline inputs (matches onboarding layout) */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div key={id} className="relative p-4 rounded-xl border-2 border-pink-300 bg-white shadow-sm">
+        {/* Close button — top right */}
+        <button onClick={() => cancelEdit(id)} className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="Close">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
+        {/* Row 1: Inline inputs */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap pr-8">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
             {(edit.name || '?')[0].toUpperCase()}
           </div>
@@ -345,9 +350,6 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
               <div className={`absolute w-[18px] h-[18px] bg-white rounded-full top-[2px] shadow-sm transition-all ${edit.keyholder ? 'left-[20px]' : 'left-[2px]'}`} />
             </button>
           </div>
-          <button onClick={() => cancelEdit(id)} className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Close">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
         </div>
 
         {/* Validation warnings */}

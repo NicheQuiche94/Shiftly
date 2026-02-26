@@ -36,9 +36,17 @@ body {
    SHIFTLY TYPOGRAPHY SYSTEM WITH CAL SANS
    ============================================ */
 
-/* Base Typography - Cal Sans for headings, Inter/system for body */
+@font-face {
+  font-family: 'Cal Sans';
+  src: url('/fonts/CalSans-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Base Typography - Cal Sans for headings/logo, Inter for body */
 .font-cal {
-  font-family: inherit;
+  font-family: 'Cal Sans', system-ui, sans-serif;
 }
 
 /* Typography Scale */
@@ -84,7 +92,7 @@ body {
 
 /* Semantic Classes - Cal Sans for ALL headings */
 .heading-page {
-  font-family: inherit;
+  font-family: 'Cal Sans', system-ui, sans-serif;
   font-size: 2rem;       /* 32px - larger than before */
   font-weight: 600;
   line-height: 2.5rem;
@@ -93,7 +101,7 @@ body {
 }
 
 .heading-section {
-  font-family: inherit;
+  font-family: 'Cal Sans', system-ui, sans-serif;
   font-size: 1.5rem;     /* 24px */
   font-weight: 600;
   line-height: 2rem;
@@ -102,7 +110,7 @@ body {
 }
 
 .heading-subsection {
-  font-family: inherit;
+  font-family: 'Cal Sans', system-ui, sans-serif;
   font-size: 1.25rem;    /* 20px */
   font-weight: 600;
   line-height: 1.75rem;

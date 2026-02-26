@@ -8,8 +8,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
-        cal: ['var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        cal: ["'Cal Sans'", 'system-ui', 'sans-serif'],
       },
       colors: {
         pink: {
