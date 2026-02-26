@@ -12,19 +12,19 @@ const FAQ_SECTIONS = [
     items: [
       {
         question: 'How do I set up my first rota?',
-        answer: "Start by heading to your Workspace and completing the setup checklist. You'll need to add your staff members (with their contracted hours), create shift patterns for your business, and configure any scheduling rules. Once that's done, go to the Rota Builder, select your team and dates, and hit Generate. Shiftly will create a fair, balanced rota in seconds."
+        answer: "Start in your Workspace Settings to configure shift lengths and business hours. Then create Day Templates to define your shift patterns, and assign them to days in the Weekly Schedule. Hit Save & Sync to lock it in. Next, add your staff in the Staff & Shifts tab with their contracted hours and availability. Finally, go to the Rota Builder, check the template preview, and hit Generate. Shiftly will create a fair, balanced rota in seconds."
       },
       {
         question: 'What are shift patterns and how do they work?',
-        answer: "Shift patterns are reusable templates that define your recurring shifts. For example, a Morning shift from 06:00–14:00 or an Evening shift from 17:00–23:00. You set them up once in your Workspace, specifying the days they run and how many staff you need per shift. Every time you generate a rota, Shiftly uses these patterns to assign staff fairly."
+        answer: "Shift patterns are organised as Day Templates in your Workspace. Each template is a card you can Edit, Rename, or Delete. Inside the editor, you drag and resize shift blocks on a timeline to define start times, durations, and headcount. You then assign templates to days of the week in the Weekly Schedule tab and hit Save & Sync. Every time you generate a rota, Shiftly uses these patterns to assign staff fairly."
       },
       {
         question: 'How do I invite my staff to view their schedules?',
-        answer: "Go to your Workspace, open the Staff tab, and click the invite button next to any staff member who has an email address on file. They'll receive a link to create their account. Once connected, they can view their shifts, submit availability, and request time off, all from their phone."
+        answer: "Go to your Workspace, open the Staff & Shifts tab, and expand a staff card. Click the invite button next to any staff member who has an email address on file. They'll receive a link to create their account. Once connected, they can view their shifts, submit availability, and request time off, all from their phone."
       },
       {
         question: "What does 'set once, use forever' mean?",
-        answer: "It means the hard work is upfront. Once you've added your staff, shifts, and rules, generating future rotas takes seconds. You won't need to re-enter information each week. Shiftly remembers everything and applies it automatically. Most managers save 2–3 hours per week."
+        answer: "It means the hard work is upfront. Once you've added your staff, shifts, and rules, generating future rotas takes seconds. You won't need to re-enter information each week. Shiftly remembers everything and applies it automatically."
       },
     ]
   },
@@ -49,7 +49,7 @@ const FAQ_SECTIONS = [
       },
       {
         question: "What if the scheduler can't find a valid rota?",
-        answer: "If your constraints are too tight (for example, not enough staff hours to cover all shifts), Shiftly will tell you exactly what the problem is and suggest fixes. It might recommend adding more staff, reducing shift requirements, or adjusting contracted hours."
+        answer: "Shiftly runs pre-generation checks before sending anything to the scheduler. It verifies your templates are configured, you have enough staff, coverage is above 80%, and keyholders are available for opening and closing shifts. If something is missing, you'll see a specific error with a direct link to fix it (e.g. 'Go to Staff & Shifts'). If the scheduler itself can't find a solution, Shiftly shows diagnostics with suggestions."
       },
     ]
   },
@@ -58,7 +58,7 @@ const FAQ_SECTIONS = [
     items: [
       {
         question: "How do staff submit their availability?",
-        answer: "Staff members who have been invited and connected their accounts can set their availability through the employee app. They select which days and times they're available each week. This availability is automatically respected when you generate rotas."
+        answer: "Staff set their availability using a shift-based matrix that matches your actual template shifts. Instead of just picking whole days, they toggle individual shift time slots (e.g. Monday morning, Tuesday evening). This gives you precise control over who is available for each shift. Availability is set through the employee app or by managers in the Staff & Shifts tab. The coverage gauge shows at a glance whether you have enough available staff, including keyholder warnings for opening and closing shifts."
       },
       {
         question: "How do time-off requests work?",
@@ -83,7 +83,7 @@ const FAQ_SECTIONS = [
       },
       {
         question: "How are weekly costs calculated?",
-        answer: "Shiftly calculates costs based on each staff member's hourly rate or annual salary, multiplied by the hours assigned in each rota. You can see cost breakdowns per shift, per day, and per week in the Reports section."
+        answer: "Shiftly calculates costs based on each staff member's hourly rate or annual salary. Regular hours are charged at the base rate, and overtime (hours above contracted) is charged at 1.5x the base rate. You can see per-staff breakdowns showing regular hours, overtime hours, rate, and total cost in the Reports section. The Labour Cost stat card shows the weekly total."
       },
     ]
   },

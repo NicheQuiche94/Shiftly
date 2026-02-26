@@ -1,6 +1,6 @@
 'use client'
 
-import { DAYS, getBlockColor, formatTime } from './shift-constants'
+import { DAYS, getShiftBlockColor, formatTime } from './shift-constants'
 
 export default function WeekOverview({
   weekDays, templates, shiftLengths,
@@ -36,7 +36,7 @@ export default function WeekOverview({
                   <>
                     <div className="flex gap-0.5 flex-1">
                       {shifts.map((s, i) => {
-                        const c = getBlockColor(i)
+                        const c = getShiftBlockColor(s.length, shiftLengths)
                         return (
                           <div key={i} className="rounded flex items-center justify-center px-1" style={{ height: 16, flex: s.length, background: c.bg, borderLeft: `2px solid ${c.border}` }}>
                             <span className="text-[7px] font-bold" style={{ color: c.text }}>×{s.headcount}</span>
@@ -77,7 +77,7 @@ export default function WeekOverview({
                 <>
                   <div className="flex flex-col gap-0.5">
                     {shifts.map((s, i) => {
-                      const c = getBlockColor(i)
+                      const c = getShiftBlockColor(s.length, shiftLengths)
                       return (
                         <div key={i} className="rounded flex items-center pl-1" style={{ height: Math.max(6, s.length * 2.5), background: c.bg, borderLeft: `2px solid ${c.border}` }}>
                           <span className="text-[8px] font-bold" style={{ color: c.text }}>×{s.headcount}</span>

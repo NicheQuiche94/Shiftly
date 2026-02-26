@@ -235,64 +235,65 @@ export default function TemplatesSection({ selectedTeamId }) {
 
   return (
     <div className="space-y-5">
-      {/* Top bar: hours context + save */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex flex-wrap gap-2">
-          {(() => {
-            const activeTmpl = activeTab === 'day' && activeTemplate ? dayTemplates[activeTemplate] : null
-            const dispOpen = activeTmpl?.openTime ?? openTime
-            const dispClose = activeTmpl?.closeTime ?? closeTime
-            const dispOpenBuf = activeTmpl?.openBuffer ?? openBuffer
-            const dispCloseBuf = activeTmpl?.closeBuffer ?? closeBuffer
-            return (
-              <>
-                <div className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
-                  <span className="font-semibold text-gray-900">{activeTmpl ? activeTemplate : 'Open'}:</span> {formatTime(dispOpen)} – {formatTime(dispClose)}
-                </div>
-                {dispOpenBuf > 0 && (
-                  <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-                    <span className="font-semibold">Prep:</span> {dispOpenBuf}min before
+      {/* Top bar: hours context + save (Weekly Schedule tab only) */}
+      {activeTab === 'week' && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
+            {(() => {
+              const dispOpen = openTime
+              const dispClose = closeTime
+              const dispOpenBuf = openBuffer
+              const dispCloseBuf = closeBuffer
+              return (
+                <>
+                  <div className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
+                    <span className="font-semibold text-gray-900">Open:</span> {formatTime(dispOpen)} – {formatTime(dispClose)}
                   </div>
-                )}
-                {dispCloseBuf > 0 && (
-                  <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-                    <span className="font-semibold">Close-down:</span> {dispCloseBuf}min after
-                  </div>
-                )}
-              </>
-            )
-          })()}
-          <div className="px-3 py-1.5 rounded-lg bg-pink-50 border border-pink-200 text-xs text-pink-700">
-            <span className="font-semibold">Weekly:</span> {weeklyStats.totalHours}h · {weeklyStats.activeDays} days
+                  {dispOpenBuf > 0 && (
+                    <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                      <span className="font-semibold">Prep:</span> {dispOpenBuf}min before
+                    </div>
+                  )}
+                  {dispCloseBuf > 0 && (
+                    <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                      <span className="font-semibold">Close-down:</span> {dispCloseBuf}min after
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+            <div className="px-3 py-1.5 rounded-lg bg-pink-50 border border-pink-200 text-xs text-pink-700">
+              <span className="font-semibold">Weekly:</span> {weeklyStats.totalHours}h · {weeklyStats.activeDays} days
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isDirty && (
+              <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-medium text-amber-700">
+                Unsaved changes
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="text-xs font-medium text-green-600 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                Saved
+              </span>
+            )}
+            {saveStatus === 'error' && <span className="text-xs font-medium text-red-600">Save failed</span>}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={`px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all hover:shadow-lg hover:shadow-pink-500/25 disabled:opacity-50 ${isDirty ? 'ring-2 ring-amber-300 ring-offset-1' : ''}`}
+              style={{ background: '#FF1F7D' }}
+            >
+              {saving ? 'Saving...' : 'Save & Sync'}
+            </button>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          {isDirty && (
-            <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-medium text-amber-700">
-              Unsaved changes
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="text-xs font-medium text-green-600 flex items-center gap-1">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              Saved
-            </span>
-          )}
-          {saveStatus === 'error' && <span className="text-xs font-medium text-red-600">Save failed</span>}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all hover:shadow-lg hover:shadow-pink-500/25 disabled:opacity-50 ${isDirty ? 'ring-2 ring-amber-300 ring-offset-1' : ''}`}
-            style={{ background: '#FF1F7D' }}
-          >
-            {saving ? 'Saving...' : 'Save & Sync'}
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Nested pill tabs */}
-      <div className="flex gap-2">
+      <div id="tour-templates-tabs" className="flex gap-2">
         {[
           { id: 'day', label: 'Day Templates', icon: (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -104,9 +104,9 @@ export default function SettingsSection({ selectedTeamId, teamData }) {
         <p className="text-sm text-gray-500 mt-0.5">Configure your workspace, shift lengths, and business hours</p>
       </div>
 
-      {/* Workspace Name */}
+      {/* Team Name */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <h3 className="text-sm font-bold text-gray-900 mb-3">Workspace Name</h3>
+        <h3 className="text-sm font-bold text-gray-900 mb-3">Team Name</h3>
         <input
           type="text"
           value={teamName}
@@ -133,7 +133,7 @@ export default function SettingsSection({ selectedTeamId, teamData }) {
                     ? 'text-white shadow-sm'
                     : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
                 }`}
-                style={active ? { background: '#FF1F7D', borderColor: '#FF1F7D' } : {}}
+                style={active ? { background: c.fill, borderColor: c.border } : {}}
               >
                 {len}h
               </button>

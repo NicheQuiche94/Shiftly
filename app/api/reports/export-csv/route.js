@@ -43,7 +43,14 @@ export async function GET(request) {
 
     const { data: staff } = await supabase
       .from('Staff')
-      .select('id, name, role, contracted_hours, max_hours, hourly_rate')
+      .select(`
+        id, name, role, contracted_hours, max_hours, hourly_rate,
+        payroll_info (
+          pay_type,
+          hourly_rate,
+          annual_salary
+        )
+      `)
       .eq('user_id', userId)
       .eq('team_id', teamId)
       .order('name')
@@ -65,10 +72,24 @@ export async function GET(request) {
 
     const staffHours = {}
     ;(staff || []).forEach(s => {
+      // Extract payroll data (payroll_info first, Staff.hourly_rate fallback)
+      const payrollData = Array.isArray(s.payroll_info) ? s.payroll_info[0] : s.payroll_info
+      let hourlyRate = 0
+      if (payrollData) {
+        if (payrollData.pay_type === 'hourly' && payrollData.hourly_rate) {
+          hourlyRate = parseFloat(payrollData.hourly_rate)
+        } else if (payrollData.pay_type === 'salary' && payrollData.annual_salary) {
+          const annualHours = (s.contracted_hours || 40) * 52
+          hourlyRate = parseFloat(payrollData.annual_salary) / annualHours
+        }
+      }
+      if (hourlyRate === 0 && s.hourly_rate) {
+        hourlyRate = parseFloat(s.hourly_rate)
+      }
       staffHours[s.name] = {
         name: s.name, role: s.role,
         contracted_hours: s.contracted_hours || 0,
-        hourly_rate: parseFloat(s.hourly_rate) || 0,
+        hourly_rate: Math.round(hourlyRate * 100) / 100,
         scheduled_hours: 0, shifts: []
       }
     })
@@ -120,7 +141,9 @@ export async function GET(request) {
     for (const s of Object.values(staffHours)) {
       const regular = Math.min(s.scheduled_hours, s.contracted_hours)
       const overtime = Math.max(0, s.scheduled_hours - s.contracted_hours)
-      const cost = Math.round(s.scheduled_hours * s.hourly_rate * 100) / 100
+      const regularCost = regular * s.hourly_rate
+      const overtimeCost = overtime * s.hourly_rate * 1.5
+      const cost = Math.round((regularCost + overtimeCost) * 100) / 100
 
       totalContracted += s.contracted_hours
       totalScheduled += s.scheduled_hours

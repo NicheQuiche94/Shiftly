@@ -15,6 +15,7 @@ export default function RotaActions({
   return (
     <div id="tour-rota-actions" className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 no-print">
       <Button
+        id="tour-generate-btn"
         variant="primary"
         onClick={onGenerate}
         disabled={loading || (!selectedTeamId && !showAllTeams)}

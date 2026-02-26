@@ -507,89 +507,75 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
               }
 
               // ── Collapsed card ──
-              return (
-                <div
-                  key={member.id}
-                  onClick={() => expandCard(member)}
-                  className="p-4 rounded-xl border border-gray-200 bg-white hover:border-pink-200 transition-colors cursor-pointer group"
-                >
-                  {/* Row 1: Avatar, name/email, hours */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
-                      {(member.name || '?')[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-[120px]">
-                      <div className="text-sm font-semibold text-gray-900">{member.name}</div>
-                      {member.email && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              {
+                const { total, available } = computeAvailability(member)
+                const full = available === total
+                const rate = member.hourly_rate ? parseFloat(member.hourly_rate) : null
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => expandCard(member)}
+                    className="p-3 sm:p-4 rounded-xl border border-gray-200 bg-white hover:border-pink-200 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
+                        {(member.name || '?')[0].toUpperCase()}
+                      </div>
+
+                      {/* Name */}
+                      <div className="min-w-[100px] flex-1">
+                        <div className="text-sm font-semibold text-gray-900">{member.name}</div>
+                        {member.email && (
+                          <div className="text-[11px] text-gray-400 truncate max-w-[160px]">{member.email}</div>
+                        )}
+                      </div>
+
+                      {/* Contracted hours */}
+                      <div className="text-center flex-shrink-0 w-12">
+                        <div className="text-[10px] text-gray-400 font-medium">h/wk</div>
+                        <div className="text-sm font-semibold text-gray-900">{member.contracted_hours || 0}</div>
+                      </div>
+
+                      {/* Max hours */}
+                      <div className="text-center flex-shrink-0 w-10">
+                        <div className="text-[10px] text-gray-400 font-medium">max</div>
+                        <div className="text-sm font-semibold text-gray-900">{member.max_hours || member.contracted_hours || 0}</div>
+                      </div>
+
+                      {/* Rate */}
+                      <div className="text-center flex-shrink-0 w-12">
+                        <div className="text-[10px] text-gray-400 font-medium">£/hr</div>
+                        <div className="text-sm font-semibold text-gray-900">{rate ? rate : '-'}</div>
+                      </div>
+
+                      {/* Keyholder */}
+                      <div className="flex-shrink-0 w-6 flex items-center justify-center">
+                        {member.keyholder && (
+                          <span className="text-sm" title="Keyholder">🔑</span>
+                        )}
+                      </div>
+
+                      {/* Availability */}
+                      {total > 0 && (
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-md flex-shrink-0 transition-colors ${full ? 'hover:bg-green-50' : 'hover:bg-amber-50'}`}>
+                          <span className={`text-[11px] font-medium ${full ? 'text-green-700' : 'text-amber-700'}`}>
+                            {available}/{total} slots
+                          </span>
+                          <svg className={`w-3 h-3 ${full ? 'text-green-500' : 'text-amber-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
-                          <span className="text-xs text-gray-500 truncate">{member.email}</span>
                         </div>
                       )}
+
+                      {/* Expand chevron */}
+                      <svg className="w-4 h-4 text-gray-300 group-hover:text-pink-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-pink-50 text-pink-700">
-                        {member.contracted_hours || 0}h/wk
-                      </span>
-                      {member.max_hours && member.max_hours > (member.contracted_hours || 0) && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
-                          max {member.max_hours}h
-                        </span>
-                      )}
-                    </div>
-                    <svg className="w-4 h-4 text-gray-300 group-hover:text-pink-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
                   </div>
-                  {/* Row 2: Badges — keyholder, status, shift prefs, availability */}
-                  <div className="flex items-center gap-1.5 mt-2 ml-11 flex-wrap">
-                    {member.keyholder && (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: '#FEF3C7', border: '1px solid #FDE68A', color: '#D97706' }}>
-                        🔑
-                      </span>
-                    )}
-                    {member.clerk_user_id ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">✓ Connected</span>
-                    ) : member.email ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-pink-50 text-pink-600">Not invited</span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-600">No email</span>
-                    )}
-                    <div className="flex items-center gap-0.5">
-                      {shiftLengths.map((len, li) => {
-                        const prefs = normalizePreferredLengths(member.preferred_shift_length)
-                        const active = prefs.includes(len)
-                        const c = PALETTE[li % PALETTE.length]
-                        return (
-                          <span
-                            key={len}
-                            className="px-1.5 py-0.5 rounded text-[9px] font-bold border"
-                            style={{
-                              background: active ? c.bg : '#F9FAFB',
-                              borderColor: active ? `${c.border}50` : '#E5E7EB',
-                              color: active ? c.text : '#D1D5DB'
-                            }}
-                          >
-                            {len}h
-                          </span>
-                        )
-                      })}
-                    </div>
-                    {(() => {
-                      const { total, available } = computeAvailability(member)
-                      if (total === 0) return null
-                      const full = available === total
-                      return (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${full ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {available}/{total} slots
-                        </span>
-                      )
-                    })()}
-                  </div>
-                </div>
-              )
+                )
+              }
             })}
 
             {/* New staff card (always expanded) */}

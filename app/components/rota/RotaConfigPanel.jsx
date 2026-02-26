@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import TeamSelector from '@/app/components/TeamSelector'
 import SectionHeader from '@/app/components/SectionHeader'
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+import WeekOverview from '@/app/components/template/WeekOverview'
+import { DAYS } from '@/app/components/template/shift-constants'
 
 export default function RotaConfigPanel({
   selectedTeamId,
@@ -16,53 +16,43 @@ export default function RotaConfigPanel({
   weekCount,
   setWeekCount
 }) {
-  const [weekTemplate, setWeekTemplate] = useState(null)
+  const [teamData, setTeamData] = useState(null)
   const [templateError, setTemplateError] = useState(false)
 
   useEffect(() => {
     if (!selectedTeamId || showAllTeams) {
-      setWeekTemplate(null)
+      setTeamData(null)
       setTemplateError(false)
       return
     }
     fetch(`/api/teams/${selectedTeamId}/template`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.week_template) {
-          setWeekTemplate(data.week_template)
+        if (data?.week_template && data?.day_templates) {
+          setTeamData(data)
           setTemplateError(false)
         } else {
-          setWeekTemplate(null)
+          setTeamData(null)
           setTemplateError(true)
         }
       })
-      .catch(() => { setWeekTemplate(null); setTemplateError(true) })
+      .catch(() => { setTeamData(null); setTemplateError(true) })
   }, [selectedTeamId, showAllTeams])
 
-  const getTemplateSummary = () => {
-    if (!weekTemplate) return null
-    // Group consecutive days with the same template
-    const groups = []
-    let current = null
-    DAYS.forEach(d => {
-      const cfg = weekTemplate[d]
-      const label = cfg?.on ? cfg.tmpl : 'Off'
-      if (current && current.label === label) {
-        current.end = d
-      } else {
-        current = { start: d, end: d, label }
-        groups.push(current)
-      }
-    })
-    return groups.map(g => {
-      const range = g.start === g.end ? g.start : `${g.start}–${g.end}`
-      return `${range}: ${g.label}`
-    }).join(' · ')
-  }
+  const weekTemplate = teamData?.week_template || {}
+  const dayTemplates = teamData?.day_templates || {}
+  const shiftLengths = teamData?.shift_lengths || []
 
-  const filterMondays = (date) => {
-    return date.getDay() === 1
-  }
+  const weeklyHours = useMemo(() => {
+    return DAYS.reduce((sum, d) => {
+      if (!weekTemplate[d]?.on) return sum
+      const tmpl = dayTemplates[weekTemplate[d].tmpl]
+      if (!tmpl?.shifts) return sum
+      return sum + tmpl.shifts.reduce((a, s) => a + s.length * s.headcount, 0)
+    }, 0)
+  }, [weekTemplate, dayTemplates])
+
+  const filterMondays = (date) => date.getDay() === 1
 
   const getEndDate = () => {
     const end = new Date(startDate)
@@ -71,28 +61,24 @@ export default function RotaConfigPanel({
   }
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-GB', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
-    })
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   return (
     <>
       {/* Team Selection */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
-        <SectionHeader 
+        <SectionHeader
           title="Select Team"
-          subtitle={showAllTeams 
-            ? 'Generating separate rotas for each team, displayed together' 
+          subtitle={showAllTeams
+            ? 'Generating separate rotas for each team, displayed together'
             : 'Choose which team to generate a rota for'
           }
         />
-        
+
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-end mt-4">
           <div className="flex-1">
-            <TeamSelector 
+            <TeamSelector
               selectedTeamId={selectedTeamId}
               onTeamChange={(teamId) => {
                 setSelectedTeamId(teamId)
@@ -102,7 +88,7 @@ export default function RotaConfigPanel({
               disabled={showAllTeams}
             />
           </div>
-          
+
           <button
             onClick={() => setShowAllTeams(!showAllTeams)}
             className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
@@ -122,10 +108,33 @@ export default function RotaConfigPanel({
           templateError ? (
             <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
               <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              <span className="text-xs text-amber-700 font-medium">No templates configured — set up templates in Workspace first</span>
+              <span className="text-xs text-amber-700 font-medium">No templates configured - set up templates in Workspace first</span>
             </div>
-          ) : weekTemplate ? (
-            <p className="mt-2 text-xs text-gray-500">{getTemplateSummary()}</p>
+          ) : teamData ? (
+            <div className="mt-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Template Week</h3>
+              <WeekOverview
+                weekDays={weekTemplate}
+                templates={dayTemplates}
+                shiftLengths={shiftLengths}
+                onToggleDay={() => {}}
+                onAssignTemplate={() => {}}
+                compact
+                readOnly
+                vertical
+              />
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  Needed: <span className="font-bold text-gray-900">{Math.round(weeklyHours)}h</span> / week
+                </span>
+                <a
+                  href="/dashboard/workspace?tab=templates"
+                  className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                >
+                  Edit in Workspace →
+                </a>
+              </div>
+            </div>
           ) : null
         )}
       </div>
@@ -133,7 +142,7 @@ export default function RotaConfigPanel({
       {/* Date & Week Selection */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6 no-print">
         <SectionHeader title="Select Week" />
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-4">
           <div>
             <label className="block body-text font-semibold mb-2">

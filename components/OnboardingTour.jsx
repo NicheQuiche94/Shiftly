@@ -16,9 +16,9 @@ const TOUR_STEPS = [
     id: 'templates',
     title: 'Your Templates',
     content: "This is where your shift patterns live. Day templates define the shifts for each type of day, and the weekly schedule assigns them to Monday through Sunday.",
-    tip: "Shifts come first — they're the constant. Your staff are scheduled around them.",
+    tip: "Shifts come first - they're the constant. Your staff are scheduled around them.",
     position: 'left',
-    target: 'tour-templates-section',
+    target: 'tour-templates-tabs',
     page: '/dashboard/workspace?tab=templates',
   },
   {
@@ -32,15 +32,15 @@ const TOUR_STEPS = [
   {
     id: 'rota-builder',
     title: 'Generate a Rota',
-    content: "Pick your team and dates, then hit Generate. Your templates are synced automatically and all your rules are applied — a fair, balanced schedule in seconds.",
+    content: "Pick your team and dates, then hit Generate. Your templates are synced automatically and all your rules are applied. A fair, balanced schedule in seconds.",
     position: 'bottom',
-    target: 'tour-rota-actions',
+    target: 'tour-generate-btn',
     page: '/dashboard/generate',
   },
   {
     id: 'rota-edit',
     title: 'Edit & Approve',
-    content: "Click any shift to edit, reassign, or remove. When you're happy, approve it and your team gets notified instantly — no more WhatsApp groups or printed sheets.",
+    content: "Click any shift to edit, reassign, or remove. When you're happy, approve it and your team gets notified instantly. No more WhatsApp groups or printed sheets.",
     position: 'center',
     target: null,
     page: '/dashboard/generate',
@@ -81,7 +81,7 @@ const TOUR_STEPS = [
   {
     id: 'pwa',
     title: 'Install the App',
-    content: "Add Shiftly to your home screen for instant access — no app store needed. Share this tip with your team so they can check their shifts on the go.",
+    content: "Add Shiftly to your home screen for instant access - no app store needed. Share this tip with your team so they can check their shifts on the go.",
     position: 'center',
     target: null,
     page: null,
@@ -244,12 +244,19 @@ export default function OnboardingTour({ onComplete }) {
     }
 
     if (step.position === 'bottom') {
-      // Below the target
-      const top = targetRect.bottom + 16
-      const left = targetRect.left
+      // Below the target, or above if near bottom of viewport
+      const tooltipHeight = 350
+      const spaceBelow = window.innerHeight - targetRect.bottom
+      if (spaceBelow < tooltipHeight + 32) {
+        // Position above the target
+        return {
+          bottom: `${window.innerHeight - targetRect.top + 16}px`,
+          left: `${Math.max(16, targetRect.left)}px`,
+        }
+      }
       return {
-        top: `${top}px`,
-        left: `${Math.max(16, left)}px`,
+        top: `${targetRect.bottom + 16}px`,
+        left: `${Math.max(16, targetRect.left)}px`,
       }
     }
 
@@ -275,15 +282,16 @@ export default function OnboardingTour({ onComplete }) {
         style={targetRect ? { clipPath: getOverlayClipPath() } : {}}
       />
 
-      {/* Highlight ring around target */}
+      {/* Highlight border around target */}
       {targetRect && !navigating && (
         <div
-          className="fixed z-[101] rounded-2xl ring-[3px] ring-pink-400 ring-offset-4 ring-offset-transparent pointer-events-none transition-all duration-300"
+          className="fixed z-[101] rounded-xl pointer-events-none transition-all duration-300"
           style={{
-            top: targetRect.top - 6,
-            left: targetRect.left - 6,
-            width: targetRect.width + 12,
-            height: targetRect.height + 12,
+            top: targetRect.top - 8,
+            left: targetRect.left - 8,
+            width: targetRect.width + 16,
+            height: targetRect.height + 16,
+            border: '2px solid #FF1F7D',
           }}
         />
       )}

@@ -164,8 +164,8 @@ function GenerateRotaContent() {
     let data = null
 
     try {
-      // Step 1: Sync shifts from templates
-      setLoadingStep('Syncing shifts from templates...')
+      // Step 1: Pre-flight validation
+      setLoadingStep('Checking configuration...')
       let teamIds = []
       if (showAllTeams) {
         const teamsRes = await fetch('/api/teams')
@@ -173,10 +173,92 @@ function GenerateRotaContent() {
           const teams = await teamsRes.json()
           teamIds = teams.map(t => t.id)
         }
+        if (teamIds.length === 0) {
+          throw new Error('NO_TEAMS::No teams found. Create a team first.')
+        }
       } else {
         teamIds = [selectedTeamId]
       }
 
+      // Fetch team data + staff for each team to validate
+      const validationData = await Promise.all(
+        teamIds.map(async (id) => {
+          const [teamRes, staffRes] = await Promise.all([
+            fetch(`/api/teams/${id}/template`).then(r => r.ok ? r.json() : null),
+            fetch(`/api/staff?team_id=${id}`).then(r => r.ok ? r.json() : [])
+          ])
+          return { teamId: id, team: teamRes, staff: staffRes }
+        })
+      )
+
+      // Check templates configured
+      for (const { team } of validationData) {
+        const wt = team?.week_template
+        const dt = team?.day_templates
+        if (!wt || !dt || Object.keys(dt).length === 0) {
+          throw new Error('NO_TEMPLATES::No day templates configured. Set up your templates in the Workspace first.')
+        }
+        const hasActiveDay = Object.values(wt).some(d => d?.on)
+        if (!hasActiveDay) {
+          throw new Error('NO_SCHEDULE::No days are active in the weekly schedule. Turn on at least one day in the Workspace.')
+        }
+      }
+
+      // Check staff exist
+      const totalStaff = validationData.reduce((sum, v) => sum + (v.staff?.length || 0), 0)
+      if (totalStaff === 0) {
+        throw new Error('NO_STAFF::No staff members found. Add staff in the Workspace first.')
+      }
+
+      // Check total availability covers shift hours
+      for (const { team, staff } of validationData) {
+        const wt = team?.week_template || {}
+        const dt = team?.day_templates || {}
+        let weeklyShiftHours = 0
+        Object.entries(wt).forEach(([, cfg]) => {
+          if (!cfg?.on) return
+          const tmpl = dt[cfg.tmpl]
+          if (!tmpl?.shifts) return
+          tmpl.shifts.forEach(s => { weeklyShiftHours += s.length * (s.headcount || 1) })
+        })
+        const totalMaxHours = staff.reduce((s, m) => s + (m.max_hours || m.contracted_hours || 0), 0)
+        if (totalMaxHours > 0 && weeklyShiftHours > 0 && totalMaxHours < weeklyShiftHours * 0.8) {
+          throw new Error(`LOW_COVERAGE::Staff can provide ${Math.round(totalMaxHours)}h but shifts need ${Math.round(weeklyShiftHours)}h per week. Add more staff or reduce shifts.`)
+        }
+      }
+
+      // Check keyholder coverage for open/close shifts
+      const DAYS_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      for (const { team, staff } of validationData) {
+        const wt = team?.week_template || {}
+        const dt = team?.day_templates || {}
+        const missingDays = []
+        DAYS_ABBR.forEach((d, di) => {
+          if (!wt[d]?.on) return
+          const tmpl = dt[wt[d].tmpl]
+          if (!tmpl?.shifts) return
+          tmpl.shifts.forEach((shift, si) => {
+            const isOpen = shift.start <= (tmpl.openTime ?? 9)
+            const isClose = (shift.start + shift.length) >= (tmpl.closeTime ?? 17)
+            if (!isOpen && !isClose) return
+            // Check if any keyholder staff is available for this slot
+            const hasKeyholder = staff.some(m => {
+              if (!m.keyholder) return false
+              const grid = m.availability_grid || {}
+              const key = `${di}-${si}`
+              return grid[key] !== undefined ? grid[key] : true
+            })
+            if (!hasKeyholder) missingDays.push(d)
+          })
+        })
+        if (missingDays.length > 0) {
+          const uniqueDays = [...new Set(missingDays)]
+          throw new Error(`KEYHOLDER::Keyholder coverage missing for ${uniqueDays.join(', ')}. Assign a keyholder in Staff & Shifts who is available for those open/close shifts.`)
+        }
+      }
+
+      // Step 2: Sync shifts from templates
+      setLoadingStep('Syncing shifts from templates...')
       const syncResults = await Promise.all(
         teamIds.map(async (id) => {
           try {
@@ -190,17 +272,16 @@ function GenerateRotaContent() {
         })
       )
 
-      // Pre-flight: check sync produced shifts
       const syncError = syncResults.find(r => r?.error)
       if (syncError) {
-        throw new Error(syncError.error)
+        throw new Error('SYNC_FAILED::' + syncError.error)
       }
       const totalShifts = syncResults.reduce((sum, r) => sum + (r?.shifts_generated || 0), 0)
       if (totalShifts === 0) {
-        throw new Error('No shifts generated from templates. Configure your day templates and weekly schedule in the Workspace tab first.')
+        throw new Error('NO_SHIFTS::No shifts generated from templates. Configure your day templates and weekly schedule in the Workspace first.')
       }
 
-      // Step 2: Generate rota
+      // Step 3: Generate rota
       setLoadingStep('Generating rota...')
       const response = await fetch('/api/generate-rota', {
         method: 'POST',
@@ -216,7 +297,8 @@ function GenerateRotaContent() {
       data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || data.details || 'Failed to generate rota')
+        const errMsg = data.error || data.details || 'Failed to generate rota'
+        throw new Error('SCHEDULER::' + errMsg)
       }
 
       setRota(data)

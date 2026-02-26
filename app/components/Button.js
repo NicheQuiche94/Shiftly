@@ -1,14 +1,15 @@
-export default function Button({ 
-    children, 
-    variant = 'primary', 
-    size = 'md', 
+export default function Button({
+    children,
+    variant = 'primary',
+    size = 'md',
     disabled = false,
     loading = false,
     onClick,
     type = 'button',
     className = '',
     icon,
-    iconPosition = 'left'
+    iconPosition = 'left',
+    id,
   }) {
     const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
     
@@ -32,6 +33,7 @@ export default function Button({
     
     return (
       <button
+        id={id}
         type={type}
         onClick={onClick}
         disabled={disabled || loading}

@@ -30,15 +30,16 @@ export async function GET(request) {
     weekEnd.setDate(weekEnd.getDate() + 6)
     const weekEndStr = weekEnd.toISOString().split('T')[0]
 
-    // Get all staff for this team WITH optional payroll data
+    // Get all staff for this team WITH optional payroll data + fallback hourly_rate
     const { data: staff, error: staffError } = await supabase
       .from('Staff')
       .select(`
-        id, 
-        name, 
-        role, 
-        contracted_hours, 
+        id,
+        name,
+        role,
+        contracted_hours,
         max_hours,
+        hourly_rate,
         payroll_info (
           pay_type,
           hourly_rate,
@@ -76,16 +77,19 @@ export async function GET(request) {
       // Extract payroll data (might be array if multiple records)
       const payrollData = Array.isArray(s.payroll_info) ? s.payroll_info[0] : s.payroll_info
       
-      // Calculate effective hourly rate
+      // Calculate effective hourly rate (payroll_info first, then Staff.hourly_rate fallback)
       let hourlyRate = 0
       if (payrollData) {
         if (payrollData.pay_type === 'hourly' && payrollData.hourly_rate) {
           hourlyRate = parseFloat(payrollData.hourly_rate)
         } else if (payrollData.pay_type === 'salary' && payrollData.annual_salary) {
-          // Convert annual salary to hourly rate (52 weeks * contracted hours)
           const annualHours = (s.contracted_hours || 40) * 52
           hourlyRate = parseFloat(payrollData.annual_salary) / annualHours
         }
+      }
+      // Fallback to Staff.hourly_rate if payroll_info produced nothing
+      if (hourlyRate === 0 && s.hourly_rate) {
+        hourlyRate = parseFloat(s.hourly_rate)
       }
 
       staffHours[s.name] = {
@@ -156,7 +160,7 @@ export async function GET(request) {
       const regularHours = Math.min(s.scheduled_hours, s.contracted_hours)
       const overtimeHours = Math.max(0, s.scheduled_hours - s.contracted_hours)
       const regularCost = regularHours * s.hourly_rate
-      const overtimeCost = overtimeHours * s.hourly_rate // Same rate for now
+      const overtimeCost = overtimeHours * s.hourly_rate * 1.5
       const totalCost = regularCost + overtimeCost
 
       // Overtime status
