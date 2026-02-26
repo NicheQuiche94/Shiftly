@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import CoverageGauge from '@/app/components/template/CoverageGauge'
 import WeekOverview from '@/app/components/template/WeekOverview'
 import StaffAvailabilityGrid from '@/app/components/template/StaffAvailabilityGrid'
-import { PALETTE } from '@/app/components/template/shift-constants'
+import { PALETTE, DAYS } from '@/app/components/template/shift-constants'
 import InviteModal from './InviteModal'
 
 export default function StaffShiftsSection({ selectedTeamId, shiftLengths, triggerAddStaff, teamData }) {
@@ -78,7 +78,6 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
 
   // ── Coverage stats (template-based, matching onboarding) ──
   const weeklyShiftHours = useMemo(() => {
-    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     return DAYS.reduce((sum, d) => {
       if (!weekDays[d]?.on) return sum
       const tmpl = templates[weekDays[d].tmpl]
@@ -89,6 +88,61 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
 
   const totalContractedHours = useMemo(() => staff.reduce((s, m) => s + (m.contracted_hours || 0), 0), [staff])
   const totalMaxHours = useMemo(() => staff.reduce((s, m) => s + (m.max_hours || m.contracted_hours || 0), 0), [staff])
+
+  // ── Coverage warnings (slot-level + keyholder) ──
+  const coverageWarnings = useMemo(() => {
+    const warnings = []
+    if (!staff.length || !Object.keys(templates).length) return warnings
+
+    // Slot coverage: for each shift slot, check if at least 1 staff member is available
+    let uncoveredSlots = 0, totalSlots = 0
+    const missingKeyholderSlots = []
+
+    DAYS.forEach((d, di) => {
+      if (!weekDays[d]?.on) return
+      const tmpl = templates[weekDays[d].tmpl]
+      if (!tmpl?.shifts) return
+
+      tmpl.shifts.forEach((shift, si) => {
+        const needed = shift.headcount || 1
+        totalSlots += needed
+
+        // Count available staff for this slot
+        let availableCount = 0
+        let keyholderAvailable = false
+        staff.forEach(m => {
+          const prefs = Array.isArray(m.preferred_shift_length) ? m.preferred_shift_length : (m.preferred_shift_length != null ? [m.preferred_shift_length] : shiftLengths)
+          const matchesPref = prefs.some(p => Math.abs(p - Math.round(shift.length)) < 0.5)
+          if (!matchesPref) return
+          const grid = m.availability_grid || {}
+          const key = `${di}-${si}`
+          const isAvail = grid[key] !== undefined ? grid[key] : true
+          if (isAvail) {
+            availableCount++
+            if (m.keyholder) keyholderAvailable = true
+          }
+        })
+
+        if (availableCount < needed) uncoveredSlots += (needed - availableCount)
+
+        // Check keyholder for open/close shifts
+        const isOpen = shift.start <= (tmpl.openTime ?? 9)
+        const isClose = (shift.start + shift.length) >= (tmpl.closeTime ?? 17)
+        if ((isOpen || isClose) && !keyholderAvailable) {
+          missingKeyholderSlots.push({ day: d, type: isOpen && isClose ? 'open+close' : isOpen ? 'open' : 'close' })
+        }
+      })
+    })
+
+    if (uncoveredSlots > 0) {
+      warnings.push({ type: 'slots', msg: `${uncoveredSlots} shift slot${uncoveredSlots > 1 ? 's' : ''} lack available staff` })
+    }
+    if (missingKeyholderSlots.length > 0) {
+      const days = [...new Set(missingKeyholderSlots.map(s => s.day))].join(', ')
+      warnings.push({ type: 'keyholder', msg: `No keyholder available for ${days}` })
+    }
+    return warnings
+  }, [staff, templates, weekDays, shiftLengths])
 
   // ── Helpers ──
   const normalizePreferredLengths = useCallback((val) => {
@@ -141,12 +195,16 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
     const edit = localEdits[id]
     if (!edit) { setExpandedId(null); return }
     if (!edit.name?.trim()) { alert('Name is required'); return }
+    const contracted = parseInt(edit.contracted_hours) || 0
+    const max = parseInt(edit.max_hours) || contracted
+    if (max > 48) { alert('Max hours cannot exceed 48h per week'); return }
+    if (contracted > max) { alert('Contracted hours cannot exceed max hours'); return }
 
     const payload = {
       name: edit.name.trim(),
       email: edit.email.trim(),
-      contracted_hours: parseInt(edit.contracted_hours) || 0,
-      max_hours: parseInt(edit.max_hours) || parseInt(edit.contracted_hours) || 0,
+      contracted_hours: contracted,
+      max_hours: max,
       hourly_rate: parseFloat(edit.hourly_rate) || 0,
       keyholder: edit.keyholder,
       preferred_shift_length: edit.preferred_lengths || [shiftLengths[0]],
@@ -214,6 +272,24 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
     inviteStaffMut.mutate(member.id)
   }
 
+  const computeAvailability = useCallback((member) => {
+    const prefs = normalizePreferredLengths(member.preferred_shift_length)
+    let total = 0, available = 0
+    DAYS.forEach((d, di) => {
+      if (!weekDays[d]?.on) return
+      const tmpl = templates[weekDays[d].tmpl]
+      if (!tmpl?.shifts) return
+      tmpl.shifts.forEach((s, si) => {
+        if (!prefs.some(p => Math.abs(p - Math.round(s.length)) < 0.5)) return
+        total++
+        const key = `${di}-${si}`
+        const grid = member.availability_grid || {}
+        if (grid[key] !== undefined ? grid[key] : true) available++
+      })
+    })
+    return { total, available }
+  }, [weekDays, templates, normalizePreferredLengths])
+
   if (staffLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -274,6 +350,30 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
           </button>
         </div>
 
+        {/* Validation warnings */}
+        {(() => {
+          const warnings = []
+          const ch = parseInt(edit.contracted_hours) || 0
+          const mh = parseInt(edit.max_hours) || ch
+          const rate = parseFloat(edit.hourly_rate) || 0
+          const prefs = edit.preferred_lengths || []
+          if (ch > mh) warnings.push({ type: 'error', msg: 'Contracted hours exceed max hours' })
+          if (mh > 48) warnings.push({ type: 'error', msg: 'Max hours exceed 48h weekly limit' })
+          if (ch > 0 && prefs.length > 0 && !prefs.some(p => ch % p === 0)) warnings.push({ type: 'warn', msg: `Contracted hours (${ch}) not a multiple of preferred shift lengths (${prefs.join('/')}h)` })
+          if (rate > 0 && rate < 11.44) warnings.push({ type: 'warn', msg: `Hourly rate (£${rate.toFixed(2)}) is below minimum wage (£11.44/hr)` })
+          if (warnings.length === 0) return null
+          return (
+            <div className="space-y-1 mb-2">
+              {warnings.map((w, i) => (
+                <div key={i} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium ${w.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                  {w.msg}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+
         {/* Shift length preferences (multi-select) */}
         {shiftLengths.length > 0 && (
           <div className="flex items-center gap-1.5 mb-2">
@@ -318,13 +418,15 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
                     {inviteStaffMut.isPending ? 'Sending...' : 'Invite to Shiftly'}
                   </button>
                 ) : null}
-                <button onClick={() => handleDelete(member.id)} disabled={deleteStaffMut.isPending} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50" title="Delete">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
               </>
             )}
           </div>
           <div className="flex items-center gap-2">
+            {!isNew && member && (
+              <button onClick={() => handleDelete(member.id)} disabled={deleteStaffMut.isPending} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 mr-1" title="Delete staff member">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            )}
             <button onClick={() => cancelEdit(id)} className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
               Cancel
             </button>
@@ -352,17 +454,16 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
         </p>
       </div>
 
-      {/* Coverage gauge */}
-      <CoverageGauge
-        shiftHours={weeklyShiftHours}
-        contractedHours={totalContractedHours}
-        maxHours={totalMaxHours}
-      />
-
-      {/* Split layout: week overview left + staff cards right */}
+      {/* Split layout: sidebar left + staff cards right */}
       <div className="flex gap-6 mt-5">
-        {/* LEFT: Vertical week overview */}
-        <div className="w-64 flex-shrink-0 self-start sticky top-5">
+        {/* LEFT: Coverage gauge + week overview */}
+        <div className="w-64 flex-shrink-0 self-start sticky top-5 space-y-4">
+          <CoverageGauge
+            shiftHours={weeklyShiftHours}
+            contractedHours={totalContractedHours}
+            maxHours={totalMaxHours}
+            warnings={coverageWarnings}
+          />
           <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
             <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-3">Template Week</h3>
             <WeekOverview
@@ -410,7 +511,8 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
                   onClick={() => expandCard(member)}
                   className="p-4 rounded-xl border border-gray-200 bg-white hover:border-pink-200 transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-2 flex-wrap">
+                  {/* Row 1: Avatar, name/email, hours */}
+                  <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center text-pink-600 font-bold text-sm flex-shrink-0">
                       {(member.name || '?')[0].toUpperCase()}
                     </div>
@@ -435,12 +537,17 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
                         </span>
                       )}
                     </div>
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-pink-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                  {/* Row 2: Badges — keyholder, status, shift prefs, availability */}
+                  <div className="flex items-center gap-1.5 mt-2 ml-11 flex-wrap">
                     {member.keyholder && (
                       <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: '#FEF3C7', border: '1px solid #FDE68A', color: '#D97706' }}>
                         🔑
                       </span>
                     )}
-                    {/* Connection status */}
                     {member.clerk_user_id ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">✓ Connected</span>
                     ) : member.email ? (
@@ -448,7 +555,6 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
                     ) : (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-600">No email</span>
                     )}
-                    {/* Shift prefs (compact read-only) */}
                     <div className="flex items-center gap-0.5">
                       {shiftLengths.map((len, li) => {
                         const prefs = normalizePreferredLengths(member.preferred_shift_length)
@@ -469,10 +575,16 @@ export default function StaffShiftsSection({ selectedTeamId, shiftLengths, trigg
                         )
                       })}
                     </div>
-                    {/* Expand arrow */}
-                    <svg className="w-4 h-4 text-gray-300 group-hover:text-pink-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    {(() => {
+                      const { total, available } = computeAvailability(member)
+                      if (total === 0) return null
+                      const full = available === total
+                      return (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${full ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {available}/{total} slots
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
               )

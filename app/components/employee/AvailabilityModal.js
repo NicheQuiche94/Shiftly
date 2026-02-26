@@ -1,89 +1,48 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import StaffAvailabilityGrid from '@/app/components/template/StaffAvailabilityGrid'
 
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-// Generate time options in 15-min increments
-const TIME_OPTIONS = []
-for (let h = 0; h < 24; h++) {
-  for (let m = 0; m < 60; m += 15) {
-    const hh = String(h).padStart(2, '0')
-    const mm = String(m).padStart(2, '0')
-    TIME_OPTIONS.push(`${hh}:${mm}`)
-  }
-}
-
-function parseAvailability(raw) {
-  try {
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-    const converted = {}
-    DAYS_OF_WEEK.forEach(day => {
-      const d = parsed?.[day]
-      if (!d) {
-        converted[day] = { available: true, start: null, end: null }
-      } else if ('available' in d) {
-        converted[day] = { available: d.available, start: d.start || null, end: d.end || null }
-      } else if ('AM' in d || 'PM' in d) {
-        // Legacy AM/PM format
-        if (d.AM && d.PM) {
-          converted[day] = { available: true, start: null, end: null }
-        } else if (d.AM && !d.PM) {
-          converted[day] = { available: true, start: '06:00', end: '13:00' }
-        } else if (!d.AM && d.PM) {
-          converted[day] = { available: true, start: '13:00', end: '23:00' }
-        } else {
-          converted[day] = { available: false, start: null, end: null }
-        }
-      } else if (typeof d === 'boolean') {
-        converted[day] = { available: d, start: null, end: null }
-      } else {
-        converted[day] = { available: true, start: null, end: null }
-      }
-    })
-    return converted
-  } catch {
-    const defaults = {}
-    DAYS_OF_WEEK.forEach(day => { defaults[day] = { available: true, start: null, end: null } })
-    return defaults
-  }
-}
-
-export default function AvailabilityModal({ availability, onSave, onClose, isPending }) {
-  const [form, setForm] = useState(() => parseAvailability(availability))
+export default function AvailabilityModal({ teamId, availabilityGrid, preferredShiftLengths, onSave, onClose, isPending }) {
+  const [grid, setGrid] = useState(() => availabilityGrid || {})
+  const [templateData, setTemplateData] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setForm(parseAvailability(availability))
-  }, [availability])
+    setGrid(availabilityGrid || {})
+  }, [availabilityGrid])
 
-  const toggleDayAvailable = (day) => {
-    setForm(prev => ({
-      ...prev,
-      [day]: { available: !prev[day].available, start: null, end: null }
-    }))
+  // Fetch team template data to know shift slots
+  useEffect(() => {
+    if (!teamId) { setLoading(false); return }
+    fetch(`/api/teams/${teamId}/template`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        setTemplateData(data)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [teamId])
+
+  const weekDays = {}
+  const templates = {}
+  const shiftLengths = []
+
+  if (templateData) {
+    const wt = templateData.week_template || {}
+    const dt = templateData.day_templates || {}
+    const sl = templateData.shift_lengths || [4, 6, 8, 10, 12]
+
+    Object.keys(wt).forEach(d => { weekDays[d] = wt[d] })
+    Object.keys(dt).forEach(name => { templates[name] = dt[name] })
+    sl.forEach(l => shiftLengths.push(l))
   }
 
-  const toggleCustomTimes = (day) => {
-    setForm(prev => {
-      const current = prev[day]
-      if (current.start || current.end) {
-        return { ...prev, [day]: { available: true, start: null, end: null } }
-      } else {
-        return { ...prev, [day]: { available: true, start: '09:00', end: '17:00' } }
-      }
-    })
-  }
-
-  const updateTime = (day, field, value) => {
-    setForm(prev => ({
-      ...prev,
-      [day]: { ...prev[day], [field]: value }
-    }))
-  }
+  const hasTemplates = Object.keys(weekDays).length > 0 && Object.keys(templates).length > 0
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-xl font-bold text-gray-900 font-cal">My Availability</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -94,96 +53,30 @@ export default function AvailabilityModal({ availability, onSave, onClose, isPen
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          Toggle each day on or off. For days you're available, you can optionally set specific hours (e.g. school run, evening classes).
+          Toggle each shift slot to show when you can work. Green means available, grey means unavailable.
         </p>
 
-        <div className="space-y-2 mb-6">
-          {DAYS_OF_WEEK.map((day) => {
-            const dayAvail = form[day] || { available: true, start: null, end: null }
-            const hasCustomTimes = dayAvail.start || dayAvail.end
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-gray-200 border-t-pink-500 rounded-full animate-spin" />
+          </div>
+        ) : hasTemplates ? (
+          <StaffAvailabilityGrid
+            weekDays={weekDays}
+            templates={templates}
+            shiftLengths={shiftLengths}
+            preferredLengths={preferredShiftLengths || []}
+            availabilityGrid={grid}
+            onChange={setGrid}
+          />
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-sm text-gray-500">No shift templates have been set up for your team yet.</p>
+            <p className="text-xs text-gray-400 mt-1">Ask your manager to configure templates in the Workspace.</p>
+          </div>
+        )}
 
-            return (
-              <div
-                key={day}
-                className={`rounded-xl border transition-all ${
-                  !dayAvail.available
-                    ? 'bg-gray-50 border-gray-200'
-                    : hasCustomTimes
-                    ? 'bg-amber-50 border-amber-200'
-                    : 'bg-green-50 border-green-200'
-                }`}
-              >
-                {/* Main row */}
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleDayAvailable(day)}
-                      className={`relative w-10 h-6 rounded-full transition-colors ${
-                        dayAvail.available ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        dayAvail.available ? 'left-[18px]' : 'left-0.5'
-                      }`} />
-                    </button>
-                    <span className={`font-medium ${dayAvail.available ? 'text-gray-900' : 'text-gray-400'}`}>
-                      {day}
-                    </span>
-                  </div>
-
-                  {dayAvail.available ? (
-                    <div className="flex items-center gap-2">
-                      {hasCustomTimes ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleCustomTimes(day)}
-                          className="text-xs font-medium text-amber-600 hover:text-amber-700"
-                        >
-                          {dayAvail.start} - {dayAvail.end}
-                          <span className="ml-1 text-gray-400">&times;</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => toggleCustomTimes(day)}
-                          className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors px-2 py-1 rounded-lg hover:bg-pink-50"
-                        >
-                          Set hours
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">Unavailable</span>
-                  )}
-                </div>
-
-                {/* Time pickers row (only when custom times active) */}
-                {dayAvail.available && hasCustomTimes && (
-                  <div className="flex items-center gap-2 px-4 pb-3">
-                    <select
-                      value={dayAvail.start || '09:00'}
-                      onChange={(e) => updateTime(day, 'start', e.target.value)}
-                      className="flex-1 text-sm border border-amber-300 rounded-lg px-2 py-2 bg-white text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    >
-                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <span className="text-sm text-gray-400">to</span>
-                    <select
-                      value={dayAvail.end || '17:00'}
-                      onChange={(e) => updateTime(day, 'end', e.target.value)}
-                      className="flex-1 text-sm border border-amber-300 rounded-lg px-2 py-2 bg-white text-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    >
-                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-6">
           <button
             type="button"
             onClick={onClose}
@@ -193,8 +86,8 @@ export default function AvailabilityModal({ availability, onSave, onClose, isPen
           </button>
           <button
             type="button"
-            onClick={() => onSave(JSON.stringify(form))}
-            disabled={isPending}
+            onClick={() => onSave(grid)}
+            disabled={isPending || !hasTemplates}
             className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-pink-500/25 transition-all"
           >
             {isPending ? 'Saving...' : 'Save Changes'}

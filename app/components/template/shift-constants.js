@@ -40,13 +40,18 @@ export const FULL_DAYS = {
   Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday'
 }
 
-// Format decimal hours to display time (e.g. 14.5 → "2:30 PM")
+// Format decimal hours to display time (e.g. 14.5 → "2:30 PM", 24.75 → "12:45 AM +1")
 export function formatTime(h) {
-  const hr = Math.floor(h)
-  const min = Math.round((h - hr) * 60)
+  const nextDay = h >= 24
+  const norm = ((h % 24) + 24) % 24
+  const hr = Math.floor(norm)
+  const min = Math.round((norm - hr) * 60)
   const ampm = hr < 12 ? 'AM' : 'PM'
   const display = hr % 12 || 12
-  return min > 0 ? `${display}:${String(min).padStart(2, '0')} ${ampm}` : `${display} ${ampm}`
+  const suffix = nextDay ? ' +1' : ''
+  return min > 0
+    ? `${display}:${String(min).padStart(2, '0')} ${ampm}${suffix}`
+    : `${display} ${ampm}${suffix}`
 }
 
 // Format decimal hours to 24h string (e.g. 14.5 → "14:30")

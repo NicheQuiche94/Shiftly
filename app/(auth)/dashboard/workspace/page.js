@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import TeamSelector from '@/app/components/TeamSelector'
 import StaffShiftsSection from '@/app/components/workspace/StaffShiftsSection'
@@ -11,9 +12,18 @@ import PageHeader from '@/app/components/PageHeader'
 import { getColorForLength } from '@/app/components/template/shift-constants'
 
 export default function WorkspacePage() {
+  const searchParams = useSearchParams()
   const [selectedTeamId, setSelectedTeamId] = useState(null)
   const [activeTab, setActiveTab] = useState('staff-shifts')
   const [triggerStaffModal, setTriggerStaffModal] = useState(false)
+
+  // Support ?tab= URL param for tour navigation
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['staff-shifts', 'templates', 'rules', 'settings'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   const { data: teamData } = useQuery({
     queryKey: ['team-detail', selectedTeamId],
@@ -130,19 +140,23 @@ export default function WorkspacePage() {
             {/* Main content */}
             <div className="flex-1 min-w-0">
               {activeTab === 'staff-shifts' && (
-                <StaffShiftsSection
-                  selectedTeamId={selectedTeamId}
-                  shiftLengths={shiftLengths}
-                  triggerAddStaff={triggerStaffModal}
-                  teamData={teamData}
-                />
+                <div id="tour-staff-section">
+                  <StaffShiftsSection
+                    selectedTeamId={selectedTeamId}
+                    shiftLengths={shiftLengths}
+                    triggerAddStaff={triggerStaffModal}
+                    teamData={teamData}
+                  />
+                </div>
               )}
               {activeTab === 'templates' && (
-                <TemplatesSection
-                  selectedTeamId={selectedTeamId}
-                  shiftLengths={shiftLengths}
-                  teamData={teamData}
-                />
+                <div id="tour-templates-section">
+                  <TemplatesSection
+                    selectedTeamId={selectedTeamId}
+                    shiftLengths={shiftLengths}
+                    teamData={teamData}
+                  />
+                </div>
               )}
               {activeTab === 'rules' && (
                 <RulesSection selectedTeamId={selectedTeamId} />

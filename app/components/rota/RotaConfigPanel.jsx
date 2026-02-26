@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import TeamSelector from '@/app/components/TeamSelector'
 import SectionHeader from '@/app/components/SectionHeader'
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function RotaConfigPanel({
   selectedTeamId,
@@ -13,6 +16,50 @@ export default function RotaConfigPanel({
   weekCount,
   setWeekCount
 }) {
+  const [weekTemplate, setWeekTemplate] = useState(null)
+  const [templateError, setTemplateError] = useState(false)
+
+  useEffect(() => {
+    if (!selectedTeamId || showAllTeams) {
+      setWeekTemplate(null)
+      setTemplateError(false)
+      return
+    }
+    fetch(`/api/teams/${selectedTeamId}/template`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.week_template) {
+          setWeekTemplate(data.week_template)
+          setTemplateError(false)
+        } else {
+          setWeekTemplate(null)
+          setTemplateError(true)
+        }
+      })
+      .catch(() => { setWeekTemplate(null); setTemplateError(true) })
+  }, [selectedTeamId, showAllTeams])
+
+  const getTemplateSummary = () => {
+    if (!weekTemplate) return null
+    // Group consecutive days with the same template
+    const groups = []
+    let current = null
+    DAYS.forEach(d => {
+      const cfg = weekTemplate[d]
+      const label = cfg?.on ? cfg.tmpl : 'Off'
+      if (current && current.label === label) {
+        current.end = d
+      } else {
+        current = { start: d, end: d, label }
+        groups.push(current)
+      }
+    })
+    return groups.map(g => {
+      const range = g.start === g.end ? g.start : `${g.start}–${g.end}`
+      return `${range}: ${g.label}`
+    }).join(' · ')
+  }
+
   const filterMondays = (date) => {
     return date.getDay() === 1
   }
@@ -70,6 +117,17 @@ export default function RotaConfigPanel({
             All Teams
           </button>
         </div>
+
+        {selectedTeamId && !showAllTeams && (
+          templateError ? (
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+              <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <span className="text-xs text-amber-700 font-medium">No templates configured — set up templates in Workspace first</span>
+            </div>
+          ) : weekTemplate ? (
+            <p className="mt-2 text-xs text-gray-500">{getTemplateSummary()}</p>
+          ) : null
+        )}
       </div>
 
       {/* Date & Week Selection */}

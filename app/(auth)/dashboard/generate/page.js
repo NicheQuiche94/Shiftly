@@ -48,6 +48,8 @@ function GenerateRotaContent() {
   const [addShiftDay, setAddShiftDay] = useState(null)
   const [addShiftWeek, setAddShiftWeek] = useState(null)
   
+  const [loadingStep, setLoadingStep] = useState('')
+
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
     const dayOfWeek = today.getDay()
@@ -151,17 +153,55 @@ function GenerateRotaContent() {
       alert('Please select a team first')
       return
     }
-    
+
     setLoading(true)
     setError(null)
     setRota(null)
     setTimeSaved(null)
     setHasUnsavedChanges(false)
     setViewingRotaId(null)
-  
+
     let data = null
-  
+
     try {
+      // Step 1: Sync shifts from templates
+      setLoadingStep('Syncing shifts from templates...')
+      let teamIds = []
+      if (showAllTeams) {
+        const teamsRes = await fetch('/api/teams')
+        if (teamsRes.ok) {
+          const teams = await teamsRes.json()
+          teamIds = teams.map(t => t.id)
+        }
+      } else {
+        teamIds = [selectedTeamId]
+      }
+
+      const syncResults = await Promise.all(
+        teamIds.map(async (id) => {
+          try {
+            const r = await fetch(`/api/teams/${id}/template/sync-shifts`, { method: 'POST' })
+            const body = await r.json()
+            if (!r.ok) return { error: body.error || `Sync failed (${r.status})` }
+            return body
+          } catch {
+            return { error: 'Failed to sync shifts' }
+          }
+        })
+      )
+
+      // Pre-flight: check sync produced shifts
+      const syncError = syncResults.find(r => r?.error)
+      if (syncError) {
+        throw new Error(syncError.error)
+      }
+      const totalShifts = syncResults.reduce((sum, r) => sum + (r?.shifts_generated || 0), 0)
+      if (totalShifts === 0) {
+        throw new Error('No shifts generated from templates. Configure your day templates and weekly schedule in the Workspace tab first.')
+      }
+
+      // Step 2: Generate rota
+      setLoadingStep('Generating rota...')
       const response = await fetch('/api/generate-rota', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -172,13 +212,13 @@ function GenerateRotaContent() {
           showAllTeams: showAllTeams
         })
       })
-  
+
       data = await response.json()
-  
+
       if (!response.ok) {
         throw new Error(data.error || data.details || 'Failed to generate rota')
       }
-  
+
       setRota(data)
     } catch (err) {
       setError(err.message)
@@ -187,6 +227,7 @@ function GenerateRotaContent() {
       }
     } finally {
       setLoading(false)
+      setLoadingStep('')
     }
   }
 
@@ -600,6 +641,7 @@ function GenerateRotaContent() {
           timeSaved={timeSaved}
           hasUnsavedChanges={hasUnsavedChanges}
           loading={loading}
+          loadingStep={loadingStep}
           showAllTeams={showAllTeams}
           error={error}
           rota={rota}
@@ -645,7 +687,7 @@ function GenerateRotaContent() {
 
         {rota && rota.schedule && rota.schedule.length > 0 && (
           <>
-            <div id="printable-rota" className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+            <div id="printable-rota" className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="hidden print:block p-6 border-b border-gray-200">
                 <h1 className="heading-page mb-2">Staff Rota</h1>
                 <p className="body-text">{formatDate(startDate)} - {formatDate(new Date(startDate.getTime() + (weekCount * 7 - 1) * 24 * 60 * 60 * 1000))}</p>
@@ -655,24 +697,24 @@ function GenerateRotaContent() {
                 <RulesComplianceSection rules={rota.rule_compliance} />
               )}
 
-              <div className="border-b border-gray-200/60 bg-gray-50/50 no-print">
-                <div className="flex">
+              <div className="px-4 sm:px-6 pt-4 pb-2 bg-gray-50/50 no-print">
+                <div className="flex gap-2">
                   <button
                     onClick={() => setActiveTab('schedule')}
-                    className={`px-4 sm:px-6 py-3 body-text font-medium transition-colors ${
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       activeTab === 'schedule'
-                        ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                     }`}
                   >
                     Schedule
                   </button>
                   <button
                     onClick={() => setActiveTab('hours')}
-                    className={`px-4 sm:px-6 py-3 body-text font-medium transition-colors ${
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       activeTab === 'hours'
-                        ? 'text-pink-600 border-b-2 border-pink-600 bg-white'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                     }`}
                   >
                     Hours

@@ -54,7 +54,7 @@ function getAvailabilityDisplay(availabilityString) {
 
 export default function StaffTable({ staff, isLoading, onEdit, onDelete, onInvite, isDeleting, isInviting }) {
   return (
-    <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* Desktop header */}
       <div className="hidden md:block">
         <table className="w-full border-collapse">

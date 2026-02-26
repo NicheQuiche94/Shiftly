@@ -10,8 +10,8 @@ const FULL_DAYS = {
 }
 
 function decimalToTime(dec) {
-  const h = Math.floor(dec)
-  const m = Math.round((dec - h) * 60)
+  const h = Math.floor(((dec % 24) + 24) % 24)
+  const m = Math.round((dec - Math.floor(dec)) * 60)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 

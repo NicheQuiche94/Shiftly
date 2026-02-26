@@ -233,7 +233,7 @@ export default function TimelineBuilder({
   return (
     <div>
       <div className="flex gap-7">
-        <div className="flex-shrink-0 overflow-x-auto">
+        <div className="flex-shrink-0 overflow-x-auto py-2">
           <div className="relative" style={{ marginLeft: 56 }}>
             {Array.from({ length: Math.ceil(totalHours) + 1 }, (_, i) => {
               const hr = staffWindowStart + i

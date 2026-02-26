@@ -27,16 +27,20 @@ export async function PUT(request) {
     }
 
     const body = await request.json()
-    const { availability } = body
+    const { availability, availability_grid } = body
 
-    if (!availability) {
+    if (!availability && !availability_grid) {
       return NextResponse.json({ error: 'Availability data is required' }, { status: 400 })
     }
 
-    // Update the staff record
+    // Update the staff record — prefer availability_grid (shift-based matrix)
+    const updateData = {}
+    if (availability_grid) updateData.availability_grid = availability_grid
+    if (availability) updateData.availability = availability
+
     const { data, error } = await supabase
       .from('Staff')
-      .update({ availability })
+      .update(updateData)
       .eq('id', staffMember.id)
       .select()
       .single()

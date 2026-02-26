@@ -13,36 +13,34 @@ const TOUR_STEPS = [
     page: null,
   },
   {
-    id: 'workspace',
-    title: 'Your Workspace',
-    content: "Here are the shifts and staff you set up during onboarding. If you ever need to add recurring shift patterns, adjust your team, or change scheduling rules, this is where you do it.",
+    id: 'templates',
+    title: 'Your Templates',
+    content: "This is where your shift patterns live. Day templates define the shifts for each type of day, and the weekly schedule assigns them to Monday through Sunday.",
     tip: "Shifts come first — they're the constant. Your staff are scheduled around them.",
-    position: 'right',
-    target: 'nav-workspace',
-    page: '/dashboard/workspace',
+    position: 'left',
+    target: 'tour-templates-section',
+    page: '/dashboard/workspace?tab=templates',
+  },
+  {
+    id: 'staff',
+    title: 'Your Team',
+    content: "Your staff, their contracted hours, and their availability. The coverage gauge shows at a glance if you have enough people to fill all your shifts.",
+    position: 'left',
+    target: 'tour-staff-section',
+    page: '/dashboard/workspace?tab=staff-shifts',
   },
   {
     id: 'rota-builder',
-    title: 'Rota Builder',
-    content: "This is where you generate your rota. Pick your team, choose your dates, and get a fair, balanced schedule in seconds. All your rules are applied automatically.",
-    position: 'right',
-    target: 'nav-generate',
+    title: 'Generate a Rota',
+    content: "Pick your team and dates, then hit Generate. Your templates are synced automatically and all your rules are applied — a fair, balanced schedule in seconds.",
+    position: 'bottom',
+    target: 'tour-rota-actions',
     page: '/dashboard/generate',
   },
   {
     id: 'rota-edit',
-    title: 'Edit Shifts Manually',
-    content: "Need to make changes? Click any empty cell to add a one-off shift, or click an existing shift to edit, reassign, or remove it. You have full control after generation.",
-    tip: "One-off shifts are added here in the rota. Recurring patterns live in your Workspace.",
-    position: 'center',
-    target: null,
-    page: '/dashboard/generate',
-  },
-  {
-    id: 'rota-approve',
-    title: 'Save & Approve',
-    content: "When you're happy with your rota, save it as a draft or approve it to make it final. Approved rotas are pushed straight to your employees so they can see their shifts instantly.",
-    tip: "No more WhatsApp groups or printed sheets. Employees get notified as soon as you approve.",
+    title: 'Edit & Approve',
+    content: "Click any shift to edit, reassign, or remove. When you're happy, approve it and your team gets notified instantly — no more WhatsApp groups or printed sheets.",
     position: 'center',
     target: null,
     page: '/dashboard/generate',
@@ -58,7 +56,7 @@ const TOUR_STEPS = [
   {
     id: 'reports',
     title: 'Reports',
-    content: "Track hours worked, weekly costs, and compliance across your team. See at a glance if contracted hours are being met and where you might be over or under-staffed.",
+    content: "Track hours worked, weekly costs, and compliance across your team. See at a glance if contracted hours are being met.",
     position: 'right',
     target: 'nav-reports',
     page: '/dashboard/reports',
@@ -67,7 +65,7 @@ const TOUR_STEPS = [
     id: 'payroll',
     title: 'Payroll',
     content: "Export payroll-ready data for your team. Pay information is password-protected to keep sensitive salary data secure.",
-    tip: "To use payroll and cost reports, you'll need to add pay rates for each staff member in the Payroll section.",
+    tip: "Add pay rates for each staff member to use payroll and cost reports.",
     position: 'right',
     target: 'nav-payroll',
     page: null,
@@ -106,7 +104,7 @@ export default function OnboardingTour({ onComplete }) {
     const hasSeenTour = localStorage.getItem('shiftly_tour_complete')
     const shouldStartTour = searchParams.get('tour') === 'start'
     const isNewSubscription = searchParams.get('subscription') === 'success'
-    
+
     if (!hasSeenTour || isNewSubscription || shouldStartTour) {
       if (isNewSubscription || shouldStartTour) {
         localStorage.removeItem('shiftly_tour_complete')
@@ -143,7 +141,8 @@ export default function OnboardingTour({ onComplete }) {
 
   useEffect(() => {
     if (!isVisible) return
-    const timer = setTimeout(updateTargetRect, 300)
+    // Longer delay for page navigations to allow content to render
+    const timer = setTimeout(updateTargetRect, 500)
     return () => clearTimeout(timer)
   }, [currentStep, pathname, isVisible, updateTargetRect])
 
@@ -155,9 +154,16 @@ export default function OnboardingTour({ onComplete }) {
 
   const navigateToStep = useCallback(async (stepIndex) => {
     const step = TOUR_STEPS[stepIndex]
-    if (step.page && pathname !== step.page) {
-      setNavigating(true)
-      router.push(step.page)
+    if (step.page) {
+      const stepUrl = new URL(step.page, window.location.origin)
+      const stepPath = stepUrl.pathname
+      if (pathname !== stepPath) {
+        setNavigating(true)
+        router.push(step.page)
+      } else if (stepUrl.search) {
+        // Same path but different query params (e.g. ?tab=)
+        router.push(step.page)
+      }
     }
     setCurrentStep(stepIndex)
   }, [pathname, router])
@@ -207,7 +213,7 @@ export default function OnboardingTour({ onComplete }) {
   const isLastStep = currentStep === TOUR_STEPS.length - 1
   const isFirstStep = currentStep === 0
 
-  // Calculate tooltip position
+  // Calculate tooltip position based on step.position and target location
   const getTooltipStyle = () => {
     if (isCenter || !targetRect) {
       return {
@@ -217,50 +223,59 @@ export default function OnboardingTour({ onComplete }) {
       }
     }
 
-    const top = targetRect.top + targetRect.height / 2
-    const left = targetRect.right + 24
-
-    return {
-      top: `${Math.max(200, Math.min(top, window.innerHeight - 200))}px`,
-      left: `${left}px`,
-      transform: 'translateY(-50%)',
+    if (step.position === 'right') {
+      // To the right of the target (for sidebar nav items)
+      const top = targetRect.top + targetRect.height / 2
+      const left = targetRect.right + 24
+      return {
+        top: `${Math.max(200, Math.min(top, window.innerHeight - 200))}px`,
+        left: `${left}px`,
+        transform: 'translateY(-50%)',
+      }
     }
+
+    if (step.position === 'left') {
+      // To the left of the target, overlapping sidebar (for main content sections)
+      const top = Math.max(100, targetRect.top)
+      return {
+        top: `${top}px`,
+        left: '60px',
+      }
+    }
+
+    if (step.position === 'bottom') {
+      // Below the target
+      const top = targetRect.bottom + 16
+      const left = targetRect.left
+      return {
+        top: `${top}px`,
+        left: `${Math.max(16, left)}px`,
+      }
+    }
+
+    return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
   }
 
-  // Get the sidebar width to create a cutout (desktop only)
-  const sidebarWidth = 208 // w-52 = 13rem = 208px
+  // Build clip-path for overlay with cutout around target
+  const getOverlayClipPath = () => {
+    if (!targetRect) return undefined
+    const pad = 8
+    const l = Math.max(0, targetRect.left - pad)
+    const t = Math.max(0, targetRect.top - pad)
+    const r = targetRect.right + pad
+    const b = targetRect.bottom + pad
+    return `polygon(0% 0%, 0% 100%, ${l}px 100%, ${l}px ${t}px, ${r}px ${t}px, ${r}px ${b}px, ${l}px ${b}px, ${l}px 100%, 100% 100%, 100% 0%)`
+  }
 
   return (
     <>
-      {/* Backdrop - covers main content area only, NOT the sidebar */}
-      {/* Left overlay: only covers sidebar when we DON'T have a nav target */}
-      {!targetRect && (
-        <div 
-          className="fixed top-0 left-0 bottom-0 bg-black/40 z-[100] transition-opacity duration-300"
-          style={{ width: `${sidebarWidth}px` }}
-        />
-      )}
-      {/* Sidebar overlay with cutout when we DO have a nav target */}
-      {targetRect && (
-        <>
-          {/* Above target */}
-          <div 
-            className="hidden lg:block fixed top-0 left-0 bg-black/40 z-[100]"
-            style={{ width: `${sidebarWidth}px`, height: `${targetRect.top - 6}px` }}
-          />
-          {/* Below target */}
-          <div 
-            className="hidden lg:block fixed bottom-0 left-0 bg-black/40 z-[100]"
-            style={{ width: `${sidebarWidth}px`, top: `${targetRect.bottom + 6}px` }}
-          />
-        </>
-      )}
-      {/* Main content overlay - always full opacity, no blur */}
-      <div 
-        className="fixed top-0 right-0 bottom-0 bg-black/40 z-[100] transition-opacity duration-300 lg:left-[208px] left-0"
+      {/* Backdrop overlay with cutout for target */}
+      <div
+        className="fixed inset-0 bg-black/40 z-[100] transition-all duration-300"
+        style={targetRect ? { clipPath: getOverlayClipPath() } : {}}
       />
 
-      {/* Highlight target element */}
+      {/* Highlight ring around target */}
       {targetRect && !navigating && (
         <div
           className="fixed z-[101] rounded-2xl ring-[3px] ring-pink-400 ring-offset-4 ring-offset-transparent pointer-events-none transition-all duration-300"
@@ -330,7 +345,7 @@ export default function OnboardingTour({ onComplete }) {
                     <div className="text-sm text-gray-600 bg-gray-50 rounded-2xl p-4">
                       <p className="font-semibold text-gray-700 mb-2">To install:</p>
                       <p className="mb-1"><strong>iPhone/iPad:</strong> Tap Share then Add to Home Screen</p>
-                      <p><strong>Android/Desktop:</strong> Look for the install icon in your browser's address bar</p>
+                      <p><strong>Android/Desktop:</strong> Look for the install icon in your browser&apos;s address bar</p>
                     </div>
                   )}
                 </div>
@@ -373,8 +388,8 @@ export default function OnboardingTour({ onComplete }) {
             </div>
           </div>
 
-          {/* Arrow pointer for side-positioned tooltips */}
-          {!isCenter && targetRect && (
+          {/* Arrow pointer for right-positioned tooltips */}
+          {step.position === 'right' && targetRect && (
             <div
               className="absolute w-4 h-4 bg-white transform rotate-45 -left-2 border-l border-b border-gray-100"
               style={{ top: '50%', marginTop: '-8px' }}

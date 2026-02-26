@@ -259,7 +259,7 @@ export default function StaffPage() {
         </div>
 
         {/* Staff Table */}
-        <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-200/60">

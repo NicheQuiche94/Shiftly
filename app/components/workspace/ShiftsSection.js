@@ -572,7 +572,7 @@ export default function ShiftsSection({ selectedTeamId }) {
       </div>
 
       {/* Shifts List */}
-      <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {/* Desktop Table - Hidden on mobile */}
         <div className="hidden md:block">
           <table className="w-full border-collapse">

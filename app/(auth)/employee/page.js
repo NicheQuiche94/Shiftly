@@ -126,8 +126,8 @@ export default function EmployeeDashboard() {
   }
 
   const updateAvailability = useMutation({
-    mutationFn: async (availability) => {
-      const res = await fetch('/api/employee/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ availability }) })
+    mutationFn: async (availabilityGrid) => {
+      const res = await fetch('/api/employee/availability', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ availability_grid: availabilityGrid }) })
       if (!res.ok) throw new Error(); return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['employee-profile'] }); setShowAvailabilityModal(false) }
@@ -535,7 +535,9 @@ export default function EmployeeDashboard() {
 
       {showAvailabilityModal && (
         <AvailabilityModal
-          availability={profile?.availability}
+          teamId={profile?.team_id}
+          availabilityGrid={profile?.availability_grid}
+          preferredShiftLengths={profile?.preferred_shift_length}
           onSave={(data) => updateAvailability.mutate(data)}
           onClose={() => setShowAvailabilityModal(false)}
           isPending={updateAvailability.isPending}

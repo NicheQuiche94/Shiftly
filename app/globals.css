@@ -2,26 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: 'Cal Sans';
-  src: url('https://cal.com/fonts/cal-sans/cal-sans.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
-}
-
-@font-face {
-  font-family: 'Cal Sans';
-  src: url('/fonts/CalSans-SemiBold.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,7 +38,7 @@ body {
 
 /* Base Typography - Cal Sans for headings, Inter/system for body */
 .font-cal {
-  font-family: 'Cal Sans', sans-serif;
+  font-family: inherit;
 }
 
 /* Typography Scale */
@@ -100,7 +84,7 @@ body {
 
 /* Semantic Classes - Cal Sans for ALL headings */
 .heading-page {
-  font-family: 'Cal Sans', sans-serif;
+  font-family: inherit;
   font-size: 2rem;       /* 32px - larger than before */
   font-weight: 600;
   line-height: 2.5rem;
@@ -109,7 +93,7 @@ body {
 }
 
 .heading-section {
-  font-family: 'Cal Sans', sans-serif;
+  font-family: inherit;
   font-size: 1.5rem;     /* 24px */
   font-weight: 600;
   line-height: 2rem;
@@ -118,7 +102,7 @@ body {
 }
 
 .heading-subsection {
-  font-family: 'Cal Sans', sans-serif;
+  font-family: inherit;
   font-size: 1.25rem;    /* 20px */
   font-weight: 600;
   line-height: 1.75rem;

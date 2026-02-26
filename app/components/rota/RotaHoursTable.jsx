@@ -109,7 +109,7 @@ export default function RotaHoursTable({
 
               <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <div className="min-w-[400px] px-4 sm:px-0">
-                  <table className="w-full border-collapse border border-pink-200 rounded-xl overflow-hidden">
+                  <table className="w-full border-collapse border border-gray-200 rounded-xl overflow-hidden">
                     <thead>
                       <tr className="bg-gray-50/50 border-b border-gray-200/60">
                         <th className="px-3 sm:px-6 py-3 text-left body-text font-semibold text-gray-700 sticky left-0 bg-gray-50">Staff</th>

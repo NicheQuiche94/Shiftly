@@ -1,10 +1,11 @@
-export default function RotaAlerts({ 
-    timeSaved, 
-    hasUnsavedChanges, 
-    loading, 
-    showAllTeams, 
-    error, 
-    rota 
+export default function RotaAlerts({
+    timeSaved,
+    hasUnsavedChanges,
+    loading,
+    loadingStep,
+    showAllTeams,
+    error,
+    rota
   }) {
     return (
       <>
@@ -52,7 +53,7 @@ export default function RotaAlerts({
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-600"></div>
               <p className="text-pink-900 font-medium body-text">
-                Generating rota{showAllTeams ? 's for all teams' : ''}...
+                {loadingStep || `Generating rota${showAllTeams ? 's for all teams' : ''}...`}
               </p>
             </div>
           </div>

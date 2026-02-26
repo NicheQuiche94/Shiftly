@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import TimelineBuilder from '@/app/components/template/TimelineBuilder'
-import { formatTime } from '@/app/components/template/shift-constants'
+import { formatTime, getShiftBlockColor } from '@/app/components/template/shift-constants'
+import ShiftMiniPreview from '@/app/components/template/ShiftMiniPreview'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DEFAULT_SHIFT_LENGTHS = [4, 6, 8, 10, 12]
 const BUFFER_OPTIONS = [0, 15, 30, 45, 60]
+const MAX_TEMPLATES = 10
 
 function makeDefaultShift(openTime, closeTime, openBuffer, closeBuffer) {
   const staffStart = openTime - (openBuffer || 0) / 60
@@ -35,6 +37,10 @@ export default function TemplatesSection({ selectedTeamId }) {
   const [activeTemplate, setActiveTemplate] = useState(null)
   const [editingName, setEditingName] = useState(null)
   const [newName, setNewName] = useState('')
+  const [editingTemplate, setEditingTemplate] = useState(null)
+
+  // Dirty state tracking
+  const savedRef = useRef(null)
 
   // From team record (set during onboarding — no hardcoding)
   // open_time/close_time are stored as strings in the DB; parse to numbers
@@ -44,10 +50,16 @@ export default function TemplatesSection({ selectedTeamId }) {
   const closeBuffer = Number(teamData?.close_buffer) || 0
   const shiftLengths = teamData?.shift_lengths ?? DEFAULT_SHIFT_LENGTHS
 
+  const isDirty = useMemo(() => {
+    if (!savedRef.current) return false
+    return JSON.stringify({ dayTemplates, weekTemplate }) !== savedRef.current
+  }, [dayTemplates, weekTemplate])
+
   // Fetch team data
   useEffect(() => {
     if (!selectedTeamId) return
     setLoading(true)
+    setEditingTemplate(null)
     fetch(`/api/teams/${selectedTeamId}`)
       .then(r => r.json())
       .then(data => {
@@ -72,10 +84,12 @@ export default function TemplatesSection({ selectedTeamId }) {
           setDayTemplates(defaultDT)
           setWeekTemplate(defaultWT)
           setActiveTemplate('Standard')
+          savedRef.current = JSON.stringify({ dayTemplates: defaultDT, weekTemplate: defaultWT })
         } else {
           setDayTemplates(savedDT)
           setWeekTemplate(savedWT)
           setActiveTemplate(Object.keys(savedDT)[0] || null)
+          savedRef.current = JSON.stringify({ dayTemplates: savedDT, weekTemplate: savedWT })
         }
 
         setLoading(false)
@@ -115,6 +129,9 @@ export default function TemplatesSection({ selectedTeamId }) {
       // Invalidate parent team query so StaffShiftsSection picks up new templates
       queryClient.invalidateQueries({ queryKey: ['team-detail', selectedTeamId] })
 
+      // Update saved snapshot
+      savedRef.current = JSON.stringify({ dayTemplates, weekTemplate })
+
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus(null), 2000)
     } catch {
@@ -134,12 +151,14 @@ export default function TemplatesSection({ selectedTeamId }) {
   }, [])
 
   const addTemplate = () => {
+    if (Object.keys(dayTemplates).length >= MAX_TEMPLATES) return
     let name = 'New Template'
     let i = 1
     while (dayTemplates[name]) name = `New Template ${i++}`
     const defShift = makeDefaultShift(openTime, closeTime, openBuffer, closeBuffer)
     setDayTemplates(prev => ({ ...prev, [name]: { shifts: [defShift], openTime, closeTime, openBuffer, closeBuffer } }))
     setActiveTemplate(name)
+    setEditingTemplate(name)
   }
 
   const deleteTemplate = (name) => {
@@ -156,6 +175,7 @@ export default function TemplatesSection({ selectedTeamId }) {
     setDayTemplates(updated)
     setWeekTemplate(updatedWeek)
     if (activeTemplate === name) setActiveTemplate(first)
+    if (editingTemplate === name) setEditingTemplate(null)
   }
 
   const startRename = (name) => { setEditingName(name); setNewName(name) }
@@ -164,15 +184,17 @@ export default function TemplatesSection({ selectedTeamId }) {
     if (!editingName || !newName.trim() || newName === editingName || dayTemplates[newName.trim()]) {
       setEditingName(null); return
     }
+    const trimmed = newName.trim()
     const updated = {}
-    Object.keys(dayTemplates).forEach(k => { updated[k === editingName ? newName.trim() : k] = dayTemplates[k] })
+    Object.keys(dayTemplates).forEach(k => { updated[k === editingName ? trimmed : k] = dayTemplates[k] })
     const updatedWeek = { ...weekTemplate }
     Object.keys(updatedWeek).forEach(d => {
-      if (updatedWeek[d].tmpl === editingName) updatedWeek[d] = { ...updatedWeek[d], tmpl: newName.trim() }
+      if (updatedWeek[d].tmpl === editingName) updatedWeek[d] = { ...updatedWeek[d], tmpl: trimmed }
     })
     setDayTemplates(updated)
     setWeekTemplate(updatedWeek)
-    if (activeTemplate === editingName) setActiveTemplate(newName.trim())
+    if (activeTemplate === editingName) setActiveTemplate(trimmed)
+    if (editingTemplate === editingName) setEditingTemplate(trimmed)
     setEditingName(null)
   }
 
@@ -246,6 +268,11 @@ export default function TemplatesSection({ selectedTeamId }) {
         </div>
 
         <div className="flex items-center gap-2">
+          {isDirty && (
+            <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-medium text-amber-700">
+              Unsaved changes
+            </span>
+          )}
           {saveStatus === 'saved' && (
             <span className="text-xs font-medium text-green-600 flex items-center gap-1">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -256,7 +283,7 @@ export default function TemplatesSection({ selectedTeamId }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all hover:shadow-lg hover:shadow-pink-500/25 disabled:opacity-50"
+            className={`px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all hover:shadow-lg hover:shadow-pink-500/25 disabled:opacity-50 ${isDirty ? 'ring-2 ring-amber-300 ring-offset-1' : ''}`}
             style={{ background: '#FF1F7D' }}
           >
             {saving ? 'Saving...' : 'Save & Sync'}
@@ -280,7 +307,7 @@ export default function TemplatesSection({ selectedTeamId }) {
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); if (tab.id === 'week') setEditingTemplate(null) }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
               activeTab === tab.id
                 ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
@@ -296,137 +323,235 @@ export default function TemplatesSection({ selectedTeamId }) {
       {/* DAY TEMPLATES TAB */}
       {activeTab === 'day' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          {/* Template name tabs */}
-          <div className="flex items-center gap-2 mb-5 flex-wrap">
-            {templateNames.map(name => (
-              <div key={name} className="flex items-center">
-                {editingName === name ? (
+          {editingTemplate && dayTemplates[editingTemplate] ? (
+            /* ── Editor View ── */
+            <>
+              <button
+                onClick={() => setEditingTemplate(null)}
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors mb-4"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to templates
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                {editingName === editingTemplate ? (
                   <input
                     autoFocus
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
                     onBlur={finishRename}
                     onKeyDown={e => e.key === 'Enter' && finishRename()}
-                    className="px-3 py-1.5 rounded-lg border-2 border-pink-400 text-sm font-medium focus:outline-none"
-                    style={{ width: Math.max(80, newName.length * 9) }}
+                    className="px-3 py-1.5 rounded-lg border-2 border-pink-400 text-lg font-bold font-cal focus:outline-none"
+                    style={{ width: Math.max(120, newName.length * 12) }}
                   />
                 ) : (
-                  <button
-                    onClick={() => setActiveTemplate(name)}
-                    onDoubleClick={() => startRename(name)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      activeTemplate === name
-                        ? 'text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    style={activeTemplate === name ? { background: '#FF1F7D' } : {}}
-                    title="Double-click to rename"
-                  >
-                    {name}
-                  </button>
+                  <h3 className="text-lg font-bold text-gray-900 font-cal">{editingTemplate}</h3>
                 )}
-                {templateNames.length > 1 && activeTemplate === name && (
+                <button
+                  onClick={() => startRename(editingTemplate)}
+                  className="w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                  title="Rename template"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              </div>
+
+              {(() => {
+                const tmpl = dayTemplates[editingTemplate]
+                const tmplOpenTime = tmpl.openTime ?? openTime
+                const tmplCloseTime = tmpl.closeTime ?? closeTime
+                const tmplOpenBuffer = tmpl.openBuffer ?? openBuffer
+                const tmplCloseBuffer = tmpl.closeBuffer ?? closeBuffer
+
+                const timeOptions = []
+                for (let h = 0; h < 24; h++) {
+                  for (const m of [0, 15, 30, 45]) {
+                    timeOptions.push(h + m / 60)
+                  }
+                }
+
+                return (
+                  <>
+                    <div className="flex items-center gap-3 mb-4 flex-wrap p-3 rounded-xl bg-gray-50 border border-gray-200">
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-[10px] font-semibold text-gray-500 uppercase">Opens</label>
+                        <select
+                          value={tmplOpenTime}
+                          onChange={e => updateTemplateHours(editingTemplate, { openTime: parseFloat(e.target.value) })}
+                          className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-900 bg-white"
+                        >
+                          {timeOptions.map(v => <option key={v} value={v}>{formatTime(v)}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-[10px] font-semibold text-gray-500 uppercase">Closes</label>
+                        <select
+                          value={tmplCloseTime}
+                          onChange={e => updateTemplateHours(editingTemplate, { closeTime: parseFloat(e.target.value) })}
+                          className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-900 bg-white"
+                        >
+                          {timeOptions.map(v => <option key={v} value={v}>{formatTime(v)}</option>)}
+                        </select>
+                      </div>
+                      <div className="w-px h-5 bg-gray-300" />
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase">Prep</span>
+                        {BUFFER_OPTIONS.map(m => (
+                          <button
+                            key={m}
+                            onClick={() => updateTemplateHours(editingTemplate, { openBuffer: m })}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                              tmplOpenBuffer === m
+                                ? 'border-pink-500 bg-pink-50 text-pink-600'
+                                : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                            }`}
+                          >
+                            {m === 0 ? '0' : `${m}m`}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase">Close-down</span>
+                        {BUFFER_OPTIONS.map(m => (
+                          <button
+                            key={m}
+                            onClick={() => updateTemplateHours(editingTemplate, { closeBuffer: m })}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
+                              tmplCloseBuffer === m
+                                ? 'border-pink-500 bg-pink-50 text-pink-600'
+                                : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                            }`}
+                          >
+                            {m === 0 ? '0' : `${m}m`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <TimelineBuilder
+                      shifts={tmpl.shifts || []}
+                      shiftLengths={shiftLengths}
+                      openTime={tmplOpenTime}
+                      closeTime={tmplCloseTime}
+                      openBuffer={tmplOpenBuffer}
+                      closeBuffer={tmplCloseBuffer}
+                      onChange={(newShifts) => updateTemplateShifts(editingTemplate, newShifts)}
+                    />
+                  </>
+                )
+              })()}
+            </>
+          ) : (
+            /* ── Card Gallery View ── */
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="font-semibold text-gray-900 font-cal text-base">Day Templates</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Create shift patterns for different day types</p>
+                </div>
+                <span className="text-xs text-gray-400 font-medium">{templateNames.length}/{MAX_TEMPLATES}</span>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {templateNames.map(name => {
+                  const tmpl = dayTemplates[name]
+                  const tmplOpen = tmpl.openTime ?? openTime
+                  const tmplClose = tmpl.closeTime ?? closeTime
+                  const tmplOpenBuf = tmpl.openBuffer ?? openBuffer
+                  const tmplCloseBuf = tmpl.closeBuffer ?? closeBuffer
+                  const totalHours = tmpl.shifts?.reduce((a, s) => a + s.length * s.headcount, 0) || 0
+                  const shiftCount = tmpl.shifts?.length || 0
+
+                  return (
+                    <div
+                      key={name}
+                      className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group"
+                    >
+                      {/* Card header: name + actions */}
+                      <div className="flex items-start justify-between mb-3">
+                        {editingName === name ? (
+                          <input
+                            autoFocus
+                            value={newName}
+                            onChange={e => setNewName(e.target.value)}
+                            onBlur={finishRename}
+                            onKeyDown={e => e.key === 'Enter' && finishRename()}
+                            className="px-2 py-0.5 rounded border-2 border-pink-400 text-sm font-bold focus:outline-none flex-1 mr-2"
+                          />
+                        ) : (
+                          <span className="text-sm font-bold text-gray-900 truncate">{name}</span>
+                        )}
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <button
+                            onClick={() => startRename(name)}
+                            className="w-6 h-6 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center transition-colors"
+                            title="Rename"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          {templateNames.length > 1 && (
+                            <button
+                              onClick={() => deleteTemplate(name)}
+                              className="w-6 h-6 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                              title="Delete"
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Mini shift preview */}
+                      <div className="mb-3">
+                        <ShiftMiniPreview
+                          shifts={tmpl.shifts}
+                          openTime={tmplOpen}
+                          closeTime={tmplClose}
+                          openBuffer={tmplOpenBuf}
+                          closeBuffer={tmplCloseBuf}
+                          shiftLengths={shiftLengths}
+                        />
+                      </div>
+
+                      {/* Stats */}
+                      <div className="text-[11px] text-gray-500 font-medium mb-3">
+                        {formatTime(tmplOpen)} – {formatTime(tmplClose)} · {shiftCount} shift{shiftCount !== 1 ? 's' : ''} · {Math.round(totalHours)}h
+                      </div>
+
+                      {/* Edit button */}
+                      <button
+                        onClick={() => { setActiveTemplate(name); setEditingTemplate(name) }}
+                        className="w-full py-1.5 rounded-lg border border-pink-200 text-xs font-semibold text-pink-600 hover:bg-pink-50 transition-all"
+                      >
+                        Edit Template
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {/* Add template card */}
+                {templateNames.length < MAX_TEMPLATES && (
                   <button
-                    onClick={() => deleteTemplate(name)}
-                    className="ml-1 w-5 h-5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center text-xs transition-colors"
+                    onClick={addTemplate}
+                    className="rounded-xl border-2 border-dashed border-gray-300 p-4 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-pink-400 hover:text-pink-600 transition-all min-h-[160px]"
                   >
-                    ×
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-sm font-semibold">New Template</span>
                   </button>
                 )}
               </div>
-            ))}
-            <button
-              onClick={addTemplate}
-              className="px-3 py-1.5 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-pink-400 hover:text-pink-600 transition-all"
-            >
-              + Template
-            </button>
-          </div>
-
-          {/* Per-template hours/buffer editor + TimelineBuilder */}
-          {activeTemplate && dayTemplates[activeTemplate] && (() => {
-            const tmpl = dayTemplates[activeTemplate]
-            const tmplOpenTime = tmpl.openTime ?? openTime
-            const tmplCloseTime = tmpl.closeTime ?? closeTime
-            const tmplOpenBuffer = tmpl.openBuffer ?? openBuffer
-            const tmplCloseBuffer = tmpl.closeBuffer ?? closeBuffer
-
-            const timeOptions = []
-            for (let h = 0; h < 24; h++) {
-              for (const m of [0, 15, 30, 45]) {
-                timeOptions.push(h + m / 60)
-              }
-            }
-
-            return (
-              <>
-                <div className="flex items-center gap-3 mb-4 flex-wrap p-3 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-[10px] font-semibold text-gray-500 uppercase">Opens</label>
-                    <select
-                      value={tmplOpenTime}
-                      onChange={e => updateTemplateHours(activeTemplate, { openTime: parseFloat(e.target.value) })}
-                      className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-900 bg-white"
-                    >
-                      {timeOptions.map(v => <option key={v} value={v}>{formatTime(v)}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-[10px] font-semibold text-gray-500 uppercase">Closes</label>
-                    <select
-                      value={tmplCloseTime}
-                      onChange={e => updateTemplateHours(activeTemplate, { closeTime: parseFloat(e.target.value) })}
-                      className="px-2 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-900 bg-white"
-                    >
-                      {timeOptions.map(v => <option key={v} value={v}>{formatTime(v)}</option>)}
-                    </select>
-                  </div>
-                  <div className="w-px h-5 bg-gray-300" />
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-semibold text-gray-500 uppercase">Prep</span>
-                    {BUFFER_OPTIONS.map(m => (
-                      <button
-                        key={m}
-                        onClick={() => updateTemplateHours(activeTemplate, { openBuffer: m })}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
-                          tmplOpenBuffer === m
-                            ? 'border-pink-500 bg-pink-50 text-pink-600'
-                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
-                        }`}
-                      >
-                        {m === 0 ? '0' : `${m}m`}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-semibold text-gray-500 uppercase">Close-down</span>
-                    {BUFFER_OPTIONS.map(m => (
-                      <button
-                        key={m}
-                        onClick={() => updateTemplateHours(activeTemplate, { closeBuffer: m })}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${
-                          tmplCloseBuffer === m
-                            ? 'border-pink-500 bg-pink-50 text-pink-600'
-                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
-                        }`}
-                      >
-                        {m === 0 ? '0' : `${m}m`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <TimelineBuilder
-                  shifts={tmpl.shifts || []}
-                  shiftLengths={shiftLengths}
-                  openTime={tmplOpenTime}
-                  closeTime={tmplCloseTime}
-                  openBuffer={tmplOpenBuffer}
-                  closeBuffer={tmplCloseBuffer}
-                  onChange={(newShifts) => updateTemplateShifts(activeTemplate, newShifts)}
-                />
-              </>
-            )
-          })()}
+            </>
+          )}
         </div>
       )}
 
@@ -469,6 +594,18 @@ export default function TemplatesSection({ selectedTeamId }) {
                       >
                         {templateNames.map(n => <option key={n} value={n}>{n}</option>)}
                       </select>
+                      {tmpl?.shifts?.length > 0 && (
+                        <div className="mb-1.5">
+                          <ShiftMiniPreview
+                            shifts={tmpl.shifts}
+                            openTime={tmpl.openTime ?? openTime}
+                            closeTime={tmpl.closeTime ?? closeTime}
+                            openBuffer={tmpl.openBuffer ?? openBuffer}
+                            closeBuffer={tmpl.closeBuffer ?? closeBuffer}
+                            shiftLengths={shiftLengths}
+                          />
+                        </div>
+                      )}
                       <div className="text-[10px] text-gray-500 font-medium">
                         {tmpl?.shifts?.length || 0} shifts · {Math.round(dayHours)}h
                       </div>

@@ -13,7 +13,7 @@ export default function RotaActions({
   onPrint
 }) {
   return (
-    <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 no-print">
+    <div id="tour-rota-actions" className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 no-print">
       <Button
         variant="primary"
         onClick={onGenerate}
